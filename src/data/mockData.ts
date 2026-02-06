@@ -4,10 +4,10 @@ import { ServiceOrder, User, DashboardStats, OSStatus, Property } from '@/types/
 export const mockUsers: User[] = [
   {
     id: 'imob-1',
-    name: 'Maria Santos',
-    email: 'maria@imobiliariasantos.com.br',
+    name: 'Orada Imóveis',
+    email: 'contato@oradaimoveis.com.br',
     role: 'imobiliaria',
-    company: 'Imobiliária Santos & Associados',
+    company: 'Orada Imóveis',
     phone: '(11) 99999-1234',
   },
   {
@@ -34,8 +34,8 @@ export const mockUsers: User[] = [
   },
   {
     id: 'admin-1',
-    name: 'Fernando Costa',
-    email: 'fernando@faztudo.com.br',
+    name: 'Carlos Vita',
+    email: 'carlos@faztudo.com.br',
     role: 'admin',
     company: 'Faz-Tudo Imobiliário',
     phone: '(11) 97777-1234',
