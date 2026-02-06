@@ -12,7 +12,8 @@ import {
   Plus,
   TrendingUp,
   DollarSign,
-  Wrench
+  Wrench,
+  Loader2
 } from 'lucide-react';
 import { 
   getImobiliariaStats, 
@@ -22,13 +23,23 @@ import {
 } from '@/data/mockData';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, profile, role, isLoading } = useAuth();
 
-  if (!user) return null;
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!user || !profile || !role) return null;
 
   // Get stats based on user role
   const getStats = () => {
-    switch (user.role) {
+    switch (role) {
       case 'imobiliaria':
         return getImobiliariaStats(user.id);
       case 'tecnico':
@@ -42,7 +53,7 @@ const Dashboard = () => {
 
   // Get recent orders based on role
   const getRecentOrders = () => {
-    switch (user.role) {
+    switch (role) {
       case 'imobiliaria':
         return mockServiceOrders
           .filter(os => os.imobiliariaId === user.id)
@@ -62,14 +73,14 @@ const Dashboard = () => {
 
   // Render different dashboard content based on role
   const renderRoleContent = () => {
-    switch (user.role) {
+    switch (role) {
       case 'imobiliaria':
         return (
           <>
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h1 className="font-display text-3xl font-bold text-foreground">
-                  Olá, {user.name.split(' ')[0]}!
+                  Olá, {profile.name.split(' ')[0]}!
                 </h1>
                 <p className="text-muted-foreground mt-1">
                   Acompanhe suas ordens de serviço
@@ -115,7 +126,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h1 className="font-display text-3xl font-bold text-foreground">
-                  Olá, {user.name.split(' ')[0]}!
+                  Olá, {profile.name.split(' ')[0]}!
                 </h1>
                 <p className="text-muted-foreground mt-1">
                   Seus serviços e orçamentos pendentes
@@ -201,7 +212,7 @@ const Dashboard = () => {
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display text-xl font-semibold text-foreground">
-            {user.role === 'admin' ? 'Orçamentos Pendentes' : 'Ordens Recentes'}
+            {role === 'admin' ? 'Orçamentos Pendentes' : 'Ordens Recentes'}
           </h2>
           <Button variant="ghost" asChild>
             <Link to="/ordens">Ver todas</Link>
@@ -219,7 +230,7 @@ const Dashboard = () => {
               <p className="text-muted-foreground">
                 Nenhuma ordem de serviço encontrada
               </p>
-              {user.role === 'imobiliaria' && (
+              {role === 'imobiliaria' && (
                 <Button className="mt-4" asChild>
                   <Link to="/novo-chamado">
                     <Plus className="h-4 w-4" />

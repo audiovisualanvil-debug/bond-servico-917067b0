@@ -16,14 +16,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
 const HistoricoImoveis = () => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
 
+  if (!user || !role) return null;
+
   // Filter properties based on user role
-  const userProperties = user?.role === 'admin'
+  const userProperties = role === 'admin'
     ? mockProperties
-    : mockProperties.filter(p => p.imobiliariaId === user?.id);
+    : mockProperties.filter(p => p.imobiliariaId === user.id);
 
   const filteredProperties = userProperties.filter(p => {
     if (!searchTerm) return true;
