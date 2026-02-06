@@ -14,13 +14,13 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserRole } from '@/types/serviceOrder';
+import { AppRole } from '@/types/database';
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ElementType;
-  roles: UserRole[];
+  roles: AppRole[];
 }
 
 const navItems: NavItem[] = [
@@ -37,14 +37,14 @@ const navItems: NavItem[] = [
 
 export const Sidebar = () => {
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { profile, role, signOut } = useAuth();
 
-  if (!user) return null;
+  if (!profile || !role) return null;
 
-  const filteredItems = navItems.filter(item => item.roles.includes(user.role));
+  const filteredItems = navItems.filter(item => item.roles.includes(role));
 
-  const getRoleLabel = (role: UserRole) => {
-    switch (role) {
+  const getRoleLabel = (r: AppRole) => {
+    switch (r) {
       case 'imobiliaria': return 'Imobiliária';
       case 'tecnico': return 'Técnico';
       case 'admin': return 'Administrador';
@@ -67,10 +67,10 @@ export const Sidebar = () => {
 
         {/* User Info */}
         <div className="border-b border-sidebar-border px-6 py-4">
-          <p className="text-sm font-medium text-sidebar-accent-foreground">{user.name}</p>
-          <p className="text-xs text-sidebar-foreground/60">{getRoleLabel(user.role)}</p>
-          {user.company && (
-            <p className="mt-1 text-xs text-sidebar-primary">{user.company}</p>
+          <p className="text-sm font-medium text-sidebar-accent-foreground">{profile.name}</p>
+          <p className="text-xs text-sidebar-foreground/60">{getRoleLabel(role)}</p>
+          {profile.company && (
+            <p className="mt-1 text-xs text-sidebar-primary">{profile.company}</p>
           )}
         </div>
 
@@ -109,7 +109,7 @@ export const Sidebar = () => {
             Configurações
           </Link>
           <button
-            onClick={logout}
+            onClick={signOut}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-destructive/20 hover:text-destructive"
           >
             <LogOut className="h-5 w-5" />

@@ -22,7 +22,6 @@ const NovoChamado = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [formData, setFormData] = useState({
     propertyId: '',
     newAddress: '',
@@ -37,7 +36,11 @@ const NovoChamado = () => {
   });
 
   // Filter properties for this imobiliaria
-  const userProperties = mockProperties.filter(p => p.imobiliariaId === user?.id);
+  const userProperties = user 
+    ? mockProperties.filter(p => p.imobiliariaId === user.id)
+    : [];
+
+  if (!user) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

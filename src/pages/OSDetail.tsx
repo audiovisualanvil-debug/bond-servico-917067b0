@@ -31,7 +31,7 @@ import {
 const OSDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { role } = useAuth();
 
   const order = mockServiceOrders.find(os => os.id === id);
 
@@ -95,7 +95,7 @@ const OSDetail = () => {
   };
 
   const renderActionSection = () => {
-    switch (user?.role) {
+    switch (role) {
       case 'tecnico':
         if (order.status === 'aguardando_orcamento') {
           return (

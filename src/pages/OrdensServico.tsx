@@ -17,18 +17,18 @@ import { mockServiceOrders } from '@/data/mockData';
 import { OSStatus, STATUS_LABELS } from '@/types/serviceOrder';
 
 const OrdensServico = () => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<OSStatus | 'all'>('all');
 
-  if (!user) return null;
+  if (!user || !role) return null;
 
   // Filter orders based on user role
   const getFilteredOrders = () => {
     let orders = mockServiceOrders;
 
     // Role-based filtering
-    switch (user.role) {
+    switch (role) {
       case 'imobiliaria':
         orders = orders.filter(os => os.imobiliariaId === user.id);
         break;
@@ -73,7 +73,7 @@ const OrdensServico = () => {
             {filteredOrders.length} {filteredOrders.length === 1 ? 'ordem encontrada' : 'ordens encontradas'}
           </p>
         </div>
-        {user.role === 'imobiliaria' && (
+        {role === 'imobiliaria' && (
           <Button size="lg" asChild>
             <Link to="/novo-chamado">
               <Plus className="h-5 w-5" />

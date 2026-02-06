@@ -11,6 +11,8 @@ const MeusServicos = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
 
+  if (!user) return null;
+
   // Get orders for technician
   const technicianOrders = mockServiceOrders.filter(
     os => os.tecnicoId === user?.id

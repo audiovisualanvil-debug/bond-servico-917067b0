@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import LoginPage from "./pages/LoginPage";
+import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import OrdensServico from "./pages/OrdensServico";
 import OSDetail from "./pages/OSDetail";
@@ -13,12 +13,22 @@ import AprovarOrcamentos from "./pages/AprovarOrcamentos";
 import MeusServicos from "./pages/MeusServicos";
 import HistoricoImoveis from "./pages/HistoricoImoveis";
 import NotFound from "./pages/NotFound";
+import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
@@ -27,7 +37,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Public route wrapper (redirects to dashboard if already logged in)
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -37,7 +56,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/" element={<PublicRoute><LoginPage /></PublicRoute>} />
+      <Route path="/" element={<PublicRoute><AuthPage /></PublicRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/ordens" element={<ProtectedRoute><OrdensServico /></ProtectedRoute>} />
       <Route path="/ordens/:id" element={<ProtectedRoute><OSDetail /></ProtectedRoute>} />
