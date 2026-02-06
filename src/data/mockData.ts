@@ -4,10 +4,10 @@ import { ServiceOrder, User, DashboardStats, OSStatus, Property } from '@/types/
 export const mockUsers: User[] = [
   {
     id: 'imob-1',
-    name: 'Orada Imóveis',
-    email: 'contato@oradaimoveis.com.br',
+    name: 'Morada Imóveis',
+    email: 'contato@moradaimoveis.com.br',
     role: 'imobiliaria',
-    company: 'Orada Imóveis',
+    company: 'Morada Imóveis',
     phone: '(11) 99999-1234',
   },
   {
