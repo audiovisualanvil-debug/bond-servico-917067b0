@@ -12,55 +12,32 @@ import {
 } from "@/components/ui/select";
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import { Search, Plus, Filter, ClipboardList } from 'lucide-react';
-import { mockServiceOrders } from '@/data/mockData';
+import { Search, Plus, Filter, ClipboardList, Loader2 } from 'lucide-react';
+import { useServiceOrders, useServiceOrdersRealtime } from '@/hooks/useServiceOrders';
 import { OSStatus, STATUS_LABELS } from '@/types/serviceOrder';
 
 const OrdensServico = () => {
   const { user, role } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<OSStatus | 'all'>('all');
+  
+  const { data: orders = [], isLoading, error } = useServiceOrders(statusFilter !== 'all' ? statusFilter : undefined);
+  useServiceOrdersRealtime();
 
   if (!user || !role) return null;
 
-  // Filter orders based on user role
-  const getFilteredOrders = () => {
-    let orders = mockServiceOrders;
-
-    // Role-based filtering
-    switch (role) {
-      case 'imobiliaria':
-        orders = orders.filter(os => os.imobiliariaId === user.id);
-        break;
-      case 'tecnico':
-        orders = orders.filter(os => 
-          os.tecnicoId === user.id || 
-          (os.status === 'aguardando_orcamento' && !os.tecnicoId)
+  // Client-side search filter
+  const filteredOrders = searchTerm
+    ? orders.filter(os => {
+        const term = searchTerm.toLowerCase();
+        return (
+          os.osNumber.toLowerCase().includes(term) ||
+          os.problem.toLowerCase().includes(term) ||
+          os.property.address.toLowerCase().includes(term) ||
+          os.requesterName.toLowerCase().includes(term)
         );
-        break;
-      // Admin sees all
-    }
-
-    // Search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      orders = orders.filter(os =>
-        os.osNumber.toLowerCase().includes(term) ||
-        os.problem.toLowerCase().includes(term) ||
-        os.property.address.toLowerCase().includes(term) ||
-        os.requesterName.toLowerCase().includes(term)
-      );
-    }
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      orders = orders.filter(os => os.status === statusFilter);
-    }
-
-    return orders.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  };
-
-  const filteredOrders = getFilteredOrders();
+      })
+    : orders;
 
   return (
     <DashboardLayout>
@@ -110,7 +87,16 @@ const OrdensServico = () => {
 
       {/* Orders List */}
       <div className="space-y-4 stagger-children">
-        {filteredOrders.length > 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : error ? (
+          <div className="os-card text-center py-12">
+            <p className="text-destructive">Erro ao carregar ordens de serviço</p>
+            <p className="text-sm text-muted-foreground mt-1">{(error as Error).message}</p>
+          </div>
+        ) : filteredOrders.length > 0 ? (
           filteredOrders.map((order) => (
             <OSCard key={order.id} order={order} />
           ))

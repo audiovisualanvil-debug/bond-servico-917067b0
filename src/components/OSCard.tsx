@@ -6,6 +6,7 @@ import { ptBR } from 'date-fns/locale';
 import { MapPin, Calendar, User, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface OSCardProps {
   order: ServiceOrder;
@@ -13,6 +14,8 @@ interface OSCardProps {
 }
 
 export const OSCard: React.FC<OSCardProps> = ({ order, showActions = true }) => {
+  const { role } = useAuth();
+
   return (
     <div className="os-card animate-fade-in">
       <div className="flex items-start justify-between gap-4">
@@ -49,8 +52,8 @@ export const OSCard: React.FC<OSCardProps> = ({ order, showActions = true }) => 
             </div>
           </div>
 
-          {/* Pricing info for admin view */}
-          {order.technicianCost && (
+          {/* Pricing info - only for admin/tecnico, hide real cost from imobiliaria */}
+          {(role === 'admin' || role === 'tecnico') && order.technicianCost && (
             <div className="mt-3 flex items-center gap-4 text-sm">
               <span className="text-muted-foreground">
                 Custo técnico: <strong className="text-foreground">R$ {order.technicianCost.toFixed(2)}</strong>
@@ -60,6 +63,15 @@ export const OSCard: React.FC<OSCardProps> = ({ order, showActions = true }) => 
                   Valor final: <strong className="text-primary">R$ {order.finalPrice.toFixed(2)}</strong>
                 </span>
               )}
+            </div>
+          )}
+
+          {/* Imobiliaria only sees final price */}
+          {role === 'imobiliaria' && order.finalPrice && (
+            <div className="mt-3 flex items-center gap-4 text-sm">
+              <span className="text-muted-foreground">
+                Valor do serviço: <strong className="text-primary">R$ {order.finalPrice.toFixed(2)}</strong>
+              </span>
             </div>
           )}
         </div>

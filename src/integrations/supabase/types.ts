@@ -135,7 +135,15 @@ export type Database = {
           updated_at?: string
           zip_code?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_prop_imobiliaria_profile"
+            columns: ["imobiliaria_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_order_items: {
         Row: {
@@ -250,6 +258,20 @@ export type Database = {
           urgency?: Database["public"]["Enums"]["urgency_level"]
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_so_imobiliaria_profile"
+            columns: ["imobiliaria_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_so_tecnico_profile"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "service_orders_property_id_fkey"
             columns: ["property_id"]
@@ -389,6 +411,20 @@ export type Database = {
           urgency?: Database["public"]["Enums"]["urgency_level"] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_so_imobiliaria_profile"
+            columns: ["imobiliaria_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_so_tecnico_profile"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "service_orders_property_id_fkey"
             columns: ["property_id"]

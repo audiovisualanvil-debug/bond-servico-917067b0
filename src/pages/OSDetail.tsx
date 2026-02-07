@@ -1,6 +1,5 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockServiceOrders } from '@/data/mockData';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatusBadge } from '@/components/StatusBadge';
 import { UrgencyIndicator } from '@/components/UrgencyIndicator';
@@ -14,36 +13,29 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import {
-  ArrowLeft,
-  MapPin,
-  Calendar,
-  User,
-  Building2,
-  Wrench,
-  DollarSign,
-  Send,
-  CheckCircle2,
-  Clock,
-  FileText,
-  Camera,
+  ArrowLeft, MapPin, Calendar, User, Building2, Wrench,
+  DollarSign, Send, CheckCircle2, Clock, FileText, Camera, Loader2,
 } from 'lucide-react';
+import { useServiceOrder, useUpdateServiceOrder, useCreateCompletionReport } from '@/hooks/useServiceOrders';
 
 const OSDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { role } = useAuth();
 
-  const order = mockServiceOrders.find(os => os.id === id);
+  const { data: order, isLoading, error } = useServiceOrder(id);
+  const updateOrder = useUpdateServiceOrder();
+  const createReport = useCreateCompletionReport();
 
   // Technician quote form
   const [techQuote, setTechQuote] = useState({
-    description: order?.technicianDescription || '',
-    cost: order?.technicianCost || 0,
-    deadline: order?.estimatedDeadline || 1,
+    description: '',
+    cost: 0,
+    deadline: 1,
   });
 
   // Admin pricing form
-  const [finalPrice, setFinalPrice] = useState(order?.finalPrice || 0);
+  const [finalPrice, setFinalPrice] = useState(0);
 
   // Completion report form
   const [report, setReport] = useState({
@@ -57,11 +49,35 @@ const OSDetail = () => {
     ],
   });
 
-  if (!order) {
+  // Initialize forms when order loads
+  if (order && techQuote.description === '' && order.technicianDescription) {
+    setTechQuote({
+      description: order.technicianDescription,
+      cost: order.technicianCost || 0,
+      deadline: order.estimatedDeadline || 1,
+    });
+  }
+  if (order && finalPrice === 0 && order.finalPrice) {
+    setFinalPrice(order.finalPrice);
+  }
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !order) {
     return (
       <DashboardLayout>
         <div className="text-center py-12">
-          <p className="text-muted-foreground">Ordem de serviço não encontrada</p>
+          <p className="text-muted-foreground">
+            {error ? 'Erro ao carregar ordem de serviço' : 'Ordem de serviço não encontrada'}
+          </p>
           <Button className="mt-4" onClick={() => navigate('/ordens')}>
             Voltar para lista
           </Button>
@@ -70,29 +86,78 @@ const OSDetail = () => {
     );
   }
 
-  const handleTechnicianSubmit = () => {
-    toast.success('Orçamento enviado!', {
-      description: 'Aguardando aprovação do administrador.',
-    });
+  const handleTechnicianSubmit = async () => {
+    try {
+      await updateOrder.mutateAsync({
+        id: order.id,
+        technician_description: techQuote.description,
+        technician_cost: techQuote.cost,
+        estimated_deadline: techQuote.deadline,
+        status: 'aguardando_aprovacao_admin',
+      });
+      toast.success('Orçamento enviado!', { description: 'Aguardando aprovação do administrador.' });
+    } catch (error: any) {
+      toast.error('Erro ao enviar orçamento', { description: error.message });
+    }
   };
 
-  const handleAdminApprove = () => {
-    toast.success('Orçamento aprovado e enviado!', {
-      description: 'E-mail enviado para a imobiliária.',
-    });
+  const handleAdminApprove = async () => {
+    try {
+      await updateOrder.mutateAsync({
+        id: order.id,
+        final_price: finalPrice,
+        status: 'enviado_imobiliaria',
+      });
+      toast.success('Orçamento aprovado e enviado!', { description: 'E-mail enviado para a imobiliária.' });
+    } catch (error: any) {
+      toast.error('Erro ao aprovar orçamento', { description: error.message });
+    }
   };
 
-  const handleClientApprove = () => {
-    toast.success('Serviço aprovado!', {
-      description: 'O técnico foi notificado para iniciar a execução.',
-    });
+  const handleClientApprove = async () => {
+    try {
+      await updateOrder.mutateAsync({
+        id: order.id,
+        status: 'aprovado_aguardando',
+      });
+      toast.success('Serviço aprovado!', { description: 'O técnico foi notificado para iniciar a execução.' });
+    } catch (error: any) {
+      toast.error('Erro ao aprovar serviço', { description: error.message });
+    }
   };
 
-  const handleCompleteService = () => {
-    toast.success('Serviço finalizado!', {
-      description: 'Relatório gerado e enviado para a imobiliária.',
-    });
+  const handleStartExecution = async () => {
+    try {
+      await updateOrder.mutateAsync({
+        id: order.id,
+        status: 'em_execucao',
+      });
+      toast.success('Execução iniciada!');
+    } catch (error: any) {
+      toast.error('Erro ao iniciar execução', { description: error.message });
+    }
   };
+
+  const handleCompleteService = async () => {
+    try {
+      await createReport.mutateAsync({
+        service_order_id: order.id,
+        description: report.description,
+        checklist: report.checklist,
+        observations: report.observations || undefined,
+        technician_signature: 'Assinatura Digital',
+      });
+      await updateOrder.mutateAsync({
+        id: order.id,
+        status: 'concluido',
+      });
+      toast.success('Serviço finalizado!', { description: 'Relatório gerado e enviado para a imobiliária.' });
+    } catch (error: any) {
+      toast.error('Erro ao finalizar serviço', { description: error.message });
+    }
+  };
+
+  const isMutating = updateOrder.isPending || createReport.isPending;
 
   const renderActionSection = () => {
     switch (role) {
@@ -107,43 +172,37 @@ const OSDetail = () => {
               <div className="space-y-4">
                 <div>
                   <Label>Descrição do serviço necessário</Label>
-                  <Textarea
-                    placeholder="Descreva o que precisa ser feito..."
-                    value={techQuote.description}
-                    onChange={(e) => setTechQuote(prev => ({ ...prev, description: e.target.value }))}
-                    rows={3}
-                  />
+                  <Textarea placeholder="Descreva o que precisa ser feito..." value={techQuote.description} onChange={(e) => setTechQuote(prev => ({ ...prev, description: e.target.value }))} rows={3} />
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <Label>Valor do Custo (R$)</Label>
-                    <Input
-                      type="number"
-                      placeholder="0.00"
-                      value={techQuote.cost || ''}
-                      onChange={(e) => setTechQuote(prev => ({ ...prev, cost: parseFloat(e.target.value) || 0 }))}
-                    />
+                    <Input type="number" placeholder="0.00" value={techQuote.cost || ''} onChange={(e) => setTechQuote(prev => ({ ...prev, cost: parseFloat(e.target.value) || 0 }))} />
                   </div>
                   <div>
                     <Label>Prazo (dias)</Label>
-                    <Input
-                      type="number"
-                      placeholder="1"
-                      value={techQuote.deadline}
-                      onChange={(e) => setTechQuote(prev => ({ ...prev, deadline: parseInt(e.target.value) || 1 }))}
-                    />
+                    <Input type="number" placeholder="1" value={techQuote.deadline} onChange={(e) => setTechQuote(prev => ({ ...prev, deadline: parseInt(e.target.value) || 1 }))} />
                   </div>
                 </div>
-                <Button onClick={handleTechnicianSubmit} className="w-full">
-                  <Send className="h-4 w-4" />
+                <Button onClick={handleTechnicianSubmit} className="w-full" disabled={isMutating}>
+                  {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   Enviar Orçamento
                 </Button>
               </div>
             </div>
           );
         }
-
-        if (order.status === 'aprovado_aguardando' || order.status === 'em_execucao') {
+        if (order.status === 'aprovado_aguardando') {
+          return (
+            <div className="os-card">
+              <Button onClick={handleStartExecution} variant="default" className="w-full" size="lg" disabled={isMutating}>
+                {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+                Iniciar Execução
+              </Button>
+            </div>
+          );
+        }
+        if (order.status === 'em_execucao') {
           return (
             <div className="os-card">
               <div className="flex items-center gap-2 mb-4">
@@ -153,37 +212,24 @@ const OSDetail = () => {
               <div className="space-y-4">
                 <div>
                   <Label>O que foi feito</Label>
-                  <Textarea
-                    placeholder="Descreva detalhadamente o que foi executado..."
-                    value={report.description}
-                    onChange={(e) => setReport(prev => ({ ...prev, description: e.target.value }))}
-                    rows={4}
-                  />
+                  <Textarea placeholder="Descreva detalhadamente o que foi executado..." value={report.description} onChange={(e) => setReport(prev => ({ ...prev, description: e.target.value }))} rows={4} />
                 </div>
-
                 <div>
                   <Label className="mb-2 block">Checklist</Label>
                   <div className="space-y-2">
                     {report.checklist.map((item) => (
                       <div key={item.id} className="flex items-center gap-2">
-                        <Checkbox
-                          id={item.id}
-                          checked={item.completed}
-                          onCheckedChange={(checked) => {
-                            setReport(prev => ({
-                              ...prev,
-                              checklist: prev.checklist.map(i =>
-                                i.id === item.id ? { ...i, completed: !!checked } : i
-                              ),
-                            }));
-                          }}
-                        />
+                        <Checkbox id={item.id} checked={item.completed} onCheckedChange={(checked) => {
+                          setReport(prev => ({
+                            ...prev,
+                            checklist: prev.checklist.map(i => i.id === item.id ? { ...i, completed: !!checked } : i),
+                          }));
+                        }} />
                         <label htmlFor={item.id} className="text-sm">{item.item}</label>
                       </div>
                     ))}
                   </div>
                 </div>
-
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <Label className="mb-2 block">Fotos Antes</Label>
@@ -200,19 +246,12 @@ const OSDetail = () => {
                     </div>
                   </div>
                 </div>
-
                 <div>
                   <Label>Observações</Label>
-                  <Textarea
-                    placeholder="Observações adicionais..."
-                    value={report.observations}
-                    onChange={(e) => setReport(prev => ({ ...prev, observations: e.target.value }))}
-                    rows={2}
-                  />
+                  <Textarea placeholder="Observações adicionais..." value={report.observations} onChange={(e) => setReport(prev => ({ ...prev, observations: e.target.value }))} rows={2} />
                 </div>
-
-                <Button onClick={handleCompleteService} variant="success" className="w-full">
-                  <CheckCircle2 className="h-4 w-4" />
+                <Button onClick={handleCompleteService} className="w-full bg-green-600 hover:bg-green-700" disabled={isMutating}>
+                  {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                   Finalizar Serviço
                 </Button>
               </div>
@@ -232,34 +271,20 @@ const OSDetail = () => {
               <div className="space-y-4">
                 <div className="p-4 bg-secondary/50 rounded-lg">
                   <p className="text-sm text-muted-foreground">Custo do técnico</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    R$ {order.technicianCost?.toFixed(2)}
-                  </p>
+                  <p className="text-2xl font-bold text-foreground">R$ {order.technicianCost?.toFixed(2)}</p>
                 </div>
-
                 <div>
                   <Label className="text-base font-semibold">Valor Final para o Cliente (R$)</Label>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Digite o valor que deseja cobrar da imobiliária
-                  </p>
-                  <Input
-                    type="number"
-                    placeholder="0.00"
-                    value={finalPrice || ''}
-                    onChange={(e) => setFinalPrice(parseFloat(e.target.value) || 0)}
-                    className="text-xl font-bold"
-                  />
+                  <p className="text-sm text-muted-foreground mb-2">Digite o valor que deseja cobrar da imobiliária</p>
+                  <Input type="number" placeholder="0.00" value={finalPrice || ''} onChange={(e) => setFinalPrice(parseFloat(e.target.value) || 0)} className="text-xl font-bold" />
                   {finalPrice > 0 && order.technicianCost && (
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Margem: <strong className="text-status-approved">
-                        R$ {(finalPrice - order.technicianCost).toFixed(2)}
-                      </strong> ({((finalPrice - order.technicianCost) / order.technicianCost * 100).toFixed(0)}%)
+                      Margem: <strong className="text-green-600">R$ {(finalPrice - order.technicianCost).toFixed(2)}</strong> ({((finalPrice - order.technicianCost) / order.technicianCost * 100).toFixed(0)}%)
                     </p>
                   )}
                 </div>
-
-                <Button onClick={handleAdminApprove} variant="accent" className="w-full" size="lg">
-                  <Send className="h-4 w-4" />
+                <Button onClick={handleAdminApprove} className="w-full" size="lg" disabled={isMutating}>
+                  {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   Aprovar e Enviar Orçamento
                 </Button>
               </div>
@@ -279,20 +304,15 @@ const OSDetail = () => {
               <div className="space-y-4">
                 <div className="p-6 bg-primary/5 rounded-lg text-center">
                   <p className="text-sm text-muted-foreground">Valor do Serviço</p>
-                  <p className="text-4xl font-bold text-primary mt-1">
-                    R$ {order.finalPrice?.toFixed(2)}
-                  </p>
+                  <p className="text-4xl font-bold text-primary mt-1">R$ {order.finalPrice?.toFixed(2)}</p>
                   <p className="text-sm text-muted-foreground mt-2">
                     Prazo: {order.estimatedDeadline} {order.estimatedDeadline === 1 ? 'dia' : 'dias'}
                   </p>
                 </div>
-
                 <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1">
-                    Solicitar Revisão
-                  </Button>
-                  <Button onClick={handleClientApprove} variant="success" className="flex-1">
-                    <CheckCircle2 className="h-4 w-4" />
+                  <Button variant="outline" className="flex-1">Solicitar Revisão</Button>
+                  <Button onClick={handleClientApprove} className="flex-1 bg-green-600 hover:bg-green-700" disabled={isMutating}>
+                    {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                     Aprovar Serviço
                   </Button>
                 </div>
@@ -308,7 +328,6 @@ const OSDetail = () => {
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
             <ArrowLeft className="h-4 w-4" />
@@ -317,9 +336,7 @@ const OSDetail = () => {
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="font-display text-3xl font-bold text-foreground">
-                  {order.osNumber}
-                </h1>
+                <h1 className="font-display text-3xl font-bold text-foreground">{order.osNumber}</h1>
                 <StatusBadge status={order.status} />
               </div>
               <p className="text-muted-foreground">
@@ -331,15 +348,12 @@ const OSDetail = () => {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Problem */}
             <div className="os-card">
               <h2 className="font-display font-semibold text-lg mb-3">Problema Reportado</h2>
               <p className="text-foreground">{order.problem}</p>
             </div>
 
-            {/* Technician Quote (if available) */}
             {order.technicianDescription && (
               <div className="os-card">
                 <div className="flex items-center gap-2 mb-3">
@@ -348,10 +362,12 @@ const OSDetail = () => {
                 </div>
                 <p className="text-foreground mb-4">{order.technicianDescription}</p>
                 <div className="flex gap-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <DollarSign className="h-4 w-4" />
-                    Custo: R$ {order.technicianCost?.toFixed(2)}
-                  </div>
+                  {(role === 'admin' || role === 'tecnico') && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <DollarSign className="h-4 w-4" />
+                      Custo: R$ {order.technicianCost?.toFixed(2)}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />
                     Prazo: {order.estimatedDeadline} {order.estimatedDeadline === 1 ? 'dia' : 'dias'}
@@ -360,34 +376,30 @@ const OSDetail = () => {
               </div>
             )}
 
-            {/* Completion Report (if available) */}
             {order.completionReport && (
-              <div className="os-card border-2 border-status-completed/30">
+              <div className="os-card border-2 border-green-500/30">
                 <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle2 className="h-5 w-5 text-status-completed" />
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
                   <h2 className="font-display font-semibold text-lg">Relatório de Conclusão</h2>
                 </div>
                 <p className="text-foreground mb-4">{order.completionReport.description}</p>
-                
                 <div className="mb-4">
                   <p className="text-sm font-medium mb-2">Checklist:</p>
                   <div className="space-y-1">
-                    {order.completionReport.checklist.map((item) => (
+                    {order.completionReport.checklist.map((item: any) => (
                       <div key={item.id} className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className={`h-4 w-4 ${item.completed ? 'text-status-completed' : 'text-muted-foreground'}`} />
+                        <CheckCircle2 className={`h-4 w-4 ${item.completed ? 'text-green-600' : 'text-muted-foreground'}`} />
                         <span className={item.completed ? '' : 'text-muted-foreground line-through'}>{item.item}</span>
                       </div>
                     ))}
                   </div>
                 </div>
-
                 {order.completionReport.observations && (
                   <div className="p-3 bg-secondary/50 rounded-lg">
                     <p className="text-sm font-medium mb-1">Observações:</p>
                     <p className="text-sm text-muted-foreground">{order.completionReport.observations}</p>
                   </div>
                 )}
-
                 <div className="mt-4 pt-4 border-t flex items-center justify-between text-sm text-muted-foreground">
                   <span>Técnico: {order.completionReport.technicianSignature}</span>
                   <span>{format(order.completionReport.completedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
@@ -395,38 +407,29 @@ const OSDetail = () => {
               </div>
             )}
 
-            {/* Action Section */}
             {renderActionSection()}
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Property Info */}
             <div className="os-card">
               <div className="flex items-center gap-2 mb-3">
                 <MapPin className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold">Imóvel</h3>
               </div>
               <p className="text-sm text-foreground">{order.property.address}</p>
-              <p className="text-sm text-muted-foreground">
-                {order.property.neighborhood}, {order.property.city}
-              </p>
-              <Button variant="link" className="p-0 h-auto mt-2 text-sm">
-                Ver histórico do imóvel →
-              </Button>
+              <p className="text-sm text-muted-foreground">{order.property.neighborhood}, {order.property.city}</p>
             </div>
 
-            {/* Imobiliaria Info */}
             <div className="os-card">
               <div className="flex items-center gap-2 mb-3">
                 <Building2 className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold">Imobiliária</h3>
               </div>
-              <p className="text-sm text-foreground">{order.imobiliaria.company}</p>
+              <p className="text-sm text-foreground">{order.imobiliaria.company || order.imobiliaria.name}</p>
               <p className="text-sm text-muted-foreground">{order.imobiliaria.name}</p>
             </div>
 
-            {/* Requester */}
             <div className="os-card">
               <div className="flex items-center gap-2 mb-3">
                 <User className="h-5 w-5 text-primary" />
@@ -435,7 +438,6 @@ const OSDetail = () => {
               <p className="text-sm text-foreground">{order.requesterName}</p>
             </div>
 
-            {/* Technician (if assigned) */}
             {order.tecnico && (
               <div className="os-card">
                 <div className="flex items-center gap-2 mb-3">
@@ -458,52 +460,42 @@ const OSDetail = () => {
                   <div className="w-2 h-2 rounded-full bg-primary mt-1.5" />
                   <div>
                     <p className="font-medium">Chamado aberto</p>
-                    <p className="text-muted-foreground">
-                      {format(order.createdAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                    </p>
+                    <p className="text-muted-foreground">{format(order.createdAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
                   </div>
                 </div>
                 {order.quoteSentAt && (
                   <div className="flex gap-3">
-                    <div className="w-2 h-2 rounded-full bg-status-pending mt-1.5" />
+                    <div className="w-2 h-2 rounded-full bg-yellow-500 mt-1.5" />
                     <div>
                       <p className="font-medium">Orçamento enviado</p>
-                      <p className="text-muted-foreground">
-                        {format(order.quoteSentAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
+                      <p className="text-muted-foreground">{format(order.quoteSentAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
                     </div>
                   </div>
                 )}
                 {order.adminApprovedAt && (
                   <div className="flex gap-3">
-                    <div className="w-2 h-2 rounded-full bg-status-waiting mt-1.5" />
+                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5" />
                     <div>
                       <p className="font-medium">Aprovado pelo admin</p>
-                      <p className="text-muted-foreground">
-                        {format(order.adminApprovedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
+                      <p className="text-muted-foreground">{format(order.adminApprovedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
                     </div>
                   </div>
                 )}
                 {order.clientApprovedAt && (
                   <div className="flex gap-3">
-                    <div className="w-2 h-2 rounded-full bg-status-approved mt-1.5" />
+                    <div className="w-2 h-2 rounded-full bg-green-500 mt-1.5" />
                     <div>
                       <p className="font-medium">Aprovado pelo cliente</p>
-                      <p className="text-muted-foreground">
-                        {format(order.clientApprovedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
+                      <p className="text-muted-foreground">{format(order.clientApprovedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
                     </div>
                   </div>
                 )}
                 {order.completedAt && (
                   <div className="flex gap-3">
-                    <div className="w-2 h-2 rounded-full bg-status-completed mt-1.5" />
+                    <div className="w-2 h-2 rounded-full bg-green-600 mt-1.5" />
                     <div>
                       <p className="font-medium">Serviço concluído</p>
-                      <p className="text-muted-foreground">
-                        {format(order.completedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                      </p>
+                      <p className="text-muted-foreground">{format(order.completedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
                     </div>
                   </div>
                 )}
