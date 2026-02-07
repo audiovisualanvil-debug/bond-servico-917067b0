@@ -48,6 +48,9 @@ const OSDetail = () => {
   }
   if (order && finalPrice === 0 && order.finalPrice) {
     setFinalPrice(order.finalPrice);
+  } else if (order && finalPrice === 0 && !order.finalPrice && order.technicianCost) {
+    // Pre-fill with technician cost + 40%
+    setFinalPrice(Math.round(order.technicianCost * 1.4 * 100) / 100);
   }
 
   if (isLoading) {
@@ -237,16 +240,20 @@ const OSDetail = () => {
             <div className="os-card border-2 border-accent/30">
               <div className="flex items-center gap-2 mb-4">
                 <DollarSign className="h-5 w-5 text-accent" />
-                <h2 className="font-display font-semibold text-lg">Definir Valor Final</h2>
+                <h2 className="font-display font-semibold text-lg">Revisar Valor Final</h2>
               </div>
               <div className="space-y-4">
                 <div className="p-4 bg-secondary/50 rounded-lg">
                   <p className="text-sm text-muted-foreground">Custo do técnico</p>
                   <p className="text-2xl font-bold text-foreground">R$ {order.technicianCost?.toFixed(2)}</p>
                 </div>
+                <div className="p-4 bg-accent/10 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Valor sugerido (+40%)</p>
+                  <p className="text-lg font-semibold text-accent">R$ {(order.technicianCost ? (order.technicianCost * 1.4).toFixed(2) : '0.00')}</p>
+                </div>
                 <div>
                   <Label className="text-base font-semibold">Valor Final para o Cliente (R$)</Label>
-                  <p className="text-sm text-muted-foreground mb-2">Digite o valor que deseja cobrar da imobiliária</p>
+                  <p className="text-sm text-muted-foreground mb-2">O valor já vem com +40% aplicado. Ajuste se necessário.</p>
                   <Input type="number" placeholder="0.00" value={finalPrice || ''} onChange={(e) => setFinalPrice(parseFloat(e.target.value) || 0)} className="text-xl font-bold" />
                   {finalPrice > 0 && order.technicianCost && (
                     <p className="mt-2 text-sm text-muted-foreground">

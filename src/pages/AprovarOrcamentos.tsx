@@ -53,7 +53,9 @@ const AprovarOrcamentos = () => {
                 </div>
                 <div className="flex-shrink-0 text-right">
                   <p className="text-sm text-muted-foreground">Custo técnico</p>
-                  <p className="text-2xl font-bold text-foreground">R$ {order.technicianCost?.toFixed(2)}</p>
+                  <p className="text-lg font-bold text-foreground">R$ {order.technicianCost?.toFixed(2)}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Valor sugerido (+40%)</p>
+                  <p className="text-2xl font-bold text-accent">R$ {order.finalPrice?.toFixed(2) || (order.technicianCost ? (order.technicianCost * 1.4).toFixed(2) : '0.00')}</p>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                     <Clock className="h-4 w-4" />
                     {order.estimatedDeadline} {order.estimatedDeadline === 1 ? 'dia' : 'dias'}
@@ -61,7 +63,7 @@ const AprovarOrcamentos = () => {
                   <Button variant="default" className="mt-3" asChild>
                     <a href={`/ordens/${order.id}`}>
                       <DollarSign className="h-4 w-4" />
-                      Definir Preço
+                      Revisar Preço
                     </a>
                   </Button>
                 </div>
