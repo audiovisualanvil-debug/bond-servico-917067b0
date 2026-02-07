@@ -14,16 +14,333 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      completion_reports: {
+        Row: {
+          checklist: Json
+          completed_at: string
+          created_at: string
+          description: string
+          id: string
+          observations: string | null
+          photos_after: string[] | null
+          photos_before: string[] | null
+          service_order_id: string
+          technician_signature: string
+        }
+        Insert: {
+          checklist?: Json
+          completed_at?: string
+          created_at?: string
+          description: string
+          id?: string
+          observations?: string | null
+          photos_after?: string[] | null
+          photos_before?: string[] | null
+          service_order_id: string
+          technician_signature: string
+        }
+        Update: {
+          checklist?: Json
+          completed_at?: string
+          created_at?: string
+          description?: string
+          id?: string
+          observations?: string | null
+          photos_after?: string[] | null
+          photos_before?: string[] | null
+          service_order_id?: string
+          technician_signature?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completion_reports_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: true
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "completion_reports_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: true
+            referencedRelation: "service_orders_client"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          company: string | null
+          created_at: string
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          company?: string | null
+          created_at?: string
+          email: string
+          id: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          company?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      properties: {
+        Row: {
+          address: string
+          city: string
+          created_at: string
+          id: string
+          imobiliaria_id: string
+          neighborhood: string
+          state: string
+          updated_at: string
+          zip_code: string | null
+        }
+        Insert: {
+          address: string
+          city: string
+          created_at?: string
+          id?: string
+          imobiliaria_id: string
+          neighborhood: string
+          state?: string
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string
+          city?: string
+          created_at?: string
+          id?: string
+          imobiliaria_id?: string
+          neighborhood?: string
+          state?: string
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
+      service_orders: {
+        Row: {
+          admin_approved_at: string | null
+          client_approved_at: string | null
+          completed_at: string | null
+          created_at: string
+          estimated_deadline: number | null
+          execution_started_at: string | null
+          final_price: number | null
+          id: string
+          imobiliaria_id: string
+          os_number: string
+          photos: string[] | null
+          problem: string
+          property_id: string
+          quote_sent_at: string | null
+          requester_name: string
+          status: Database["public"]["Enums"]["os_status"]
+          technician_cost: number | null
+          technician_description: string | null
+          tecnico_id: string | null
+          updated_at: string
+          urgency: Database["public"]["Enums"]["urgency_level"]
+        }
+        Insert: {
+          admin_approved_at?: string | null
+          client_approved_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          estimated_deadline?: number | null
+          execution_started_at?: string | null
+          final_price?: number | null
+          id?: string
+          imobiliaria_id: string
+          os_number: string
+          photos?: string[] | null
+          problem: string
+          property_id: string
+          quote_sent_at?: string | null
+          requester_name: string
+          status?: Database["public"]["Enums"]["os_status"]
+          technician_cost?: number | null
+          technician_description?: string | null
+          tecnico_id?: string | null
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["urgency_level"]
+        }
+        Update: {
+          admin_approved_at?: string | null
+          client_approved_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          estimated_deadline?: number | null
+          execution_started_at?: string | null
+          final_price?: number | null
+          id?: string
+          imobiliaria_id?: string
+          os_number?: string
+          photos?: string[] | null
+          problem?: string
+          property_id?: string
+          quote_sent_at?: string | null
+          requester_name?: string
+          status?: Database["public"]["Enums"]["os_status"]
+          technician_cost?: number | null
+          technician_description?: string | null
+          tecnico_id?: string | null
+          updated_at?: string
+          urgency?: Database["public"]["Enums"]["urgency_level"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_orders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      service_orders_client: {
+        Row: {
+          admin_approved_at: string | null
+          client_approved_at: string | null
+          completed_at: string | null
+          created_at: string | null
+          estimated_deadline: number | null
+          execution_started_at: string | null
+          final_price: number | null
+          id: string | null
+          imobiliaria_id: string | null
+          os_number: string | null
+          photos: string[] | null
+          problem: string | null
+          property_id: string | null
+          quote_sent_at: string | null
+          requester_name: string | null
+          status: Database["public"]["Enums"]["os_status"] | null
+          technician_description: string | null
+          tecnico_id: string | null
+          updated_at: string | null
+          urgency: Database["public"]["Enums"]["urgency_level"] | null
+        }
+        Insert: {
+          admin_approved_at?: string | null
+          client_approved_at?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          estimated_deadline?: number | null
+          execution_started_at?: string | null
+          final_price?: number | null
+          id?: string | null
+          imobiliaria_id?: string | null
+          os_number?: string | null
+          photos?: string[] | null
+          problem?: string | null
+          property_id?: string | null
+          quote_sent_at?: string | null
+          requester_name?: string | null
+          status?: Database["public"]["Enums"]["os_status"] | null
+          technician_description?: string | null
+          tecnico_id?: string | null
+          updated_at?: string | null
+          urgency?: Database["public"]["Enums"]["urgency_level"] | null
+        }
+        Update: {
+          admin_approved_at?: string | null
+          client_approved_at?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          estimated_deadline?: number | null
+          execution_started_at?: string | null
+          final_price?: number | null
+          id?: string | null
+          imobiliaria_id?: string | null
+          os_number?: string | null
+          photos?: string[] | null
+          problem?: string | null
+          property_id?: string | null
+          quote_sent_at?: string | null
+          requester_name?: string | null
+          status?: Database["public"]["Enums"]["os_status"] | null
+          technician_description?: string | null
+          tecnico_id?: string | null
+          updated_at?: string | null
+          urgency?: Database["public"]["Enums"]["urgency_level"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_orders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "imobiliaria" | "tecnico"
+      os_status:
+        | "aguardando_orcamento"
+        | "aguardando_aprovacao_admin"
+        | "enviado_imobiliaria"
+        | "aprovado_aguardando"
+        | "em_execucao"
+        | "concluido"
+      urgency_level: "baixa" | "media" | "alta" | "critica"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +467,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "imobiliaria", "tecnico"],
+      os_status: [
+        "aguardando_orcamento",
+        "aguardando_aprovacao_admin",
+        "enviado_imobiliaria",
+        "aprovado_aguardando",
+        "em_execucao",
+        "concluido",
+      ],
+      urgency_level: ["baixa", "media", "alta", "critica"],
+    },
   },
 } as const
