@@ -137,6 +137,48 @@ export type Database = {
         }
         Relationships: []
       }
+      service_order_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          real_cost: number
+          service_order_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          real_cost?: number
+          service_order_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          real_cost?: number
+          service_order_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_items_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_items_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders_client"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_orders: {
         Row: {
           admin_approved_at: string | null
@@ -240,6 +282,45 @@ export type Database = {
       }
     }
     Views: {
+      service_order_items_client: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string | null
+          service_order_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          service_order_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          service_order_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_items_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_items_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders_client"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_orders_client: {
         Row: {
           admin_approved_at: string | null

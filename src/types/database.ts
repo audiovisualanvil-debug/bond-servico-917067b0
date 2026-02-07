@@ -89,6 +89,15 @@ export interface ChecklistItem {
   completed: boolean;
 }
 
+export interface ServiceOrderItem {
+  id: string;
+  service_order_id: string;
+  description: string;
+  real_cost: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Dashboard stats
 export interface DashboardStats {
   total: number;
