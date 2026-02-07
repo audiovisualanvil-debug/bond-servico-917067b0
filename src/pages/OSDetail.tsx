@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft, MapPin, Calendar, User, Building2, Wrench,
-  DollarSign, Send, CheckCircle2, Clock, FileText, Loader2, ExternalLink, UserPlus,
+  DollarSign, Send, CheckCircle2, Clock, FileText, Loader2, ExternalLink, UserPlus, Phone,
 } from 'lucide-react';
 import { useServiceOrder, useUpdateServiceOrder, useCreateCompletionReport } from '@/hooks/useServiceOrders';
 import { useTechnicians } from '@/hooks/useTechnicians';
@@ -514,6 +514,18 @@ const OSDetail = () => {
               </div>
               <p className="text-sm text-foreground">{order.property.address}</p>
               <p className="text-sm text-muted-foreground">{order.property.neighborhood}, {order.property.city}</p>
+              {order.property.tenantName && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Inquilino</p>
+                  <p className="text-sm text-foreground">{order.property.tenantName}</p>
+                  {order.property.tenantPhone && (
+                    <a href={`tel:${order.property.tenantPhone}`} className="flex items-center gap-1.5 text-sm text-primary hover:underline mt-1">
+                      <Phone className="h-3.5 w-3.5" />
+                      {order.property.tenantPhone}
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="os-card">
