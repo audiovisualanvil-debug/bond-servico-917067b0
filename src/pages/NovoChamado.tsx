@@ -1,6 +1,7 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
@@ -210,11 +211,11 @@ const NovoChamado = () => {
                   </div>
                   <div>
                     <Label htmlFor="tenantPhone">Celular do inquilino</Label>
-                    <Input
+                    <PhoneInput
                       id="tenantPhone"
                       placeholder="(11) 99999-9999"
                       value={formData.tenantPhone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, tenantPhone: e.target.value }))}
+                      onChange={(value) => setFormData(prev => ({ ...prev, tenantPhone: value }))}
                     />
                   </div>
                   <div>
@@ -228,11 +229,11 @@ const NovoChamado = () => {
                   </div>
                   <div>
                     <Label htmlFor="ownerPhone">Celular do proprietário</Label>
-                    <Input
+                    <PhoneInput
                       id="ownerPhone"
                       placeholder="(11) 99999-9999"
                       value={formData.ownerPhone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, ownerPhone: e.target.value }))}
+                      onChange={(value) => setFormData(prev => ({ ...prev, ownerPhone: value }))}
                     />
                   </div>
                 </div>
