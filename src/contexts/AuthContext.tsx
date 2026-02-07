@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { typedFrom } from '@/integrations/supabase/helpers';
 import { AppRole, Profile } from '@/types/database';
 
 interface AuthContextType {
@@ -28,8 +29,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const fetchUserData = async (userId: string) => {
     try {
       // Fetch profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
+      const { data: profileData, error: profileError } = await typedFrom('profiles')
         .select('*')
         .eq('id', userId)
         .single();
@@ -38,12 +38,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('Error fetching profile:', profileError);
         return;
       }
-      
-      setProfile(profileData);
+      setProfile(profileData as Profile);
 
       // Fetch role
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
+      const { data: roleData, error: roleError } = await typedFrom('user_roles')
         .select('role')
         .eq('user_id', userId)
         .single();
@@ -53,7 +51,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      setRole(roleData?.role || null);
+      setRole(roleData?.role as AppRole || null);
     } catch (error) {
       console.error('Error in fetchUserData:', error);
     }
@@ -133,19 +131,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // If user was created, update profile and add role
       if (data.user) {
-        // Update profile with additional info
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ name, company })
-          .eq('id', data.user.id);
+        // Insert profile (no trigger on auth.users, so we create it here)
+        const { error: profileError } = await typedFrom('profiles')
+          .upsert({
+            id: data.user.id,
+            email,
+            name,
+            company: company || null,
+          });
 
         if (profileError) {
-          console.error('Error updating profile:', profileError);
+          console.error('Error creating profile:', profileError);
         }
 
         // Add user role
-        const { error: roleError } = await supabase
-          .from('user_roles')
+        const { error: roleError } = await typedFrom('user_roles')
           .insert({ user_id: data.user.id, role: userRole });
 
         if (roleError) {
