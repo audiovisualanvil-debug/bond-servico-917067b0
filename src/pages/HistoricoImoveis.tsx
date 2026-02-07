@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { formatPhone } from '@/components/ui/phone-input';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
@@ -126,13 +127,13 @@ const HistoricoImoveis = () => {
                           {selectedProperty.tenantName && (
                             <p className="text-sm text-muted-foreground">
                               Inquilino: {selectedProperty.tenantName}
-                              {selectedProperty.tenantPhone && ` • ${selectedProperty.tenantPhone}`}
+                              {selectedProperty.tenantPhone && ` • ${formatPhone(selectedProperty.tenantPhone)}`}
                             </p>
                           )}
                           {selectedProperty.ownerName && (
                             <p className="text-sm text-muted-foreground">
                               Proprietário: {selectedProperty.ownerName}
-                              {selectedProperty.ownerPhone && ` • ${selectedProperty.ownerPhone}`}
+                              {selectedProperty.ownerPhone && ` • ${formatPhone(selectedProperty.ownerPhone)}`}
                             </p>
                           )}
                         </div>

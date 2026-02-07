@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { formatPhone } from '@/components/ui/phone-input';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -521,7 +522,7 @@ const OSDetail = () => {
                   {order.property.tenantPhone && (
                     <a href={`tel:${order.property.tenantPhone}`} className="flex items-center gap-1.5 text-sm text-primary hover:underline mt-1">
                       <Phone className="h-3.5 w-3.5" />
-                      {order.property.tenantPhone}
+                      {formatPhone(order.property.tenantPhone)}
                     </a>
                   )}
                 </div>
