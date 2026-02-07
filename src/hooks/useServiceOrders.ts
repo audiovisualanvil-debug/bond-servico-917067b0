@@ -27,7 +27,9 @@ interface DbProperty {
   zip_code: string | null;
   code: string | null;
   tenant_name: string | null;
+  tenant_phone: string | null;
   owner_name: string | null;
+  owner_phone: string | null;
 }
 
 interface DbServiceOrder {
@@ -94,7 +96,9 @@ function mapProperty(p: DbProperty | null | undefined): Property {
     imobiliariaId: p?.imobiliaria_id || '',
     code: p?.code || undefined,
     tenantName: p?.tenant_name || undefined,
+    tenantPhone: p?.tenant_phone || undefined,
     ownerName: p?.owner_name || undefined,
+    ownerPhone: p?.owner_phone || undefined,
   };
 }
 
