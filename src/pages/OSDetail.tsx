@@ -97,6 +97,15 @@ const OSDetail = () => {
         final_price: finalPrice,
         status: 'enviado_imobiliaria',
       });
+
+      // Send budget approved email (fire-and-forget)
+      supabase.functions.invoke('send-budget-approved', {
+        body: { serviceOrderId: order.id },
+      }).then(({ data, error }) => {
+        if (error) console.error('Budget email error:', error);
+        else console.log('Budget email result:', data);
+      });
+
       toast.success('Orçamento aprovado e enviado!', { description: 'E-mail enviado para a imobiliária.' });
     } catch (error: any) {
       toast.error('Erro ao aprovar orçamento', { description: error.message });
