@@ -12,16 +12,20 @@ import {
 } from "@/components/ui/select";
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, MapPin, AlertTriangle, User, Send, ArrowLeft } from 'lucide-react';
+import { Upload, MapPin, AlertTriangle, User, Send, ArrowLeft, Loader2 } from 'lucide-react';
 import { UrgencyLevel, URGENCY_LABELS } from '@/types/serviceOrder';
-import { mockProperties } from '@/data/mockData';
+import { useProperties, useCreateProperty } from '@/hooks/useProperties';
+import { useCreateServiceOrder } from '@/hooks/useServiceOrders';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 const NovoChamado = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { data: userProperties = [], isLoading: propertiesLoading } = useProperties();
+  const createProperty = useCreateProperty();
+  const createOrder = useCreateServiceOrder();
+
   const [formData, setFormData] = useState({
     propertyId: '',
     newAddress: '',
@@ -35,25 +39,63 @@ const NovoChamado = () => {
     photos: [] as File[],
   });
 
-  // Filter properties for this imobiliaria
-  const userProperties = user 
-    ? mockProperties.filter(p => p.imobiliariaId === user.id)
-    : [];
-
   if (!user) return null;
+
+  const isSubmitting = createOrder.isPending || createProperty.isPending;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    if (!formData.problem || !formData.urgency || !formData.requesterName) {
+      toast.error('Preencha todos os campos obrigatórios');
+      return;
+    }
 
-    toast.success('Chamado aberto com sucesso!', {
-      description: 'O técnico será notificado em breve.',
-    });
+    try {
+      let propertyId = formData.propertyId;
 
-    navigate('/ordens');
+      // Create new property if needed
+      if (propertyId === 'new') {
+        if (!formData.newAddress || !formData.neighborhood) {
+          toast.error('Preencha o endereço e bairro do novo imóvel');
+          return;
+        }
+
+        const newProperty = await createProperty.mutateAsync({
+          imobiliaria_id: user.id,
+          address: formData.newAddress,
+          neighborhood: formData.neighborhood,
+          city: formData.city,
+          state: formData.state,
+          zip_code: formData.zipCode || undefined,
+        });
+
+        propertyId = newProperty.id;
+      }
+
+      if (!propertyId || propertyId === 'new') {
+        toast.error('Selecione ou cadastre um imóvel');
+        return;
+      }
+
+      await createOrder.mutateAsync({
+        property_id: propertyId,
+        imobiliaria_id: user.id,
+        problem: formData.problem,
+        urgency: formData.urgency,
+        requester_name: formData.requesterName,
+      });
+
+      toast.success('Chamado aberto com sucesso!', {
+        description: 'O técnico será notificado em breve.',
+      });
+
+      navigate('/ordens');
+    } catch (error: any) {
+      toast.error('Erro ao abrir chamado', {
+        description: error.message || 'Tente novamente.',
+      });
+    }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,7 +109,6 @@ const NovoChamado = () => {
   return (
     <DashboardLayout>
       <div className="max-w-3xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
             <ArrowLeft className="h-4 w-4" />
@@ -97,7 +138,7 @@ const NovoChamado = () => {
                   onValueChange={(value) => setFormData(prev => ({ ...prev, propertyId: value }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Escolha um imóvel..." />
+                    <SelectValue placeholder={propertiesLoading ? 'Carregando...' : 'Escolha um imóvel...'} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="new">+ Cadastrar novo imóvel</SelectItem>
@@ -169,7 +210,6 @@ const NovoChamado = () => {
                 <Select 
                   value={formData.urgency}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, urgency: value as UrgencyLevel }))}
-                  required
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a urgência" />
@@ -260,7 +300,10 @@ const NovoChamado = () => {
             </Button>
             <Button type="submit" size="lg" disabled={isSubmitting}>
               {isSubmitting ? (
-                <>Enviando...</>
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
               ) : (
                 <>
                   <Send className="h-4 w-4" />
