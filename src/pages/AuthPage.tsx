@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Wrench, Building2, UserCog, Shield, Mail, Lock, User, Loader2 } from 'lucide-react';
+import { Wrench, Building2, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { AppRole } from '@/types/database';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
@@ -19,7 +19,7 @@ const signUpSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
   confirmPassword: z.string(),
-  role: z.enum(['imobiliaria', 'tecnico', 'admin']),
+  role: z.enum(['imobiliaria', 'tecnico']),
   company: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Senhas não conferem',
@@ -175,12 +175,6 @@ const AuthPage = () => {
       icon: Wrench,
       description: 'Receba OSs e envie orçamentos',
     },
-    {
-      role: 'admin' as AppRole,
-      title: 'Administrador',
-      icon: Shield,
-      description: 'Gerencie todo o sistema',
-    },
   ];
 
   return (
@@ -294,7 +288,7 @@ const AuthPage = () => {
 
                 <div className="space-y-2">
                   <Label>Tipo de Conta</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     {roleOptions.map((option) => (
                       <button
                         key={option.role}
