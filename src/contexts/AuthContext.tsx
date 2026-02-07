@@ -25,8 +25,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [role, setRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch profile and role
-  const fetchUserData = async (userId: string) => {
+  // Fetch profile and role with retry (profile may not exist yet during signup)
+  const fetchUserData = async (userId: string, retries = 3) => {
     try {
       // Fetch profile
       const { data: profileData, error: profileError } = await typedFrom('profiles')
@@ -35,6 +35,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .single();
 
       if (profileError) {
+        if (retries > 0) {
+          // Profile might not be created yet during signup, retry after delay
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return fetchUserData(userId, retries - 1);
+        }
         console.error('Error fetching profile:', profileError);
         return;
       }
@@ -47,6 +52,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .single();
 
       if (roleError) {
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          return fetchUserData(userId, retries - 1);
+        }
         console.error('Error fetching role:', roleError);
         return;
       }
