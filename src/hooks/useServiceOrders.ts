@@ -25,6 +25,9 @@ interface DbProperty {
   city: string;
   state: string;
   zip_code: string | null;
+  code: string | null;
+  tenant_name: string | null;
+  owner_name: string | null;
 }
 
 interface DbServiceOrder {
@@ -89,6 +92,9 @@ function mapProperty(p: DbProperty | null | undefined): Property {
     state: p?.state || '',
     zipCode: p?.zip_code || '',
     imobiliariaId: p?.imobiliaria_id || '',
+    code: p?.code || undefined,
+    tenantName: p?.tenant_name || undefined,
+    ownerName: p?.owner_name || undefined,
   };
 }
 

@@ -30,6 +30,9 @@ export interface Property {
   state: string;
   zipCode: string;
   imobiliariaId: string;
+  code?: string;
+  tenantName?: string;
+  ownerName?: string;
 }
 
 export interface ServiceOrder {
