@@ -13,7 +13,9 @@ interface DbProperty {
   zip_code: string | null;
   code: string | null;
   tenant_name: string | null;
+  tenant_phone: string | null;
   owner_name: string | null;
+  owner_phone: string | null;
 }
 
 function mapProperty(db: DbProperty): Property {
@@ -27,7 +29,9 @@ function mapProperty(db: DbProperty): Property {
     imobiliariaId: db.imobiliaria_id,
     code: db.code || undefined,
     tenantName: db.tenant_name || undefined,
+    tenantPhone: db.tenant_phone || undefined,
     ownerName: db.owner_name || undefined,
+    ownerPhone: db.owner_phone || undefined,
   };
 }
 
@@ -69,7 +73,9 @@ export function useCreateProperty() {
       zip_code?: string;
       code?: string;
       tenant_name?: string;
+      tenant_phone?: string;
       owner_name?: string;
+      owner_phone?: string;
     }) => {
       const { data: result, error } = await typedFrom('properties')
         .insert(data)

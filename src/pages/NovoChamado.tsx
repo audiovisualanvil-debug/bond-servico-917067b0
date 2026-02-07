@@ -35,7 +35,9 @@ const NovoChamado = () => {
     zipCode: '',
     code: '',
     tenantName: '',
+    tenantPhone: '',
     ownerName: '',
+    ownerPhone: '',
     problem: '',
     urgency: '' as UrgencyLevel | '',
     requesterName: '',
@@ -73,7 +75,9 @@ const NovoChamado = () => {
           zip_code: formData.zipCode || undefined,
           code: formData.code || undefined,
           tenant_name: formData.tenantName || undefined,
+          tenant_phone: formData.tenantPhone || undefined,
           owner_name: formData.ownerName || undefined,
+          owner_phone: formData.ownerPhone || undefined,
         });
 
         propertyId = newProperty.id;
@@ -205,12 +209,30 @@ const NovoChamado = () => {
                     />
                   </div>
                   <div>
+                    <Label htmlFor="tenantPhone">Celular do inquilino</Label>
+                    <Input
+                      id="tenantPhone"
+                      placeholder="(11) 99999-9999"
+                      value={formData.tenantPhone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, tenantPhone: e.target.value }))}
+                    />
+                  </div>
+                  <div>
                     <Label htmlFor="ownerName">Proprietário</Label>
                     <Input
                       id="ownerName"
                       placeholder="Nome do proprietário"
                       value={formData.ownerName}
                       onChange={(e) => setFormData(prev => ({ ...prev, ownerName: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="ownerPhone">Celular do proprietário</Label>
+                    <Input
+                      id="ownerPhone"
+                      placeholder="(11) 99999-9999"
+                      value={formData.ownerPhone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, ownerPhone: e.target.value }))}
                     />
                   </div>
                 </div>

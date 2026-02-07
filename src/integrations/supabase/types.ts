@@ -111,8 +111,10 @@ export type Database = {
           imobiliaria_id: string
           neighborhood: string
           owner_name: string | null
+          owner_phone: string | null
           state: string
           tenant_name: string | null
+          tenant_phone: string | null
           updated_at: string
           zip_code: string | null
         }
@@ -125,8 +127,10 @@ export type Database = {
           imobiliaria_id: string
           neighborhood: string
           owner_name?: string | null
+          owner_phone?: string | null
           state?: string
           tenant_name?: string | null
+          tenant_phone?: string | null
           updated_at?: string
           zip_code?: string | null
         }
@@ -139,8 +143,10 @@ export type Database = {
           imobiliaria_id?: string
           neighborhood?: string
           owner_name?: string | null
+          owner_phone?: string | null
           state?: string
           tenant_name?: string | null
+          tenant_phone?: string | null
           updated_at?: string
           zip_code?: string | null
         }

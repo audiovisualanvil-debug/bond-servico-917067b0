@@ -32,7 +32,9 @@ export interface Property {
   imobiliariaId: string;
   code?: string;
   tenantName?: string;
+  tenantPhone?: string;
   ownerName?: string;
+  ownerPhone?: string;
 }
 
 export interface ServiceOrder {

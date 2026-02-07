@@ -121,6 +121,22 @@ const HistoricoImoveis = () => {
                       <h2 className="font-display font-bold text-xl text-foreground">{selectedProperty.address}</h2>
                       <p className="text-muted-foreground">{selectedProperty.neighborhood}, {selectedProperty.city} - {selectedProperty.state}</p>
                       {selectedProperty.zipCode && <p className="text-sm text-muted-foreground mt-1">CEP: {selectedProperty.zipCode}</p>}
+                      {(selectedProperty.tenantName || selectedProperty.ownerName) && (
+                        <div className="mt-2 space-y-1">
+                          {selectedProperty.tenantName && (
+                            <p className="text-sm text-muted-foreground">
+                              Inquilino: {selectedProperty.tenantName}
+                              {selectedProperty.tenantPhone && ` • ${selectedProperty.tenantPhone}`}
+                            </p>
+                          )}
+                          {selectedProperty.ownerName && (
+                            <p className="text-sm text-muted-foreground">
+                              Proprietário: {selectedProperty.ownerName}
+                              {selectedProperty.ownerPhone && ` • ${selectedProperty.ownerPhone}`}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 
