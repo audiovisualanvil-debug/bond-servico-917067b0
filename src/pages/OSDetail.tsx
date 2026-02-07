@@ -92,10 +92,18 @@ const OSDetail = () => {
   }
 
   const handleTechnicianSubmit = async () => {
+    if (!techQuote.description.trim()) {
+      toast.error('Preencha a descrição do serviço');
+      return;
+    }
+    if (!techQuote.cost || techQuote.cost <= 0) {
+      toast.error('Informe o valor do custo');
+      return;
+    }
     try {
       await updateOrder.mutateAsync({
         id: order.id,
-        technician_description: techQuote.description,
+        technician_description: techQuote.description.trim(),
         technician_cost: techQuote.cost,
         estimated_deadline: techQuote.deadline,
         status: 'aguardando_aprovacao_admin',
