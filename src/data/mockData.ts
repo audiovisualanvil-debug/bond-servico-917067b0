@@ -107,7 +107,7 @@ export const mockServiceOrders: ServiceOrder[] = [
     urgency: 'critica',
     requesterName: 'Carlos Mendes (Proprietário)',
     createdAt: new Date('2024-01-16T08:15:00'),
-    status: 'aguardando_orcamento',
+    status: 'aguardando_orcamento_prestador',
   },
   {
     id: 'os-3',
@@ -215,8 +215,8 @@ export const getTecnicoStats = (tecnicoId: string): DashboardStats => {
   const orders = mockServiceOrders.filter(os => os.tecnicoId === tecnicoId);
   return {
     total: orders.length,
-    pending: orders.filter(os => os.status === 'aguardando_orcamento').length + 
-             mockServiceOrders.filter(os => os.status === 'aguardando_orcamento' && !os.tecnicoId).length,
+    pending: orders.filter(os => os.status === 'aguardando_orcamento_prestador').length + 
+             mockServiceOrders.filter(os => os.status === 'aguardando_orcamento_prestador' && !os.tecnicoId).length,
     inProgress: orders.filter(os => ['aprovado_aguardando', 'em_execucao'].includes(os.status)).length,
     completed: orders.filter(os => os.status === 'concluido').length,
     thisMonth: orders.filter(os => {
@@ -252,7 +252,7 @@ export const getOrdersByRole = (role: string, userId?: string): ServiceOrder[] =
       // Technician sees their assigned orders + unassigned pending orders
       return mockServiceOrders.filter(os => 
         os.tecnicoId === userId || 
-        (os.status === 'aguardando_orcamento' && !os.tecnicoId)
+        (os.status === 'aguardando_orcamento_prestador' && !os.tecnicoId)
       );
     case 'admin':
       return mockServiceOrders;

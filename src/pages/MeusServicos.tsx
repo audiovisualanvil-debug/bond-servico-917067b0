@@ -15,7 +15,7 @@ const MeusServicos = () => {
 
   if (!user) return null;
 
-  const pendingOrders = allOrders.filter(os => os.status === 'aguardando_orcamento');
+  const pendingOrders = allOrders.filter(os => os.status === 'aguardando_orcamento_prestador');
   const inProgressOrders = allOrders.filter(os => os.status === 'aprovado_aguardando' || os.status === 'em_execucao');
   const completedOrders = allOrders.filter(os => os.status === 'concluido');
 
