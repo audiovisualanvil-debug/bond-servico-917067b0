@@ -33,6 +33,9 @@ const NovoChamado = () => {
     city: 'São Paulo',
     state: 'SP',
     zipCode: '',
+    code: '',
+    tenantName: '',
+    ownerName: '',
     problem: '',
     urgency: '' as UrgencyLevel | '',
     requesterName: '',
@@ -68,6 +71,9 @@ const NovoChamado = () => {
           city: formData.city,
           state: formData.state,
           zip_code: formData.zipCode || undefined,
+          code: formData.code || undefined,
+          tenant_name: formData.tenantName || undefined,
+          owner_name: formData.ownerName || undefined,
         });
 
         propertyId = newProperty.id;
@@ -153,6 +159,15 @@ const NovoChamado = () => {
 
               {formData.propertyId === 'new' && (
                 <div className="grid gap-4 md:grid-cols-2 pt-4 border-t">
+                  <div>
+                    <Label htmlFor="code">Código do imóvel</Label>
+                    <Input
+                      id="code"
+                      placeholder="Ex: AP-101, SALA-03"
+                      value={formData.code}
+                      onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
+                    />
+                  </div>
                   <div className="md:col-span-2">
                     <Label htmlFor="newAddress">Endereço completo</Label>
                     <Input
@@ -178,6 +193,24 @@ const NovoChamado = () => {
                       placeholder="00000-000"
                       value={formData.zipCode}
                       onChange={(e) => setFormData(prev => ({ ...prev, zipCode: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="tenantName">Inquilino</Label>
+                    <Input
+                      id="tenantName"
+                      placeholder="Nome do inquilino"
+                      value={formData.tenantName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, tenantName: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="ownerName">Proprietário</Label>
+                    <Input
+                      id="ownerName"
+                      placeholder="Nome do proprietário"
+                      value={formData.ownerName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, ownerName: e.target.value }))}
                     />
                   </div>
                 </div>

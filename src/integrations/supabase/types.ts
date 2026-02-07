@@ -105,33 +105,42 @@ export type Database = {
         Row: {
           address: string
           city: string
+          code: string | null
           created_at: string
           id: string
           imobiliaria_id: string
           neighborhood: string
+          owner_name: string | null
           state: string
+          tenant_name: string | null
           updated_at: string
           zip_code: string | null
         }
         Insert: {
           address: string
           city: string
+          code?: string | null
           created_at?: string
           id?: string
           imobiliaria_id: string
           neighborhood: string
+          owner_name?: string | null
           state?: string
+          tenant_name?: string | null
           updated_at?: string
           zip_code?: string | null
         }
         Update: {
           address?: string
           city?: string
+          code?: string | null
           created_at?: string
           id?: string
           imobiliaria_id?: string
           neighborhood?: string
+          owner_name?: string | null
           state?: string
+          tenant_name?: string | null
           updated_at?: string
           zip_code?: string | null
         }
