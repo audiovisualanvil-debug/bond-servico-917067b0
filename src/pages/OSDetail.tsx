@@ -1,5 +1,5 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatusBadge } from '@/components/StatusBadge';
 import { UrgencyIndicator } from '@/components/UrgencyIndicator';
@@ -7,14 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+import { CompletionReportForm } from '@/components/CompletionReportForm';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft, MapPin, Calendar, User, Building2, Wrench,
-  DollarSign, Send, CheckCircle2, Clock, FileText, Camera, Loader2,
+  DollarSign, Send, CheckCircle2, Clock, FileText, Loader2, ExternalLink,
 } from 'lucide-react';
 import { useServiceOrder, useUpdateServiceOrder, useCreateCompletionReport } from '@/hooks/useServiceOrders';
 
@@ -36,18 +37,6 @@ const OSDetail = () => {
 
   // Admin pricing form
   const [finalPrice, setFinalPrice] = useState(0);
-
-  // Completion report form
-  const [report, setReport] = useState({
-    description: '',
-    observations: '',
-    checklist: [
-      { id: '1', item: 'Problema identificado', completed: false },
-      { id: '2', item: 'Serviço executado', completed: false },
-      { id: '3', item: 'Área limpa', completed: false },
-      { id: '4', item: 'Cliente informado', completed: false },
-    ],
-  });
 
   // Initialize forms when order loads
   if (order && techQuote.description === '' && order.technicianDescription) {
@@ -138,20 +127,39 @@ const OSDetail = () => {
     }
   };
 
-  const handleCompleteService = async () => {
+  const handleCompleteService = async (reportData: {
+    description: string;
+    observations: string;
+    checklist: any[];
+    photosBefore: string[];
+    photosAfter: string[];
+    technicianSignature: string;
+  }) => {
     try {
       await createReport.mutateAsync({
         service_order_id: order.id,
-        description: report.description,
-        checklist: report.checklist,
-        observations: report.observations || undefined,
-        technician_signature: 'Assinatura Digital',
+        description: reportData.description,
+        checklist: reportData.checklist,
+        photos_before: reportData.photosBefore,
+        photos_after: reportData.photosAfter,
+        observations: reportData.observations || undefined,
+        technician_signature: reportData.technicianSignature,
       });
       await updateOrder.mutateAsync({
         id: order.id,
         status: 'concluido',
       });
-      toast.success('Serviço finalizado!', { description: 'Relatório gerado e enviado para a imobiliária.' });
+
+      // Send completion report email (fire-and-forget)
+      const reportUrl = `${window.location.origin}/ordens/${order.id}/relatorio`;
+      supabase.functions.invoke('send-completion-report', {
+        body: { serviceOrderId: order.id, reportUrl },
+      }).then(({ data, error }) => {
+        if (error) console.error('Email send error:', error);
+        else console.log('Email result:', data);
+      });
+
+      toast.success('Serviço finalizado!', { description: 'Relatório gerado e e-mail enviado para a imobiliária.' });
     } catch (error: any) {
       toast.error('Erro ao finalizar serviço', { description: error.message });
     }
@@ -204,58 +212,11 @@ const OSDetail = () => {
         }
         if (order.status === 'em_execucao') {
           return (
-            <div className="os-card">
-              <div className="flex items-center gap-2 mb-4">
-                <FileText className="h-5 w-5 text-primary" />
-                <h2 className="font-display font-semibold text-lg">Relatório de Execução</h2>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <Label>O que foi feito</Label>
-                  <Textarea placeholder="Descreva detalhadamente o que foi executado..." value={report.description} onChange={(e) => setReport(prev => ({ ...prev, description: e.target.value }))} rows={4} />
-                </div>
-                <div>
-                  <Label className="mb-2 block">Checklist</Label>
-                  <div className="space-y-2">
-                    {report.checklist.map((item) => (
-                      <div key={item.id} className="flex items-center gap-2">
-                        <Checkbox id={item.id} checked={item.completed} onCheckedChange={(checked) => {
-                          setReport(prev => ({
-                            ...prev,
-                            checklist: prev.checklist.map(i => i.id === item.id ? { ...i, completed: !!checked } : i),
-                          }));
-                        }} />
-                        <label htmlFor={item.id} className="text-sm">{item.item}</label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <Label className="mb-2 block">Fotos Antes</Label>
-                    <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
-                      <Camera className="h-6 w-6 text-muted-foreground mx-auto mb-1" />
-                      <p className="text-xs text-muted-foreground">Adicionar fotos</p>
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="mb-2 block">Fotos Depois</Label>
-                    <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
-                      <Camera className="h-6 w-6 text-muted-foreground mx-auto mb-1" />
-                      <p className="text-xs text-muted-foreground">Adicionar fotos</p>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <Label>Observações</Label>
-                  <Textarea placeholder="Observações adicionais..." value={report.observations} onChange={(e) => setReport(prev => ({ ...prev, observations: e.target.value }))} rows={2} />
-                </div>
-                <Button onClick={handleCompleteService} className="w-full bg-green-600 hover:bg-green-700" disabled={isMutating}>
-                  {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                  Finalizar Serviço
-                </Button>
-              </div>
-            </div>
+            <CompletionReportForm
+              serviceOrderId={order.id}
+              onSubmit={handleCompleteService}
+              isSubmitting={isMutating}
+            />
           );
         }
         break;
@@ -279,7 +240,7 @@ const OSDetail = () => {
                   <Input type="number" placeholder="0.00" value={finalPrice || ''} onChange={(e) => setFinalPrice(parseFloat(e.target.value) || 0)} className="text-xl font-bold" />
                   {finalPrice > 0 && order.technicianCost && (
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Margem: <strong className="text-green-600">R$ {(finalPrice - order.technicianCost).toFixed(2)}</strong> ({((finalPrice - order.technicianCost) / order.technicianCost * 100).toFixed(0)}%)
+                      Margem: <strong className="text-status-completed">R$ {(finalPrice - order.technicianCost).toFixed(2)}</strong> ({((finalPrice - order.technicianCost) / order.technicianCost * 100).toFixed(0)}%)
                     </p>
                   )}
                 </div>
@@ -311,7 +272,7 @@ const OSDetail = () => {
                 </div>
                 <div className="flex gap-3">
                   <Button variant="outline" className="flex-1">Solicitar Revisão</Button>
-                  <Button onClick={handleClientApprove} className="flex-1 bg-green-600 hover:bg-green-700" disabled={isMutating}>
+                  <Button onClick={handleClientApprove} variant="success" className="flex-1" disabled={isMutating}>
                     {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                     Aprovar Serviço
                   </Button>
@@ -377,18 +338,67 @@ const OSDetail = () => {
             )}
 
             {order.completionReport && (
-              <div className="os-card border-2 border-green-500/30">
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  <h2 className="font-display font-semibold text-lg">Relatório de Conclusão</h2>
+              <div className="os-card border-2 border-status-completed/30">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-status-completed" />
+                    <h2 className="font-display font-semibold text-lg">Relatório de Conclusão</h2>
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to={`/ordens/${order.id}/relatorio`}>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Ver Relatório Completo
+                    </Link>
+                  </Button>
                 </div>
                 <p className="text-foreground mb-4">{order.completionReport.description}</p>
+
+                {/* Photo thumbnails */}
+                {((order.completionReport.photosBefore?.length > 0) || (order.completionReport.photosAfter?.length > 0)) && (
+                  <div className="grid gap-4 md:grid-cols-2 mb-4">
+                    {order.completionReport.photosBefore?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Antes ({order.completionReport.photosBefore.length} fotos)</p>
+                        <div className="flex gap-1">
+                          {order.completionReport.photosBefore.slice(0, 3).map((url: string, i: number) => (
+                            <div key={i} className="w-16 h-12 rounded-md overflow-hidden border border-border">
+                              <img src={url} alt={`Antes ${i + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                          {order.completionReport.photosBefore.length > 3 && (
+                            <div className="w-16 h-12 rounded-md bg-secondary flex items-center justify-center text-xs text-muted-foreground">
+                              +{order.completionReport.photosBefore.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {order.completionReport.photosAfter?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Depois ({order.completionReport.photosAfter.length} fotos)</p>
+                        <div className="flex gap-1">
+                          {order.completionReport.photosAfter.slice(0, 3).map((url: string, i: number) => (
+                            <div key={i} className="w-16 h-12 rounded-md overflow-hidden border border-border">
+                              <img src={url} alt={`Depois ${i + 1}`} className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                          {order.completionReport.photosAfter.length > 3 && (
+                            <div className="w-16 h-12 rounded-md bg-secondary flex items-center justify-center text-xs text-muted-foreground">
+                              +{order.completionReport.photosAfter.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="mb-4">
                   <p className="text-sm font-medium mb-2">Checklist:</p>
                   <div className="space-y-1">
                     {order.completionReport.checklist.map((item: any) => (
                       <div key={item.id} className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className={`h-4 w-4 ${item.completed ? 'text-green-600' : 'text-muted-foreground'}`} />
+                        <CheckCircle2 className={`h-4 w-4 ${item.completed ? 'text-status-completed' : 'text-muted-foreground'}`} />
                         <span className={item.completed ? '' : 'text-muted-foreground line-through'}>{item.item}</span>
                       </div>
                     ))}
@@ -465,7 +475,7 @@ const OSDetail = () => {
                 </div>
                 {order.quoteSentAt && (
                   <div className="flex gap-3">
-                    <div className="w-2 h-2 rounded-full bg-yellow-500 mt-1.5" />
+                    <div className="w-2 h-2 rounded-full bg-status-pending mt-1.5" />
                     <div>
                       <p className="font-medium">Orçamento enviado</p>
                       <p className="text-muted-foreground">{format(order.quoteSentAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
@@ -474,7 +484,7 @@ const OSDetail = () => {
                 )}
                 {order.adminApprovedAt && (
                   <div className="flex gap-3">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5" />
+                    <div className="w-2 h-2 rounded-full bg-status-in-progress mt-1.5" />
                     <div>
                       <p className="font-medium">Aprovado pelo admin</p>
                       <p className="text-muted-foreground">{format(order.adminApprovedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
@@ -483,7 +493,7 @@ const OSDetail = () => {
                 )}
                 {order.clientApprovedAt && (
                   <div className="flex gap-3">
-                    <div className="w-2 h-2 rounded-full bg-green-500 mt-1.5" />
+                    <div className="w-2 h-2 rounded-full bg-status-approved mt-1.5" />
                     <div>
                       <p className="font-medium">Aprovado pelo cliente</p>
                       <p className="text-muted-foreground">{format(order.clientApprovedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
@@ -492,7 +502,7 @@ const OSDetail = () => {
                 )}
                 {order.completedAt && (
                   <div className="flex gap-3">
-                    <div className="w-2 h-2 rounded-full bg-green-600 mt-1.5" />
+                    <div className="w-2 h-2 rounded-full bg-status-completed mt-1.5" />
                     <div>
                       <p className="font-medium">Serviço concluído</p>
                       <p className="text-muted-foreground">{format(order.completedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>

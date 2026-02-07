@@ -2,7 +2,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
-  Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2
+  Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -172,9 +172,18 @@ const HistoricoImoveis = () => {
                               {order.createdAt.toLocaleDateString('pt-BR')}
                               {order.finalPrice && ` • R$ ${order.finalPrice.toFixed(2)}`}
                             </p>
-                            <Button variant="link" className="p-0 h-auto text-xs mt-1" asChild>
-                              <Link to={`/ordens/${order.id}`}>Ver detalhes →</Link>
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button variant="link" className="p-0 h-auto text-xs" asChild>
+                                <Link to={`/ordens/${order.id}`}>Ver detalhes →</Link>
+                              </Button>
+                              {order.status === 'concluido' && order.completionReport && (
+                                <Button variant="link" className="p-0 h-auto text-xs text-status-completed" asChild>
+                                  <Link to={`/ordens/${order.id}/relatorio`}>
+                                    <FileText className="h-3 w-3" /> Relatório
+                                  </Link>
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
