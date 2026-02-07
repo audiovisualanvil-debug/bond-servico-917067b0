@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CompletionReportForm } from '@/components/CompletionReportForm';
 import { useState } from 'react';
 import { format } from 'date-fns';
@@ -15,9 +22,10 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft, MapPin, Calendar, User, Building2, Wrench,
-  DollarSign, Send, CheckCircle2, Clock, FileText, Loader2, ExternalLink,
+  DollarSign, Send, CheckCircle2, Clock, FileText, Loader2, ExternalLink, UserPlus,
 } from 'lucide-react';
 import { useServiceOrder, useUpdateServiceOrder, useCreateCompletionReport } from '@/hooks/useServiceOrders';
+import { useTechnicians } from '@/hooks/useTechnicians';
 
 const OSDetail = () => {
   const { id } = useParams();
@@ -27,6 +35,10 @@ const OSDetail = () => {
   const { data: order, isLoading, error } = useServiceOrder(id);
   const updateOrder = useUpdateServiceOrder();
   const createReport = useCreateCompletionReport();
+  const { data: technicians = [] } = useTechnicians();
+
+  // Admin technician assignment
+  const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
 
   // Technician quote form
   const [techQuote, setTechQuote] = useState({
@@ -82,7 +94,6 @@ const OSDetail = () => {
     try {
       await updateOrder.mutateAsync({
         id: order.id,
-        tecnico_id: user?.id,
         technician_description: techQuote.description,
         technician_cost: techQuote.cost,
         estimated_deadline: techQuote.deadline,
@@ -91,6 +102,22 @@ const OSDetail = () => {
       toast.success('Orçamento enviado!', { description: 'Aguardando aprovação do administrador.' });
     } catch (error: any) {
       toast.error('Erro ao enviar orçamento', { description: error.message });
+    }
+  };
+
+  const handleAssignTechnician = async () => {
+    if (!selectedTechnicianId) {
+      toast.error('Selecione um técnico');
+      return;
+    }
+    try {
+      await updateOrder.mutateAsync({
+        id: order.id,
+        tecnico_id: selectedTechnicianId,
+      });
+      toast.success('Técnico designado com sucesso!');
+    } catch (error: any) {
+      toast.error('Erro ao designar técnico', { description: error.message });
     }
   };
 
@@ -235,6 +262,47 @@ const OSDetail = () => {
         break;
 
       case 'admin':
+        if (order.status === 'aguardando_orcamento_prestador') {
+          return (
+            <div className="os-card border-2 border-primary/30">
+              <div className="flex items-center gap-2 mb-4">
+                <UserPlus className="h-5 w-5 text-primary" />
+                <h2 className="font-display font-semibold text-lg">Designar Técnico</h2>
+              </div>
+              <div className="space-y-4">
+                {order.tecnicoId ? (
+                  <div className="p-4 bg-primary/5 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Técnico designado</p>
+                    <p className="text-lg font-semibold text-foreground">{order.tecnico?.name || 'Técnico atribuído'}</p>
+                    <p className="text-sm text-muted-foreground">Aguardando envio do orçamento pelo técnico</p>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <Label>Selecionar técnico</Label>
+                      <Select value={selectedTechnicianId} onValueChange={setSelectedTechnicianId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Escolha um técnico..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {technicians.map((tech) => (
+                            <SelectItem key={tech.id} value={tech.id}>
+                              {tech.name} {tech.company ? `(${tech.company})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleAssignTechnician} className="w-full" disabled={isMutating || !selectedTechnicianId}>
+                      {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                      Designar Técnico
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        }
         if (order.status === 'aguardando_aprovacao_admin') {
           return (
             <div className="os-card border-2 border-accent/30">

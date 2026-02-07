@@ -169,7 +169,7 @@ export function useServiceOrders(statusFilter?: string) {
       if (role === 'imobiliaria') {
         query = query.eq('imobiliaria_id', user.id);
       } else if (role === 'tecnico') {
-        query = query.or(`tecnico_id.eq.${user.id},and(status.eq.aguardando_orcamento_prestador,tecnico_id.is.null)`);
+        query = query.eq('tecnico_id', user.id);
       }
       // Admin sees all
 
@@ -218,7 +218,7 @@ export function useDashboardStats() {
       if (role === 'imobiliaria') {
         query = query.eq('imobiliaria_id', user.id);
       } else if (role === 'tecnico') {
-        query = query.or(`tecnico_id.eq.${user.id},and(status.eq.aguardando_orcamento_prestador,tecnico_id.is.null)`);
+        query = query.eq('tecnico_id', user.id);
       }
 
       const { data, error } = await query;
