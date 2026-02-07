@@ -179,7 +179,7 @@ const OSDetail = () => {
   const renderActionSection = () => {
     switch (role) {
       case 'tecnico':
-        if (order.status === 'aguardando_orcamento') {
+        if (order.status === 'aguardando_orcamento_prestador') {
           return (
             <div className="os-card">
               <div className="flex items-center gap-2 mb-4">

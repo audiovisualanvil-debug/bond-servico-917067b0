@@ -3,7 +3,7 @@
 export type AppRole = 'imobiliaria' | 'tecnico' | 'admin';
 
 export type OsStatus = 
-  | 'aguardando_orcamento'
+  | 'aguardando_orcamento_prestador'
   | 'aguardando_aprovacao_admin'
   | 'enviado_imobiliaria'
   | 'aprovado_aguardando'

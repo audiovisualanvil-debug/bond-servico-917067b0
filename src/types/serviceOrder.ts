@@ -3,8 +3,8 @@
 export type UserRole = 'imobiliaria' | 'tecnico' | 'admin';
 
 export type OSStatus = 
-  | 'aguardando_orcamento'      // Waiting for technician quote
-  | 'aguardando_aprovacao_admin' // Waiting for admin approval
+  | 'aguardando_orcamento_prestador' // Waiting for technician quote
+  | 'aguardando_aprovacao_admin'     // Waiting for admin approval
   | 'enviado_imobiliaria'       // Sent to real estate agency
   | 'aprovado_aguardando'       // Approved, waiting for execution
   | 'em_execucao'               // In progress
@@ -99,8 +99,8 @@ export interface DashboardStats {
 
 // Status display helpers
 export const STATUS_LABELS: Record<OSStatus, string> = {
-  aguardando_orcamento: 'Aguardando Orçamento',
-  aguardando_aprovacao_admin: 'Aguardando Aprovação',
+  aguardando_orcamento_prestador: 'Aguardando Orçamento Prestador',
+  aguardando_aprovacao_admin: 'Aguardando Aprovação Admin',
   enviado_imobiliaria: 'Enviado para Cliente',
   aprovado_aguardando: 'Aprovado - Aguardando Execução',
   em_execucao: 'Em Execução',
@@ -108,7 +108,7 @@ export const STATUS_LABELS: Record<OSStatus, string> = {
 };
 
 export const STATUS_COLORS: Record<OSStatus, string> = {
-  aguardando_orcamento: 'status-pending',
+  aguardando_orcamento_prestador: 'status-pending',
   aguardando_aprovacao_admin: 'status-waiting',
   enviado_imobiliaria: 'status-in-progress',
   aprovado_aguardando: 'status-approved',

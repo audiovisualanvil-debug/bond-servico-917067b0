@@ -163,7 +163,7 @@ export function useServiceOrders(statusFilter?: string) {
       if (role === 'imobiliaria') {
         query = query.eq('imobiliaria_id', user.id);
       } else if (role === 'tecnico') {
-        query = query.or(`tecnico_id.eq.${user.id},and(status.eq.aguardando_orcamento,tecnico_id.is.null)`);
+        query = query.or(`tecnico_id.eq.${user.id},and(status.eq.aguardando_orcamento_prestador,tecnico_id.is.null)`);
       }
       // Admin sees all
 
@@ -212,7 +212,7 @@ export function useDashboardStats() {
       if (role === 'imobiliaria') {
         query = query.eq('imobiliaria_id', user.id);
       } else if (role === 'tecnico') {
-        query = query.or(`tecnico_id.eq.${user.id},and(status.eq.aguardando_orcamento,tecnico_id.is.null)`);
+        query = query.or(`tecnico_id.eq.${user.id},and(status.eq.aguardando_orcamento_prestador,tecnico_id.is.null)`);
       }
 
       const { data, error } = await query;
@@ -225,7 +225,7 @@ export function useDashboardStats() {
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       });
 
-      const pendingStatuses = ['aguardando_orcamento', 'aguardando_aprovacao_admin', 'enviado_imobiliaria'];
+      const pendingStatuses = ['aguardando_orcamento_prestador', 'aguardando_aprovacao_admin', 'enviado_imobiliaria'];
       const inProgressStatuses = ['aprovado_aguardando', 'em_execucao'];
       const completedOrders = orders.filter(o => o.status === 'concluido');
 
@@ -234,7 +234,7 @@ export function useDashboardStats() {
         pending: role === 'admin'
           ? orders.filter(o => o.status === 'aguardando_aprovacao_admin').length
           : role === 'tecnico'
-            ? orders.filter(o => o.status === 'aguardando_orcamento').length
+            ? orders.filter(o => o.status === 'aguardando_orcamento_prestador').length
             : orders.filter(o => pendingStatuses.includes(o.status)).length,
         inProgress: orders.filter(o => inProgressStatuses.includes(o.status)).length,
         completed: completedOrders.length,
