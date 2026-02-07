@@ -22,7 +22,7 @@ import { useServiceOrder, useUpdateServiceOrder, useCreateCompletionReport } fro
 const OSDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
 
   const { data: order, isLoading, error } = useServiceOrder(id);
   const updateOrder = useUpdateServiceOrder();
@@ -79,6 +79,7 @@ const OSDetail = () => {
     try {
       await updateOrder.mutateAsync({
         id: order.id,
+        tecnico_id: user?.id,
         technician_description: techQuote.description,
         technician_cost: techQuote.cost,
         estimated_deadline: techQuote.deadline,
