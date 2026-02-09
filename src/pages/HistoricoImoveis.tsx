@@ -187,7 +187,7 @@ const HistoricoImoveis = () => {
                             <p className="text-sm text-foreground">{order.problem}</p>
                             <p className="text-xs text-muted-foreground mt-1">
                               {order.createdAt.toLocaleDateString('pt-BR')}
-                              {order.finalPrice && ` • R$ ${order.finalPrice.toFixed(2)}`}
+                              {order.finalPrice && role !== 'tecnico' && ` • R$ ${order.finalPrice.toFixed(2)}`}
                             </p>
                             <div className="flex items-center gap-2">
                               <Button variant="link" className="p-0 h-auto text-xs" asChild>

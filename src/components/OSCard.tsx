@@ -52,8 +52,15 @@ export const OSCard: React.FC<OSCardProps> = ({ order, showActions = true }) => 
             </div>
           </div>
 
-          {/* Pricing info - only for admin/tecnico, hide real cost from imobiliaria */}
-          {(role === 'admin' || role === 'tecnico') && order.technicianCost && (
+          {/* Pricing info - tecnico only sees cost, admin sees both */}
+          {role === 'tecnico' && order.technicianCost && (
+            <div className="mt-3 flex items-center gap-4 text-sm">
+              <span className="text-muted-foreground">
+                Custo técnico: <strong className="text-foreground">R$ {order.technicianCost.toFixed(2)}</strong>
+              </span>
+            </div>
+          )}
+          {role === 'admin' && order.technicianCost && (
             <div className="mt-3 flex items-center gap-4 text-sm">
               <span className="text-muted-foreground">
                 Custo técnico: <strong className="text-foreground">R$ {order.technicianCost.toFixed(2)}</strong>
