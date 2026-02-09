@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, MapPin, AlertTriangle, User, Send, ArrowLeft, Loader2, Building2 } from 'lucide-react';
+import { Upload, MapPin, AlertTriangle, User, Send, ArrowLeft, Loader2, Building2, Search } from 'lucide-react';
 import { UrgencyLevel, URGENCY_LABELS } from '@/types/serviceOrder';
 import { useProperties, useCreateProperty } from '@/hooks/useProperties';
 import { useCreateServiceOrder } from '@/hooks/useServiceOrders';
@@ -29,7 +29,6 @@ const NovoChamado = () => {
   const createProperty = useCreateProperty();
   const createOrder = useCreateServiceOrder();
 
-  // For admin: load all imobiliárias
   const { data: imobiliarias = [] } = useQuery({
     queryKey: ['imobiliarias-list'],
     queryFn: async () => {
@@ -48,7 +47,6 @@ const NovoChamado = () => {
     enabled: role === 'admin',
   });
 
-  // For admin: load properties of selected imobiliaria
   const [selectedImobiliariaId, setSelectedImobiliariaId] = useState('');
   const { data: imobiliariaProperties = [], isLoading: imobPropsLoading } = useQuery({
     queryKey: ['properties-for-imob', selectedImobiliariaId],
@@ -67,7 +65,9 @@ const NovoChamado = () => {
 
   const [formData, setFormData] = useState({
     propertyId: '',
-    newAddress: '',
+    street: '',
+    number: '',
+    complement: '',
     neighborhood: '',
     city: 'São Paulo',
     state: 'SP',
@@ -83,11 +83,41 @@ const NovoChamado = () => {
     photos: [] as File[],
   });
 
+  const [isFetchingCep, setIsFetchingCep] = useState(false);
+
   if (!user) return null;
 
   const isSubmitting = createOrder.isPending || createProperty.isPending;
-
   const effectiveImobiliariaId = role === 'admin' ? selectedImobiliariaId : user.id;
+
+  const handleCepLookup = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, '');
+    if (cleanCep.length !== 8) return;
+
+    setIsFetchingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        toast.error('CEP não encontrado');
+        return;
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        street: data.logradouro || prev.street,
+        neighborhood: data.bairro || prev.neighborhood,
+        city: data.localidade || prev.city,
+        state: data.uf || prev.state,
+      }));
+      toast.success('Endereço preenchido pelo CEP!');
+    } catch {
+      toast.error('Erro ao buscar CEP');
+    } finally {
+      setIsFetchingCep(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,14 +136,20 @@ const NovoChamado = () => {
       let propertyId = formData.propertyId;
 
       if (propertyId === 'new') {
-        if (!formData.newAddress || !formData.neighborhood) {
-          toast.error('Preencha o endereço e bairro do novo imóvel');
+        if (!formData.street || !formData.neighborhood) {
+          toast.error('Preencha a rua e bairro do novo imóvel');
           return;
         }
 
+        const fullAddress = [
+          formData.street,
+          formData.number ? `nº ${formData.number}` : '',
+          formData.complement,
+        ].filter(Boolean).join(', ');
+
         const newProperty = await createProperty.mutateAsync({
           imobiliaria_id: effectiveImobiliariaId,
-          address: formData.newAddress,
+          address: fullAddress,
           neighborhood: formData.neighborhood,
           city: formData.city,
           state: formData.state,
@@ -219,7 +255,7 @@ const NovoChamado = () => {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="property">Selecionar imóvel cadastrado</Label>
-                <Select 
+                <Select
                   value={formData.propertyId}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, propertyId: value }))}
                   disabled={role === 'admin' && !selectedImobiliariaId}
@@ -250,18 +286,60 @@ const NovoChamado = () => {
                     <Label htmlFor="code">Código do imóvel</Label>
                     <Input id="code" placeholder="Ex: AP-101, SALA-03" value={formData.code} onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))} />
                   </div>
-                  <div className="md:col-span-2">
-                    <Label htmlFor="newAddress">Endereço completo</Label>
-                    <Input id="newAddress" placeholder="Rua, número, complemento" value={formData.newAddress} onChange={(e) => setFormData(prev => ({ ...prev, newAddress: e.target.value }))} />
+
+                  {/* CEP with auto-lookup */}
+                  <div>
+                    <Label htmlFor="zipCode">CEP</Label>
+                    <div className="relative">
+                      <Input
+                        id="zipCode"
+                        placeholder="00000-000"
+                        value={formData.zipCode}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setFormData(prev => ({ ...prev, zipCode: value }));
+                          const clean = value.replace(/\D/g, '');
+                          if (clean.length === 8) {
+                            handleCepLookup(value);
+                          }
+                        }}
+                      />
+                      {isFetchingCep && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Digite o CEP para preencher automaticamente</p>
                   </div>
+
+                  {/* Street */}
+                  <div className="md:col-span-2">
+                    <Label htmlFor="street">Rua / Logradouro</Label>
+                    <Input id="street" placeholder="Rua, Avenida, etc." value={formData.street} onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))} />
+                  </div>
+
+                  {/* Number + Complement */}
+                  <div>
+                    <Label htmlFor="number">Número</Label>
+                    <Input id="number" placeholder="123" value={formData.number} onChange={(e) => setFormData(prev => ({ ...prev, number: e.target.value }))} />
+                  </div>
+                  <div>
+                    <Label htmlFor="complement">Complemento</Label>
+                    <Input id="complement" placeholder="Apto, Bloco, Sala..." value={formData.complement} onChange={(e) => setFormData(prev => ({ ...prev, complement: e.target.value }))} />
+                  </div>
+
                   <div>
                     <Label htmlFor="neighborhood">Bairro</Label>
                     <Input id="neighborhood" placeholder="Bairro" value={formData.neighborhood} onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))} />
                   </div>
                   <div>
-                    <Label htmlFor="zipCode">CEP</Label>
-                    <Input id="zipCode" placeholder="00000-000" value={formData.zipCode} onChange={(e) => setFormData(prev => ({ ...prev, zipCode: e.target.value }))} />
+                    <Label htmlFor="city">Cidade</Label>
+                    <Input id="city" placeholder="Cidade" value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} />
                   </div>
+                  <div>
+                    <Label htmlFor="state">Estado</Label>
+                    <Input id="state" placeholder="SP" value={formData.state} onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))} maxLength={2} />
+                  </div>
+
                   <div>
                     <Label htmlFor="tenantName">Inquilino</Label>
                     <Input id="tenantName" placeholder="Nome do inquilino" value={formData.tenantName} onChange={(e) => setFormData(prev => ({ ...prev, tenantName: e.target.value }))} />
