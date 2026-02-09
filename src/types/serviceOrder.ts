@@ -54,8 +54,11 @@ export interface ServiceOrder {
   requesterName: string;
   createdAt: Date;
   
-  // Technician quote
+  // Technician quote (itemized)
   technicianDescription?: string;
+  laborCost?: number;
+  materialCost?: number;
+  taxCost?: number;
   technicianCost?: number;
   estimatedDeadline?: number; // days
   quoteSentAt?: Date;
@@ -106,7 +109,7 @@ export interface DashboardStats {
 export const STATUS_LABELS: Record<OSStatus, string> = {
   aguardando_orcamento_prestador: 'Aguardando Orçamento Prestador',
   aguardando_aprovacao_admin: 'Aguardando Aprovação Admin',
-  enviado_imobiliaria: 'Enviado para Cliente',
+  enviado_imobiliaria: 'Enviado para Imobiliária',
   aprovado_aguardando: 'Aprovado - Aguardando Execução',
   em_execucao: 'Em Execução',
   concluido: 'Concluído',

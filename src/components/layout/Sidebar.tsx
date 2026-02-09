@@ -26,7 +26,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['imobiliaria', 'tecnico', 'admin'] },
   { label: 'Ordens de Serviço', href: '/ordens', icon: ClipboardList, roles: ['imobiliaria', 'tecnico', 'admin'] },
-  { label: 'Novo Chamado', href: '/novo-chamado', icon: Plus, roles: ['imobiliaria'] },
+  { label: 'Novo Chamado', href: '/novo-chamado', icon: Plus, roles: ['imobiliaria', 'admin'] },
   { label: 'Aprovar Orçamentos', href: '/aprovar', icon: DollarSign, roles: ['admin'] },
   { label: 'Meus Serviços', href: '/meus-servicos', icon: Wrench, roles: ['tecnico'] },
   { label: 'Histórico Imóveis', href: '/historico', icon: History, roles: ['imobiliaria', 'admin'] },

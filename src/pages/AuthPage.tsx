@@ -4,26 +4,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Wrench, Building2, Mail, Lock, User, Loader2, ShieldCheck, ArrowLeft } from 'lucide-react';
-import { AppRole } from '@/types/database';
+import { Wrench, Building2, Mail, Lock, Loader2, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
-});
-
-const signUpSchema = z.object({
-  name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
-  confirmPassword: z.string(),
-  role: z.enum(['imobiliaria', 'tecnico']),
-  company: z.string().optional(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'Senhas não conferem',
-  path: ['confirmPassword'],
 });
 
 type SelectedProfile = 'admin' | 'imobiliaria' | 'tecnico' | null;
@@ -62,25 +49,16 @@ const profileCards = [
 ];
 
 const AuthPage = () => {
-  const { signIn, signUp } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [selectedProfile, setSelectedProfile] = useState<SelectedProfile>(null);
-  const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Login form state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-
-  // Sign up form state
-  const [signUpName, setSignUpName] = useState('');
-  const [signUpEmail, setSignUpEmail] = useState('');
-  const [signUpPassword, setSignUpPassword] = useState('');
-  const [signUpConfirmPassword, setSignUpConfirmPassword] = useState('');
-  const [signUpCompany, setSignUpCompany] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,58 +96,8 @@ const AuthPage = () => {
     navigate('/dashboard');
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrors({});
-
-    if (!selectedProfile || selectedProfile === 'admin') return;
-
-    const result = signUpSchema.safeParse({
-      name: signUpName,
-      email: signUpEmail,
-      password: signUpPassword,
-      confirmPassword: signUpConfirmPassword,
-      role: selectedProfile,
-      company: signUpCompany,
-    });
-
-    if (!result.success) {
-      const fieldErrors: Record<string, string> = {};
-      result.error.errors.forEach((err) => {
-        if (err.path[0]) {
-          fieldErrors[err.path[0] as string] = err.message;
-        }
-      });
-      setErrors(fieldErrors);
-      return;
-    }
-
-    setIsLoading(true);
-    const { error } = await signUp(
-      signUpEmail,
-      signUpPassword,
-      signUpName,
-      selectedProfile as AppRole,
-      selectedProfile === 'imobiliaria' ? signUpCompany : undefined
-    );
-    setIsLoading(false);
-
-    if (error) {
-      if (error.message.includes('already registered')) {
-        toast({ variant: 'destructive', title: 'Email já cadastrado', description: 'Este email já está em uso. Tente fazer login.' });
-      } else {
-        toast({ variant: 'destructive', title: 'Erro no cadastro', description: error.message });
-      }
-      return;
-    }
-
-    toast({ title: 'Conta criada!', description: 'Verifique seu email para confirmar a conta, ou faça login diretamente.' });
-    setIsLogin(true);
-  };
-
   const handleBack = () => {
     setSelectedProfile(null);
-    setIsLogin(true);
     setErrors({});
   };
 
@@ -232,9 +160,7 @@ const AuthPage = () => {
     );
   }
 
-  // ─── LOGIN / SIGNUP FORM ───
-  const canSignUp = selectedProfile !== 'admin';
-
+  // ─── LOGIN FORM ───
   return (
     <div className="min-h-screen bg-gradient-hero flex flex-col">
       <header className="container py-6">
@@ -251,7 +177,6 @@ const AuthPage = () => {
 
       <main className="flex-1 container flex flex-col items-center justify-center py-12">
         <div className="w-full max-w-md">
-          {/* Back button + profile badge */}
           <div className="flex items-center gap-3 mb-6">
             <Button variant="ghost" size="icon" onClick={handleBack} className="text-primary-foreground hover:bg-primary-foreground/10">
               <ArrowLeft className="h-5 w-5" />
@@ -266,111 +191,41 @@ const AuthPage = () => {
 
           <div className="text-center mb-8">
             <h2 className="font-display text-3xl font-bold text-primary-foreground mb-2">
-              {isLogin ? 'Entrar' : 'Criar Conta'}
+              Entrar
             </h2>
             <p className="text-primary-foreground/70">
-              {isLogin
-                ? `Acesse sua conta de ${currentProfile?.title}`
-                : `Cadastre-se como ${currentProfile?.title}`}
+              Acesse sua conta de {currentProfile?.title}
             </p>
           </div>
 
           <div className="bg-card rounded-2xl shadow-xl p-8">
-            {isLogin ? (
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="email" type="email" placeholder="seu@email.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="pl-10" />
-                  </div>
-                  {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="email" type="email" placeholder="seu@email.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="pl-10" />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="password" type="password" placeholder="••••••••" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="pl-10" />
-                  </div>
-                  {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
-                </div>
-
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Entrando...</> : 'Entrar'}
-                </Button>
-              </form>
-            ) : (
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="name" type="text" placeholder="Seu nome" value={signUpName} onChange={(e) => setSignUpName(e.target.value)} className="pl-10" />
-                  </div>
-                  {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="signup-email" type="email" placeholder="seu@email.com" value={signUpEmail} onChange={(e) => setSignUpEmail(e.target.value)} className="pl-10" />
-                  </div>
-                  {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
-                </div>
-
-                {selectedProfile === 'imobiliaria' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="company">Nome da Imobiliária</Label>
-                    <div className="relative">
-                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input id="company" type="text" placeholder="Imobiliária XYZ" value={signUpCompany} onChange={(e) => setSignUpCompany(e.target.value)} className="pl-10" />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Senha</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="signup-password" type="password" placeholder="••••••••" value={signUpPassword} onChange={(e) => setSignUpPassword(e.target.value)} className="pl-10" />
-                  </div>
-                  {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirmar Senha</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="confirm-password" type="password" placeholder="••••••••" value={signUpConfirmPassword} onChange={(e) => setSignUpConfirmPassword(e.target.value)} className="pl-10" />
-                  </div>
-                  {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword}</p>}
-                </div>
-
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Criando conta...</> : 'Criar Conta'}
-                </Button>
-              </form>
-            )}
-
-            {canSignUp && (
-              <div className="mt-6 text-center">
-                <button
-                  type="button"
-                  onClick={() => { setIsLogin(!isLogin); setErrors({}); }}
-                  className="text-sm text-primary hover:underline"
-                >
-                  {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Faça login'}
-                </button>
+                {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
               </div>
-            )}
 
-            {!canSignUp && !isLogin && (
-              <p className="mt-4 text-center text-sm text-muted-foreground">
-                Contas de administrador são criadas internamente.
-              </p>
-            )}
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="password" type="password" placeholder="••••••••" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="pl-10" />
+                </div>
+                {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+              </div>
+
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Entrando...</> : 'Entrar'}
+              </Button>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              Contas são criadas pela administração do sistema.
+            </p>
           </div>
         </div>
       </main>

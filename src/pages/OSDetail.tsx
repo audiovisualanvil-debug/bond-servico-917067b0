@@ -41,10 +41,12 @@ const OSDetail = () => {
   // Admin technician assignment
   const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
 
-  // Technician quote form
+  // Technician quote form (itemized)
   const [techQuote, setTechQuote] = useState({
     description: '',
-    cost: 0,
+    laborCost: 0,
+    materialCost: 0,
+    taxCost: 0,
     deadline: 1,
   });
 
@@ -55,7 +57,9 @@ const OSDetail = () => {
   if (order && techQuote.description === '' && order.technicianDescription) {
     setTechQuote({
       description: order.technicianDescription,
-      cost: order.technicianCost || 0,
+      laborCost: order.laborCost || 0,
+      materialCost: order.materialCost || 0,
+      taxCost: order.taxCost || 0,
       deadline: order.estimatedDeadline || 1,
     });
   }
@@ -96,15 +100,19 @@ const OSDetail = () => {
       toast.error('Preencha a descrição do serviço');
       return;
     }
-    if (!techQuote.cost || techQuote.cost <= 0) {
-      toast.error('Informe o valor do custo');
+    const totalCost = techQuote.laborCost + techQuote.materialCost + techQuote.taxCost;
+    if (totalCost <= 0) {
+      toast.error('Informe ao menos um valor de custo (mão de obra, materiais ou impostos)');
       return;
     }
     try {
       await updateOrder.mutateAsync({
         id: order.id,
         technician_description: techQuote.description.trim(),
-        technician_cost: techQuote.cost,
+        labor_cost: techQuote.laborCost,
+        material_cost: techQuote.materialCost,
+        tax_cost: techQuote.taxCost,
+        technician_cost: totalCost,
         estimated_deadline: techQuote.deadline,
         status: 'aguardando_aprovacao_admin',
       });
@@ -149,6 +157,18 @@ const OSDetail = () => {
       toast.success('Orçamento aprovado e enviado!', { description: 'E-mail enviado para a imobiliária.' });
     } catch (error: any) {
       toast.error('Erro ao aprovar orçamento', { description: error.message });
+    }
+  };
+
+  const handleRequestRevision = async () => {
+    try {
+      await updateOrder.mutateAsync({
+        id: order.id,
+        status: 'aguardando_aprovacao_admin',
+      });
+      toast.success('Revisão solicitada!', { description: 'O administrador será notificado para revisar o orçamento.' });
+    } catch (error: any) {
+      toast.error('Erro ao solicitar revisão', { description: error.message });
     }
   };
 
@@ -231,15 +251,29 @@ const OSDetail = () => {
                   <Label>Descrição do serviço necessário</Label>
                   <Textarea placeholder="Descreva o que precisa ser feito..." value={techQuote.description} onChange={(e) => setTechQuote(prev => ({ ...prev, description: e.target.value }))} rows={3} />
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-3">
                   <div>
-                    <Label>Valor do Custo (R$)</Label>
-                    <Input type="number" placeholder="0.00" value={techQuote.cost || ''} onChange={(e) => setTechQuote(prev => ({ ...prev, cost: parseFloat(e.target.value) || 0 }))} />
+                    <Label>Mão de Obra (R$)</Label>
+                    <Input type="number" placeholder="0.00" value={techQuote.laborCost || ''} onChange={(e) => setTechQuote(prev => ({ ...prev, laborCost: parseFloat(e.target.value) || 0 }))} />
                   </div>
                   <div>
-                    <Label>Prazo (dias)</Label>
-                    <Input type="number" placeholder="1" value={techQuote.deadline} onChange={(e) => setTechQuote(prev => ({ ...prev, deadline: parseInt(e.target.value) || 1 }))} />
+                    <Label>Materiais (R$)</Label>
+                    <Input type="number" placeholder="0.00" value={techQuote.materialCost || ''} onChange={(e) => setTechQuote(prev => ({ ...prev, materialCost: parseFloat(e.target.value) || 0 }))} />
                   </div>
+                  <div>
+                    <Label>Impostos (R$)</Label>
+                    <Input type="number" placeholder="0.00" value={techQuote.taxCost || ''} onChange={(e) => setTechQuote(prev => ({ ...prev, taxCost: parseFloat(e.target.value) || 0 }))} />
+                  </div>
+                </div>
+                {(techQuote.laborCost + techQuote.materialCost + techQuote.taxCost) > 0 && (
+                  <div className="p-3 bg-secondary/50 rounded-lg text-sm">
+                    <span className="text-muted-foreground">Total: </span>
+                    <span className="font-bold text-foreground">R$ {(techQuote.laborCost + techQuote.materialCost + techQuote.taxCost).toFixed(2)}</span>
+                  </div>
+                )}
+                <div>
+                  <Label>Prazo (dias)</Label>
+                  <Input type="number" placeholder="1" value={techQuote.deadline} onChange={(e) => setTechQuote(prev => ({ ...prev, deadline: parseInt(e.target.value) || 1 }))} />
                 </div>
                 <Button onClick={handleTechnicianSubmit} className="w-full" disabled={isMutating}>
                   {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -270,58 +304,88 @@ const OSDetail = () => {
         }
         break;
 
-      case 'admin':
-        if (order.status === 'aguardando_orcamento_prestador') {
-          return (
-            <div className="os-card border-2 border-primary/30">
+      case 'admin': {
+        const sections = [];
+        
+        // Technician assignment (show whenever no tech assigned and not completed)
+        if (!order.tecnicoId && order.status !== 'concluido') {
+          sections.push(
+            <div key="assign" className="os-card border-2 border-primary/30">
               <div className="flex items-center gap-2 mb-4">
                 <UserPlus className="h-5 w-5 text-primary" />
                 <h2 className="font-display font-semibold text-lg">Designar Técnico</h2>
               </div>
               <div className="space-y-4">
-                {order.tecnicoId ? (
-                  <div className="p-4 bg-primary/5 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Técnico designado</p>
-                    <p className="text-lg font-semibold text-foreground">{order.tecnico?.name || 'Técnico atribuído'}</p>
-                    <p className="text-sm text-muted-foreground">Aguardando envio do orçamento pelo técnico</p>
-                  </div>
-                ) : (
-                  <>
-                    <div>
-                      <Label>Selecionar técnico</Label>
-                      <Select value={selectedTechnicianId} onValueChange={setSelectedTechnicianId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Escolha um técnico..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {technicians.map((tech) => (
-                            <SelectItem key={tech.id} value={tech.id}>
-                              {tech.name} {tech.company ? `(${tech.company})` : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button onClick={handleAssignTechnician} className="w-full" disabled={isMutating || !selectedTechnicianId}>
-                      {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-                      Designar Técnico
-                    </Button>
-                  </>
-                )}
+                <div>
+                  <Label>Selecionar técnico</Label>
+                  <Select value={selectedTechnicianId} onValueChange={setSelectedTechnicianId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Escolha um técnico..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {technicians.map((tech) => (
+                        <SelectItem key={tech.id} value={tech.id}>
+                          {tech.name} {tech.company ? `(${tech.company})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleAssignTechnician} className="w-full" disabled={isMutating || !selectedTechnicianId}>
+                  {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                  Designar Técnico
+                </Button>
+              </div>
+            </div>
+          );
+        } else if (order.tecnicoId && order.status === 'aguardando_orcamento_prestador') {
+          sections.push(
+            <div key="assigned" className="os-card border-2 border-primary/30">
+              <div className="flex items-center gap-2 mb-4">
+                <UserPlus className="h-5 w-5 text-primary" />
+                <h2 className="font-display font-semibold text-lg">Técnico Designado</h2>
+              </div>
+              <div className="p-4 bg-primary/5 rounded-lg">
+                <p className="text-sm text-muted-foreground">Técnico designado</p>
+                <p className="text-lg font-semibold text-foreground">{order.tecnico?.name || 'Técnico atribuído'}</p>
+                <p className="text-sm text-muted-foreground">Aguardando envio do orçamento pelo técnico</p>
               </div>
             </div>
           );
         }
+
+        // Admin pricing review
         if (order.status === 'aguardando_aprovacao_admin') {
-          return (
-            <div className="os-card border-2 border-accent/30">
+          sections.push(
+            <div key="pricing" className="os-card border-2 border-accent/30">
               <div className="flex items-center gap-2 mb-4">
                 <DollarSign className="h-5 w-5 text-accent" />
                 <h2 className="font-display font-semibold text-lg">Revisar Valor Final</h2>
               </div>
               <div className="space-y-4">
+                {/* Itemized costs */}
+                <div className="grid gap-3 md:grid-cols-3">
+                  {order.laborCost != null && order.laborCost > 0 && (
+                    <div className="p-3 bg-secondary/50 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Mão de Obra</p>
+                      <p className="text-lg font-bold text-foreground">R$ {order.laborCost.toFixed(2)}</p>
+                    </div>
+                  )}
+                  {order.materialCost != null && order.materialCost > 0 && (
+                    <div className="p-3 bg-secondary/50 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Materiais</p>
+                      <p className="text-lg font-bold text-foreground">R$ {order.materialCost.toFixed(2)}</p>
+                    </div>
+                  )}
+                  {order.taxCost != null && order.taxCost > 0 && (
+                    <div className="p-3 bg-secondary/50 rounded-lg">
+                      <p className="text-xs text-muted-foreground">Impostos</p>
+                      <p className="text-lg font-bold text-foreground">R$ {order.taxCost.toFixed(2)}</p>
+                    </div>
+                  )}
+                </div>
                 <div className="p-4 bg-secondary/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Custo do técnico</p>
+                  <p className="text-sm text-muted-foreground">Custo Total do Técnico</p>
                   <p className="text-2xl font-bold text-foreground">R$ {order.technicianCost?.toFixed(2)}</p>
                 </div>
                 <div className="p-4 bg-accent/10 rounded-lg">
@@ -329,7 +393,7 @@ const OSDetail = () => {
                   <p className="text-lg font-semibold text-accent">R$ {(order.technicianCost ? (order.technicianCost * 1.4).toFixed(2) : '0.00')}</p>
                 </div>
                 <div>
-                  <Label className="text-base font-semibold">Valor Final para o Cliente (R$)</Label>
+                  <Label className="text-base font-semibold">Valor Final para a Imobiliária (R$)</Label>
                   <p className="text-sm text-muted-foreground mb-2">O valor já vem com +40% aplicado. Ajuste se necessário.</p>
                   <Input type="number" placeholder="0.00" value={finalPrice || ''} onChange={(e) => setFinalPrice(parseFloat(e.target.value) || 0)} className="text-xl font-bold" />
                   {finalPrice > 0 && order.technicianCost && (
@@ -346,7 +410,9 @@ const OSDetail = () => {
             </div>
           );
         }
-        break;
+
+        return sections.length > 0 ? <>{sections}</> : null;
+      }
 
       case 'imobiliaria':
         if (order.status === 'enviado_imobiliaria') {
@@ -365,8 +431,10 @@ const OSDetail = () => {
                   </p>
                 </div>
                 <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1">Solicitar Revisão</Button>
-                  <Button onClick={handleClientApprove} variant="success" className="flex-1" disabled={isMutating}>
+                  <Button variant="outline" className="flex-1" onClick={handleRequestRevision} disabled={isMutating}>
+                    Solicitar Revisão
+                  </Button>
+                  <Button onClick={handleClientApprove} variant="default" className="flex-1" disabled={isMutating}>
                     {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                     Aprovar Serviço
                   </Button>
