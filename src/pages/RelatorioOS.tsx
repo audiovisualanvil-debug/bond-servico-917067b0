@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowLeft, Printer, Download, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-
+import { useAuth } from '@/contexts/AuthContext';
 const RelatorioOS = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { role } = useAuth();
   const { data: order, isLoading, error } = useServiceOrder(id);
 
   if (isLoading) {
@@ -161,8 +162,8 @@ const RelatorioOS = () => {
               </Section>
             )}
 
-            {/* Pricing */}
-            {order.finalPrice && (
+            {/* Pricing - hidden from technicians */}
+            {order.finalPrice && role !== 'tecnico' && (
               <>
                 <hr className="border-border" />
                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl">
