@@ -13,19 +13,57 @@ import {
 } from "@/components/ui/select";
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, MapPin, AlertTriangle, User, Send, ArrowLeft, Loader2 } from 'lucide-react';
+import { Upload, MapPin, AlertTriangle, User, Send, ArrowLeft, Loader2, Building2 } from 'lucide-react';
 import { UrgencyLevel, URGENCY_LABELS } from '@/types/serviceOrder';
 import { useProperties, useCreateProperty } from '@/hooks/useProperties';
 import { useCreateServiceOrder } from '@/hooks/useServiceOrders';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
+import { typedFrom } from '@/integrations/supabase/helpers';
 
 const NovoChamado = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { data: userProperties = [], isLoading: propertiesLoading } = useProperties();
   const createProperty = useCreateProperty();
   const createOrder = useCreateServiceOrder();
+
+  // For admin: load all imobiliárias
+  const { data: imobiliarias = [] } = useQuery({
+    queryKey: ['imobiliarias-list'],
+    queryFn: async () => {
+      const { data, error } = await typedFrom('user_roles')
+        .select('user_id')
+        .eq('role', 'imobiliaria');
+      if (error) throw error;
+      const userIds = (data as { user_id: string }[]).map(r => r.user_id);
+      if (userIds.length === 0) return [];
+      const { data: profiles, error: profileError } = await typedFrom('profiles')
+        .select('*')
+        .in('id', userIds);
+      if (profileError) throw profileError;
+      return profiles as { id: string; name: string; company: string | null }[];
+    },
+    enabled: role === 'admin',
+  });
+
+  // For admin: load properties of selected imobiliaria
+  const [selectedImobiliariaId, setSelectedImobiliariaId] = useState('');
+  const { data: imobiliariaProperties = [], isLoading: imobPropsLoading } = useQuery({
+    queryKey: ['properties-for-imob', selectedImobiliariaId],
+    queryFn: async () => {
+      const { data, error } = await typedFrom('properties')
+        .select('*')
+        .eq('imobiliaria_id', selectedImobiliariaId)
+        .order('address');
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: role === 'admin' && !!selectedImobiliariaId,
+  });
+
+  const availableProperties = role === 'admin' ? imobiliariaProperties : userProperties;
 
   const [formData, setFormData] = useState({
     propertyId: '',
@@ -49,6 +87,8 @@ const NovoChamado = () => {
 
   const isSubmitting = createOrder.isPending || createProperty.isPending;
 
+  const effectiveImobiliariaId = role === 'admin' ? selectedImobiliariaId : user.id;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -57,10 +97,14 @@ const NovoChamado = () => {
       return;
     }
 
+    if (role === 'admin' && !selectedImobiliariaId) {
+      toast.error('Selecione a imobiliária');
+      return;
+    }
+
     try {
       let propertyId = formData.propertyId;
 
-      // Create new property if needed
       if (propertyId === 'new') {
         if (!formData.newAddress || !formData.neighborhood) {
           toast.error('Preencha o endereço e bairro do novo imóvel');
@@ -68,7 +112,7 @@ const NovoChamado = () => {
         }
 
         const newProperty = await createProperty.mutateAsync({
-          imobiliaria_id: user.id,
+          imobiliaria_id: effectiveImobiliariaId,
           address: formData.newAddress,
           neighborhood: formData.neighborhood,
           city: formData.city,
@@ -91,7 +135,7 @@ const NovoChamado = () => {
 
       await createOrder.mutateAsync({
         property_id: propertyId,
-        imobiliaria_id: user.id,
+        imobiliaria_id: effectiveImobiliariaId,
         problem: formData.problem,
         urgency: formData.urgency,
         requester_name: formData.requesterName,
@@ -134,6 +178,37 @@ const NovoChamado = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Admin: Select Imobiliária */}
+          {role === 'admin' && (
+            <div className="os-card">
+              <div className="flex items-center gap-2 mb-4">
+                <Building2 className="h-5 w-5 text-primary" />
+                <h2 className="font-display font-semibold text-lg">Imobiliária</h2>
+              </div>
+              <div>
+                <Label>Selecionar imobiliária *</Label>
+                <Select
+                  value={selectedImobiliariaId}
+                  onValueChange={(value) => {
+                    setSelectedImobiliariaId(value);
+                    setFormData(prev => ({ ...prev, propertyId: '' }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Escolha uma imobiliária..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {imobiliarias.map((imob) => (
+                      <SelectItem key={imob.id} value={imob.id}>
+                        {imob.company || imob.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
           {/* Property Selection */}
           <div className="os-card">
             <div className="flex items-center gap-2 mb-4">
@@ -147,13 +222,20 @@ const NovoChamado = () => {
                 <Select 
                   value={formData.propertyId}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, propertyId: value }))}
+                  disabled={role === 'admin' && !selectedImobiliariaId}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder={propertiesLoading ? 'Carregando...' : 'Escolha um imóvel...'} />
+                    <SelectValue placeholder={
+                      role === 'admin' && !selectedImobiliariaId
+                        ? 'Selecione uma imobiliária primeiro'
+                        : propertiesLoading || imobPropsLoading
+                          ? 'Carregando...'
+                          : 'Escolha um imóvel...'
+                    } />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="new">+ Cadastrar novo imóvel</SelectItem>
-                    {userProperties.map((property) => (
+                    {availableProperties.map((property: any) => (
                       <SelectItem key={property.id} value={property.id}>
                         {property.address} - {property.neighborhood}
                       </SelectItem>
@@ -166,75 +248,35 @@ const NovoChamado = () => {
                 <div className="grid gap-4 md:grid-cols-2 pt-4 border-t">
                   <div>
                     <Label htmlFor="code">Código do imóvel</Label>
-                    <Input
-                      id="code"
-                      placeholder="Ex: AP-101, SALA-03"
-                      value={formData.code}
-                      onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
-                    />
+                    <Input id="code" placeholder="Ex: AP-101, SALA-03" value={formData.code} onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))} />
                   </div>
                   <div className="md:col-span-2">
                     <Label htmlFor="newAddress">Endereço completo</Label>
-                    <Input
-                      id="newAddress"
-                      placeholder="Rua, número, complemento"
-                      value={formData.newAddress}
-                      onChange={(e) => setFormData(prev => ({ ...prev, newAddress: e.target.value }))}
-                    />
+                    <Input id="newAddress" placeholder="Rua, número, complemento" value={formData.newAddress} onChange={(e) => setFormData(prev => ({ ...prev, newAddress: e.target.value }))} />
                   </div>
                   <div>
                     <Label htmlFor="neighborhood">Bairro</Label>
-                    <Input
-                      id="neighborhood"
-                      placeholder="Bairro"
-                      value={formData.neighborhood}
-                      onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))}
-                    />
+                    <Input id="neighborhood" placeholder="Bairro" value={formData.neighborhood} onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))} />
                   </div>
                   <div>
                     <Label htmlFor="zipCode">CEP</Label>
-                    <Input
-                      id="zipCode"
-                      placeholder="00000-000"
-                      value={formData.zipCode}
-                      onChange={(e) => setFormData(prev => ({ ...prev, zipCode: e.target.value }))}
-                    />
+                    <Input id="zipCode" placeholder="00000-000" value={formData.zipCode} onChange={(e) => setFormData(prev => ({ ...prev, zipCode: e.target.value }))} />
                   </div>
                   <div>
                     <Label htmlFor="tenantName">Inquilino</Label>
-                    <Input
-                      id="tenantName"
-                      placeholder="Nome do inquilino"
-                      value={formData.tenantName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, tenantName: e.target.value }))}
-                    />
+                    <Input id="tenantName" placeholder="Nome do inquilino" value={formData.tenantName} onChange={(e) => setFormData(prev => ({ ...prev, tenantName: e.target.value }))} />
                   </div>
                   <div>
                     <Label htmlFor="tenantPhone">Celular do inquilino</Label>
-                    <PhoneInput
-                      id="tenantPhone"
-                      placeholder="(11) 99999-9999"
-                      value={formData.tenantPhone}
-                      onChange={(value) => setFormData(prev => ({ ...prev, tenantPhone: value }))}
-                    />
+                    <PhoneInput id="tenantPhone" placeholder="(11) 99999-9999" value={formData.tenantPhone} onChange={(value) => setFormData(prev => ({ ...prev, tenantPhone: value }))} />
                   </div>
                   <div>
                     <Label htmlFor="ownerName">Proprietário</Label>
-                    <Input
-                      id="ownerName"
-                      placeholder="Nome do proprietário"
-                      value={formData.ownerName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, ownerName: e.target.value }))}
-                    />
+                    <Input id="ownerName" placeholder="Nome do proprietário" value={formData.ownerName} onChange={(e) => setFormData(prev => ({ ...prev, ownerName: e.target.value }))} />
                   </div>
                   <div>
                     <Label htmlFor="ownerPhone">Celular do proprietário</Label>
-                    <PhoneInput
-                      id="ownerPhone"
-                      placeholder="(11) 99999-9999"
-                      value={formData.ownerPhone}
-                      onChange={(value) => setFormData(prev => ({ ...prev, ownerPhone: value }))}
-                    />
+                    <PhoneInput id="ownerPhone" placeholder="(11) 99999-9999" value={formData.ownerPhone} onChange={(value) => setFormData(prev => ({ ...prev, ownerPhone: value }))} />
                   </div>
                 </div>
               )}
@@ -251,22 +293,12 @@ const NovoChamado = () => {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="problem">Descrição do problema *</Label>
-                <Textarea
-                  id="problem"
-                  placeholder="Descreva detalhadamente o problema a ser resolvido..."
-                  rows={4}
-                  value={formData.problem}
-                  onChange={(e) => setFormData(prev => ({ ...prev, problem: e.target.value }))}
-                  required
-                />
+                <Textarea id="problem" placeholder="Descreva detalhadamente o problema a ser resolvido..." rows={4} value={formData.problem} onChange={(e) => setFormData(prev => ({ ...prev, problem: e.target.value }))} required />
               </div>
 
               <div>
                 <Label htmlFor="urgency">Grau de urgência *</Label>
-                <Select 
-                  value={formData.urgency}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, urgency: value as UrgencyLevel }))}
-                >
+                <Select value={formData.urgency} onValueChange={(value) => setFormData(prev => ({ ...prev, urgency: value as UrgencyLevel }))}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a urgência" />
                   </SelectTrigger>
@@ -287,22 +319,11 @@ const NovoChamado = () => {
               <div>
                 <Label>Fotos do problema (opcional)</Label>
                 <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                    id="photo-upload"
-                  />
+                  <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" id="photo-upload" />
                   <label htmlFor="photo-upload" className="cursor-pointer">
                     <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Clique para enviar ou arraste as fotos
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Máximo 5 fotos
-                    </p>
+                    <p className="text-sm text-muted-foreground">Clique para enviar ou arraste as fotos</p>
+                    <p className="text-xs text-muted-foreground mt-1">Máximo 5 fotos</p>
                   </label>
                 </div>
                 {formData.photos.length > 0 && (
@@ -312,14 +333,7 @@ const NovoChamado = () => {
                         <div className="h-16 w-16 rounded-lg bg-secondary flex items-center justify-center text-xs text-muted-foreground">
                           {file.name.slice(0, 8)}...
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({
-                            ...prev,
-                            photos: prev.photos.filter((_, i) => i !== index)
-                          }))}
-                          className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center"
-                        >
+                        <button type="button" onClick={() => setFormData(prev => ({ ...prev, photos: prev.photos.filter((_, i) => i !== index) }))} className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
                           ×
                         </button>
                       </div>
@@ -336,16 +350,9 @@ const NovoChamado = () => {
               <User className="h-5 w-5 text-primary" />
               <h2 className="font-display font-semibold text-lg">Solicitante</h2>
             </div>
-
             <div>
               <Label htmlFor="requesterName">Nome do solicitante *</Label>
-              <Input
-                id="requesterName"
-                placeholder="Nome do inquilino, proprietário ou responsável"
-                value={formData.requesterName}
-                onChange={(e) => setFormData(prev => ({ ...prev, requesterName: e.target.value }))}
-                required
-              />
+              <Input id="requesterName" placeholder="Nome do inquilino, proprietário ou responsável" value={formData.requesterName} onChange={(e) => setFormData(prev => ({ ...prev, requesterName: e.target.value }))} required />
             </div>
           </div>
 

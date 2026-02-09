@@ -44,6 +44,9 @@ interface DbServiceOrder {
   requester_name: string;
   technician_description: string | null;
   technician_cost: number | null;
+  labor_cost: number | null;
+  material_cost: number | null;
+  tax_cost: number | null;
   estimated_deadline: number | null;
   quote_sent_at: string | null;
   final_price: number | null;
@@ -134,6 +137,9 @@ function mapServiceOrder(db: DbServiceOrder): ServiceOrder {
     requesterName: db.requester_name,
     createdAt: new Date(db.created_at),
     technicianDescription: db.technician_description || undefined,
+    laborCost: db.labor_cost || undefined,
+    materialCost: db.material_cost || undefined,
+    taxCost: db.tax_cost || undefined,
     technicianCost: db.technician_cost || undefined,
     estimatedDeadline: db.estimated_deadline || undefined,
     quoteSentAt: db.quote_sent_at ? new Date(db.quote_sent_at) : undefined,

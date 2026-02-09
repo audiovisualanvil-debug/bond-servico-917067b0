@@ -50,7 +50,7 @@ const OrdensServico = () => {
             {filteredOrders.length} {filteredOrders.length === 1 ? 'ordem encontrada' : 'ordens encontradas'}
           </p>
         </div>
-        {role === 'imobiliaria' && (
+        {(role === 'imobiliaria' || role === 'admin') && (
           <Button size="lg" asChild>
             <Link to="/novo-chamado">
               <Plus className="h-5 w-5" />
