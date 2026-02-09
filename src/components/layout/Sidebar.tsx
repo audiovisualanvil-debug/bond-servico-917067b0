@@ -10,7 +10,8 @@ import {
   DollarSign,
   Users,
   Building2,
-  FileText
+  FileText,
+  UserPlus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { label: 'Histórico Imóveis', href: '/historico', icon: History, roles: ['imobiliaria', 'admin'] },
   { label: 'Imobiliárias', href: '/imobiliarias', icon: Building2, roles: ['admin'] },
   { label: 'Técnicos', href: '/tecnicos', icon: Users, roles: ['admin'] },
+  { label: 'Gerenciar Usuários', href: '/usuarios', icon: UserPlus, roles: ['admin'] },
   { label: 'Relatórios', href: '/relatorios', icon: FileText, roles: ['admin'] },
 ];
 
