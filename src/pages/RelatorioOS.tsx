@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowLeft, Printer, Download, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import logoFazTudo from '@/assets/logo-faztudo.png';
 const RelatorioOS = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -62,9 +63,12 @@ const RelatorioOS = () => {
           {/* Header */}
           <div className="bg-gradient-hero text-primary-foreground p-8 print:p-6">
             <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-2xl font-display font-bold">RELATÓRIO DE SERVIÇO</h1>
-                <p className="text-primary-foreground/80 mt-1 text-sm">Faz-Tudo Imobiliário</p>
+              <div className="flex items-center gap-4">
+                <img src={logoFazTudo} alt="Faz-Tudo Imobiliário" className="h-16 w-16 rounded-full object-cover print:h-14 print:w-14" />
+                <div>
+                  <h1 className="text-2xl font-display font-bold">RELATÓRIO DE SERVIÇO</h1>
+                  <p className="text-primary-foreground/80 mt-1 text-sm">Faz-Tudo Imobiliário</p>
+                </div>
               </div>
               <div className="text-right">
                 <p className="text-xl font-display font-bold">{order.osNumber}</p>
