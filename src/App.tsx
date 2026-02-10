@@ -18,6 +18,7 @@ import Imobiliarias from "./pages/Imobiliarias";
 import Tecnicos from "./pages/Tecnicos";
 import GerenciarUsuarios from "./pages/GerenciarUsuarios";
 import Relatorios from "./pages/Relatorios";
+import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -76,6 +77,7 @@ const AppRoutes = () => {
       <Route path="/tecnicos" element={<ProtectedRoute><Tecnicos /></ProtectedRoute>} />
       <Route path="/usuarios" element={<ProtectedRoute><GerenciarUsuarios /></ProtectedRoute>} />
       <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+      <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
