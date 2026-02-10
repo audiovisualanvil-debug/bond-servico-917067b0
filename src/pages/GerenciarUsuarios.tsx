@@ -8,10 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Users, Building2, Wrench, Mail, Phone, Building, Eye, EyeOff } from 'lucide-react';
+import { Loader2, UserPlus, Users, Building2, Wrench, Mail, Phone, Building, Eye, EyeOff, Pencil, Ban, CheckCircle2 } from 'lucide-react';
 
 interface UserWithRole {
   id: string;
@@ -21,10 +23,11 @@ interface UserWithRole {
   company: string | null;
   role: string;
   created_at: string;
+  is_banned: boolean;
 }
 
 const GerenciarUsuarios = () => {
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -36,6 +39,15 @@ const GerenciarUsuarios = () => {
     company: '',
     role: '' as string,
   });
+
+  // Edit dialog state
+  const [editUser, setEditUser] = useState<UserWithRole | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', phone: '', company: '' });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Ban/unban confirm dialog
+  const [toggleUser, setToggleUser] = useState<UserWithRole | null>(null);
+  const [isToggling, setIsToggling] = useState(false);
 
   // Fetch all users with roles (admin only)
   const { data: users = [], isLoading } = useQuery({
@@ -57,6 +69,7 @@ const GerenciarUsuarios = () => {
           company: profile?.company || null,
           role: r.role,
           created_at: profile?.created_at || '',
+          is_banned: false, // Will be determined by UI state after actions
         };
       });
 
@@ -78,7 +91,6 @@ const GerenciarUsuarios = () => {
 
     setIsCreating(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const response = await supabase.functions.invoke('create-user', {
         body: {
           email: form.email,
@@ -100,6 +112,66 @@ const GerenciarUsuarios = () => {
       toast.error(err.message || 'Erro ao criar usuário');
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleOpenEdit = (u: UserWithRole) => {
+    setEditForm({ name: u.name, phone: u.phone || '', company: u.company || '' });
+    setEditUser(u);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editUser) return;
+    if (!editForm.name.trim()) {
+      toast.error('Nome não pode ser vazio');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const response = await supabase.functions.invoke('manage-user', {
+        body: {
+          action: 'update',
+          user_id: editUser.id,
+          name: editForm.name,
+          phone: editForm.phone,
+          company: editForm.company,
+        },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+      if (response.data?.error) throw new Error(response.data.error);
+
+      toast.success('Usuário atualizado com sucesso!');
+      setEditUser(null);
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao atualizar usuário');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleToggleStatus = async () => {
+    if (!toggleUser) return;
+
+    setIsToggling(true);
+    try {
+      const action = toggleUser.is_banned ? 'unban' : 'ban';
+      const response = await supabase.functions.invoke('manage-user', {
+        body: { action, user_id: toggleUser.id },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+      if (response.data?.error) throw new Error(response.data.error);
+
+      toast.success(toggleUser.is_banned ? 'Usuário reativado!' : 'Usuário desativado!');
+      setToggleUser(null);
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao alterar status');
+    } finally {
+      setIsToggling(false);
     }
   };
 
@@ -140,7 +212,7 @@ const GerenciarUsuarios = () => {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-display font-bold text-foreground">Gerenciar Usuários</h1>
-          <p className="text-muted-foreground mt-1">Cadastre e visualize imobiliárias e técnicos.</p>
+          <p className="text-muted-foreground mt-1">Cadastre, edite e gerencie imobiliárias e técnicos.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -277,20 +349,25 @@ const GerenciarUsuarios = () => {
                 {/* User cards */}
                 <div className="space-y-3">
                   {users.map((u) => (
-                    <Card key={u.id} className="p-4">
+                    <Card key={u.id} className={`p-4 ${u.is_banned ? 'opacity-60' : ''}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                          <div className={`flex h-10 w-10 items-center justify-center rounded-full ${u.is_banned ? 'bg-muted' : 'bg-primary/10'}`}>
                             {u.role === 'tecnico' ? (
-                              <Wrench className="h-5 w-5 text-primary" />
+                              <Wrench className={`h-5 w-5 ${u.is_banned ? 'text-muted-foreground' : 'text-primary'}`} />
                             ) : u.role === 'imobiliaria' ? (
-                              <Building2 className="h-5 w-5 text-primary" />
+                              <Building2 className={`h-5 w-5 ${u.is_banned ? 'text-muted-foreground' : 'text-primary'}`} />
                             ) : (
-                              <Users className="h-5 w-5 text-primary" />
+                              <Users className={`h-5 w-5 ${u.is_banned ? 'text-muted-foreground' : 'text-primary'}`} />
                             )}
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{u.name}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-foreground">{u.name}</p>
+                              {u.is_banned && (
+                                <Badge variant="outline" className="text-destructive border-destructive text-xs">Inativo</Badge>
+                              )}
+                            </div>
                             <p className="text-sm text-muted-foreground">{u.email}</p>
                             {u.company && (
                               <p className="text-xs text-muted-foreground">{u.company}</p>
@@ -302,6 +379,29 @@ const GerenciarUsuarios = () => {
                             <span className="text-xs text-muted-foreground hidden sm:block">{u.phone}</span>
                           )}
                           <Badge variant={roleColor(u.role) as any}>{roleLabel(u.role)}</Badge>
+                          {/* Action buttons - don't show for current admin user */}
+                          {u.id !== user?.id && u.role !== 'admin' && (
+                            <div className="flex items-center gap-1 ml-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleOpenEdit(u)}
+                                title="Editar"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8 ${u.is_banned ? 'text-green-600 hover:text-green-700' : 'text-destructive hover:text-destructive'}`}
+                                onClick={() => setToggleUser(u)}
+                                title={u.is_banned ? 'Reativar' : 'Desativar'}
+                              >
+                                {u.is_banned ? <CheckCircle2 className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </Card>
@@ -315,6 +415,78 @@ const GerenciarUsuarios = () => {
           </div>
         </div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>
+              {editUser?.email} — {roleLabel(editUser?.role || '')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Nome Completo *</Label>
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm(f => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Telefone</Label>
+              <Input
+                value={editForm.phone}
+                onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="(11) 99999-9999"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Empresa</Label>
+              <Input
+                value={editForm.company}
+                onChange={(e) => setEditForm(f => ({ ...f, company: e.target.value }))}
+                placeholder="Nome da empresa"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditUser(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} disabled={isSavingEdit}>
+              {isSavingEdit && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Ban/Unban Confirm Dialog */}
+      <AlertDialog open={!!toggleUser} onOpenChange={(open) => !open && setToggleUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {toggleUser?.is_banned ? 'Reativar Usuário' : 'Desativar Usuário'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {toggleUser?.is_banned
+                ? `Deseja reativar o acesso de ${toggleUser?.name}? O usuário poderá fazer login novamente.`
+                : `Deseja desativar o acesso de ${toggleUser?.name}? O usuário não poderá mais fazer login no sistema.`
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isToggling}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggleStatus}
+              disabled={isToggling}
+              className={toggleUser?.is_banned ? 'bg-green-600 hover:bg-green-700' : ''}
+            >
+              {isToggling && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {toggleUser?.is_banned ? 'Reativar' : 'Desativar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
