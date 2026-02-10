@@ -317,6 +317,24 @@ export function useUpdateServiceOrder() {
   });
 }
 
+export function useDeleteServiceOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Delete related items and reports first
+      await typedFrom('service_order_items').delete().eq('service_order_id', id);
+      await typedFrom('completion_reports').delete().eq('service_order_id', id);
+      const { error } = await typedFrom('service_orders').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+    },
+  });
+}
+
 export function useCreateCompletionReport() {
   const queryClient = useQueryClient();
 

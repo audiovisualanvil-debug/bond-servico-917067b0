@@ -23,9 +23,20 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft, MapPin, Calendar, User, Building2, Wrench,
-  DollarSign, Send, CheckCircle2, Clock, FileText, Loader2, ExternalLink, UserPlus, Phone, FileDown,
+  DollarSign, Send, CheckCircle2, Clock, FileText, Loader2, ExternalLink, UserPlus, Phone, FileDown, Trash2,
 } from 'lucide-react';
-import { useServiceOrder, useUpdateServiceOrder, useCreateCompletionReport } from '@/hooks/useServiceOrders';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { useServiceOrder, useUpdateServiceOrder, useCreateCompletionReport, useDeleteServiceOrder } from '@/hooks/useServiceOrders';
 import { useTechnicians } from '@/hooks/useTechnicians';
 
 const OSDetail = () => {
@@ -36,6 +47,7 @@ const OSDetail = () => {
   const { data: order, isLoading, error } = useServiceOrder(id);
   const updateOrder = useUpdateServiceOrder();
   const createReport = useCreateCompletionReport();
+  const deleteOrder = useDeleteServiceOrder();
   const { data: technicians = [] } = useTechnicians();
 
   // Admin technician assignment
@@ -231,6 +243,15 @@ const OSDetail = () => {
       toast.success('Serviço finalizado!', { description: 'Relatório gerado e e-mail enviado para a imobiliária.' });
     } catch (error: any) {
       toast.error('Erro ao finalizar serviço', { description: error.message });
+    }
+  };
+  const handleDeleteOrder = async () => {
+    try {
+      await deleteOrder.mutateAsync(order.id);
+      toast.success('Ordem de serviço excluída com sucesso!');
+      navigate('/ordens');
+    } catch (error: any) {
+      toast.error('Erro ao excluir ordem de serviço', { description: error.message });
     }
   };
 
@@ -474,6 +495,34 @@ const OSDetail = () => {
                     Orçamento PDF
                   </Link>
                 </Button>
+              )}
+              {role === 'admin' && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Excluir
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir Ordem de Serviço</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja excluir a OS <strong>{order.osNumber}</strong>? Esta ação não pode ser desfeita. Todos os itens, relatórios e dados relacionados serão removidos permanentemente.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteOrder}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        {deleteOrder.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        Excluir OS
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
               <UrgencyIndicator urgency={order.urgency} />
             </div>

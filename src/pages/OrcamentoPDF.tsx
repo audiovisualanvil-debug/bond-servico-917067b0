@@ -1,24 +1,35 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useServiceOrder } from '@/hooks/useServiceOrders';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Printer, Loader2 } from 'lucide-react';
+import { ArrowLeft, Printer, Loader2, Pencil, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import logoFazTudo from '@/assets/logo-faztudo.png';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
 interface ServiceOrderItem {
   id: string;
   description: string;
 }
 
+const DEFAULT_TERMS = [
+  'O prazo inicia após a aprovação formal do orçamento.',
+  'Valores válidos por 15 dias a partir da data de emissão.',
+  'Materiais e mão de obra inclusos no valor apresentado.',
+  'Garantia de 90 dias sobre o serviço executado.',
+];
+
 const OrcamentoPDF = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { role } = useAuth();
   const { data: order, isLoading, error } = useServiceOrder(id);
+  const [isEditingTerms, setIsEditingTerms] = useState(false);
+  const [terms, setTerms] = useState<string[]>(DEFAULT_TERMS);
 
   // Fetch service order items (without real_cost for privacy)
   const { data: items = [] } = useQuery({
@@ -211,13 +222,58 @@ const OrcamentoPDF = () => {
             )}
 
             {/* Terms */}
-            <Section title="Condições">
-              <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
-                <li>O prazo inicia após a aprovação formal do orçamento.</li>
-                <li>Valores válidos por 15 dias a partir da data de emissão.</li>
-                <li>Materiais e mão de obra inclusos no valor apresentado.</li>
-                <li>Garantia de 90 dias sobre o serviço executado.</li>
-              </ul>
+            <Section title="Condições" action={role === 'admin' ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="print:hidden h-7 px-2"
+                onClick={() => setIsEditingTerms(!isEditingTerms)}
+              >
+                {isEditingTerms ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                {isEditingTerms ? 'Concluir' : 'Editar'}
+              </Button>
+            ) : undefined}>
+              {isEditingTerms ? (
+                <div className="space-y-2">
+                  {terms.map((term, i) => (
+                    <div key={i} className="flex gap-2 items-start">
+                      <span className="text-sm text-muted-foreground mt-2 min-w-[16px]">•</span>
+                      <Textarea
+                        value={term}
+                        onChange={(e) => {
+                          const newTerms = [...terms];
+                          newTerms[i] = e.target.value;
+                          setTerms(newTerms);
+                        }}
+                        rows={1}
+                        className="text-sm min-h-[36px]"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive h-7 px-1.5 shrink-0"
+                        onClick={() => setTerms(terms.filter((_, idx) => idx !== i))}
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTerms([...terms, ''])}
+                    className="mt-1"
+                  >
+                    + Adicionar condição
+                  </Button>
+                </div>
+              ) : (
+                <ul className="text-sm text-muted-foreground space-y-1.5 list-disc list-inside">
+                  {terms.filter(t => t.trim()).map((term, i) => (
+                    <li key={i}>{term}</li>
+                  ))}
+                </ul>
+              )}
             </Section>
 
             {/* Approval area */}
@@ -251,10 +307,13 @@ const OrcamentoPDF = () => {
   );
 };
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <div>
-      <h3 className="font-display font-semibold text-base mb-3 text-foreground">{title}</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-display font-semibold text-base text-foreground">{title}</h3>
+        {action}
+      </div>
       {children}
     </div>
   );
