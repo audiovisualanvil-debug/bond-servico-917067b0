@@ -2,6 +2,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useServiceOrder } from '@/hooks/useServiceOrders';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowLeft, Printer, Loader2, Pencil, Check } from 'lucide-react';
@@ -16,11 +23,20 @@ interface ServiceOrderItem {
   description: string;
 }
 
-const DEFAULT_TERMS = [
+const WARRANTY_OPTIONS = [
+  { value: '30', label: '30 dias' },
+  { value: '60', label: '60 dias' },
+  { value: '90', label: '90 dias' },
+  { value: '120', label: '120 dias' },
+  { value: '180', label: '180 dias' },
+  { value: '365', label: '1 ano' },
+];
+
+const getDefaultTerms = (warrantyDays: string) => [
   'O prazo inicia após a aprovação formal do orçamento.',
   'Valores válidos por 15 dias a partir da data de emissão.',
   'Materiais e mão de obra inclusos no valor apresentado.',
-  'Garantia de 90 dias sobre o serviço executado.',
+  `Garantia de ${WARRANTY_OPTIONS.find(w => w.value === warrantyDays)?.label || warrantyDays + ' dias'} sobre o serviço executado.`,
 ];
 
 const OrcamentoPDF = () => {
@@ -28,8 +44,19 @@ const OrcamentoPDF = () => {
   const navigate = useNavigate();
   const { role } = useAuth();
   const { data: order, isLoading, error } = useServiceOrder(id);
+  const [warrantyDays, setWarrantyDays] = useState('90');
   const [isEditingTerms, setIsEditingTerms] = useState(false);
-  const [terms, setTerms] = useState<string[]>(DEFAULT_TERMS);
+  const [terms, setTerms] = useState<string[]>(getDefaultTerms('90'));
+
+  const handleWarrantyChange = (value: string) => {
+    setWarrantyDays(value);
+    // Update the warranty term in the list
+    setTerms(prev => prev.map(t =>
+      t.startsWith('Garantia de ')
+        ? `Garantia de ${WARRANTY_OPTIONS.find(w => w.value === value)?.label || value + ' dias'} sobre o serviço executado.`
+        : t
+    ));
+  };
 
   // Fetch service order items (without real_cost for privacy)
   const { data: items = [] } = useQuery({
@@ -234,7 +261,20 @@ const OrcamentoPDF = () => {
               </Button>
             ) : undefined}>
               {isEditingTerms ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
+                    <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Período de Garantia:</span>
+                    <Select value={warrantyDays} onValueChange={handleWarrantyChange}>
+                      <SelectTrigger className="w-[160px] h-8 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {WARRANTY_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   {terms.map((term, i) => (
                     <div key={i} className="flex gap-2 items-start">
                       <span className="text-sm text-muted-foreground mt-2 min-w-[16px]">•</span>
