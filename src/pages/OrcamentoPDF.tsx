@@ -32,9 +32,17 @@ const WARRANTY_OPTIONS = [
   { value: '365', label: '1 ano' },
 ];
 
-const getDefaultTerms = (warrantyDays: string) => [
+const VALIDITY_OPTIONS = [
+  { value: '7', label: '7 dias' },
+  { value: '10', label: '10 dias' },
+  { value: '15', label: '15 dias' },
+  { value: '30', label: '30 dias' },
+  { value: '60', label: '60 dias' },
+];
+
+const getDefaultTerms = (warrantyDays: string, validityDays: string) => [
   'O prazo inicia após a aprovação formal do orçamento.',
-  'Valores válidos por 15 dias a partir da data de emissão.',
+  `Valores válidos por ${VALIDITY_OPTIONS.find(v => v.value === validityDays)?.label || validityDays + ' dias'} a partir da data de emissão.`,
   'Materiais e mão de obra inclusos no valor apresentado.',
   `Garantia de ${WARRANTY_OPTIONS.find(w => w.value === warrantyDays)?.label || warrantyDays + ' dias'} sobre o serviço executado.`,
 ];
@@ -45,12 +53,12 @@ const OrcamentoPDF = () => {
   const { role } = useAuth();
   const { data: order, isLoading, error } = useServiceOrder(id);
   const [warrantyDays, setWarrantyDays] = useState('90');
+  const [validityDays, setValidityDays] = useState('15');
   const [isEditingTerms, setIsEditingTerms] = useState(false);
-  const [terms, setTerms] = useState<string[]>(getDefaultTerms('90'));
+  const [terms, setTerms] = useState<string[]>(getDefaultTerms('90', '15'));
 
   const handleWarrantyChange = (value: string) => {
     setWarrantyDays(value);
-    // Update the warranty term in the list
     setTerms(prev => prev.map(t =>
       t.startsWith('Garantia de ')
         ? `Garantia de ${WARRANTY_OPTIONS.find(w => w.value === value)?.label || value + ' dias'} sobre o serviço executado.`
@@ -58,6 +66,14 @@ const OrcamentoPDF = () => {
     ));
   };
 
+  const handleValidityChange = (value: string) => {
+    setValidityDays(value);
+    setTerms(prev => prev.map(t =>
+      t.startsWith('Valores válidos por ')
+        ? `Valores válidos por ${VALIDITY_OPTIONS.find(v => v.value === value)?.label || value + ' dias'} a partir da data de emissão.`
+        : t
+    ));
+  };
   // Fetch service order items (without real_cost for privacy)
   const { data: items = [] } = useQuery({
     queryKey: ['service-order-items', id],
@@ -262,18 +278,33 @@ const OrcamentoPDF = () => {
             ) : undefined}>
               {isEditingTerms ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg">
-                    <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Período de Garantia:</span>
-                    <Select value={warrantyDays} onValueChange={handleWarrantyChange}>
-                      <SelectTrigger className="w-[160px] h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {WARRANTY_OPTIONS.map(opt => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="flex flex-wrap gap-3 p-3 bg-secondary/30 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Garantia:</span>
+                      <Select value={warrantyDays} onValueChange={handleWarrantyChange}>
+                        <SelectTrigger className="w-[130px] h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {WARRANTY_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Validade:</span>
+                      <Select value={validityDays} onValueChange={handleValidityChange}>
+                        <SelectTrigger className="w-[130px] h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {VALIDITY_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   {terms.map((term, i) => (
                     <div key={i} className="flex gap-2 items-start">
