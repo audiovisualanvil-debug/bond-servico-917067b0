@@ -13,6 +13,7 @@ import AprovarOrcamentos from "./pages/AprovarOrcamentos";
 import MeusServicos from "./pages/MeusServicos";
 import HistoricoImoveis from "./pages/HistoricoImoveis";
 import RelatorioOS from "./pages/RelatorioOS";
+import OrcamentoPDF from "./pages/OrcamentoPDF";
 import Imobiliarias from "./pages/Imobiliarias";
 import Tecnicos from "./pages/Tecnicos";
 import GerenciarUsuarios from "./pages/GerenciarUsuarios";
@@ -66,6 +67,7 @@ const AppRoutes = () => {
       <Route path="/ordens" element={<ProtectedRoute><OrdensServico /></ProtectedRoute>} />
       <Route path="/ordens/:id" element={<ProtectedRoute><OSDetail /></ProtectedRoute>} />
       <Route path="/ordens/:id/relatorio" element={<ProtectedRoute><RelatorioOS /></ProtectedRoute>} />
+      <Route path="/ordens/:id/orcamento" element={<ProtectedRoute><OrcamentoPDF /></ProtectedRoute>} />
       <Route path="/novo-chamado" element={<ProtectedRoute><NovoChamado /></ProtectedRoute>} />
       <Route path="/aprovar" element={<ProtectedRoute><AprovarOrcamentos /></ProtectedRoute>} />
       <Route path="/meus-servicos" element={<ProtectedRoute><MeusServicos /></ProtectedRoute>} />
