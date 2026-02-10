@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft, MapPin, Calendar, User, Building2, Wrench,
-  DollarSign, Send, CheckCircle2, Clock, FileText, Loader2, ExternalLink, UserPlus, Phone,
+  DollarSign, Send, CheckCircle2, Clock, FileText, Loader2, ExternalLink, UserPlus, Phone, FileDown,
 } from 'lucide-react';
 import { useServiceOrder, useUpdateServiceOrder, useCreateCompletionReport } from '@/hooks/useServiceOrders';
 import { useTechnicians } from '@/hooks/useTechnicians';
@@ -466,7 +466,17 @@ const OSDetail = () => {
                 Aberto em {format(order.createdAt, "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
               </p>
             </div>
-            <UrgencyIndicator urgency={order.urgency} />
+            <div className="flex items-center gap-2">
+              {order.finalPrice && role !== 'tecnico' && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/ordens/${order.id}/orcamento`}>
+                    <FileDown className="h-3.5 w-3.5" />
+                    Orçamento PDF
+                  </Link>
+                </Button>
+              )}
+              <UrgencyIndicator urgency={order.urgency} />
+            </div>
           </div>
         </div>
 
