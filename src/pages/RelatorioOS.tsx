@@ -1,16 +1,36 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useServiceOrder } from '@/hooks/useServiceOrders';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowLeft, Printer, Download, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useState } from 'react';
 import logoFazTudo from '@/assets/logo-faztudo.png';
+
+const WARRANTY_OPTIONS = [
+  { value: '30', label: '30 dias' },
+  { value: '60', label: '60 dias' },
+  { value: '90', label: '90 dias' },
+  { value: '180', label: '180 dias' },
+  { value: '365', label: '1 ano' },
+];
+
+const VALIDITY_OPTIONS = [
+  { value: '7', label: '7 dias' },
+  { value: '10', label: '10 dias' },
+  { value: '15', label: '15 dias' },
+  { value: '30', label: '30 dias' },
+  { value: '60', label: '60 dias' },
+];
 const RelatorioOS = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { role } = useAuth();
   const { data: order, isLoading, error } = useServiceOrder(id);
+  const [warrantyDays, setWarrantyDays] = useState('90');
+  const [validityDays, setValidityDays] = useState('30');
 
   if (isLoading) {
     return (
@@ -49,7 +69,33 @@ const RelatorioOS = () => {
           <Button variant="ghost" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" /> Voltar
           </Button>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Garantia:</span>
+              <Select value={warrantyDays} onValueChange={setWarrantyDays}>
+                <SelectTrigger className="h-8 w-28 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {WARRANTY_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Validade:</span>
+              <Select value={validityDays} onValueChange={setValidityDays}>
+                <SelectTrigger className="h-8 w-28 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {VALIDITY_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button variant="outline" onClick={handlePrint}>
               <Printer className="h-4 w-4" /> Imprimir / PDF
             </Button>
@@ -178,6 +224,24 @@ const RelatorioOS = () => {
                 </div>
               </>
             )}
+
+            {/* Warranty & Validity */}
+            <Section title="Condições">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-secondary/30 rounded-lg">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Garantia do Serviço</p>
+                  <p className="text-sm font-medium text-foreground mt-1">
+                    {WARRANTY_OPTIONS.find(w => w.value === warrantyDays)?.label || warrantyDays + ' dias'}
+                  </p>
+                </div>
+                <div className="p-3 bg-secondary/30 rounded-lg">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Validade do Relatório</p>
+                  <p className="text-sm font-medium text-foreground mt-1">
+                    {VALIDITY_OPTIONS.find(v => v.value === validityDays)?.label || validityDays + ' dias'} a partir da emissão
+                  </p>
+                </div>
+              </div>
+            </Section>
 
             {/* Signature */}
             <hr className="border-border" />
