@@ -4,21 +4,71 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail, Phone, Building2, Lock, Loader2 } from 'lucide-react';
+import { User, Mail, Phone, Building2, Lock, Loader2, Camera } from 'lucide-react';
 
 const Configuracoes = () => {
-  const { profile, role } = useAuth();
+  const { profile, role, user } = useAuth();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [name, setName] = useState(profile?.name || '');
   const [phone, setPhone] = useState(profile?.phone || '');
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Selecione um arquivo de imagem', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'A imagem deve ter no máximo 2MB', variant: 'destructive' });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${user.id}/avatar.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const urlWithCache = `${publicUrl}?t=${Date.now()}`;
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: urlWithCache })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(urlWithCache);
+      toast({ title: 'Foto de perfil atualizada!' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao enviar foto', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   const getRoleLabel = () => {
     switch (role) {
@@ -91,6 +141,40 @@ const Configuracoes = () => {
             <CardDescription>Atualize seus dados pessoais</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Avatar */}
+            <div className="flex items-center gap-4">
+              <div className="relative group">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={avatarUrl} alt={profile.name} />
+                  <AvatarFallback className="text-lg bg-primary text-primary-foreground">
+                    {profile.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingAvatar}
+                  className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                >
+                  {isUploadingAvatar ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  ) : (
+                    <Camera className="h-5 w-5 text-white" />
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Foto de Perfil</p>
+                <p className="text-xs text-muted-foreground">Clique na foto para alterar (máx. 2MB)</p>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="name">Nome</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
