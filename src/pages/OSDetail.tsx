@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { formatPhone } from '@/components/ui/phone-input';
+import { ServiceOrderComments } from '@/components/ServiceOrderComments';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -129,6 +130,10 @@ const OSDetail = () => {
         estimated_deadline: techQuote.deadline,
         status: 'aguardando_aprovacao_admin',
       });
+      // Fire-and-forget notification
+      supabase.functions.invoke('notify-status-change', {
+        body: { serviceOrderId: order.id, newStatus: 'aguardando_aprovacao_admin' },
+      }).catch(e => console.error('Notification error:', e));
       toast.success('Orçamento enviado!', { description: 'Aguardando aprovação do administrador.' });
     } catch (error: any) {
       toast.error('Erro ao enviar orçamento', { description: error.message });
@@ -145,6 +150,10 @@ const OSDetail = () => {
         id: order.id,
         tecnico_id: selectedTechnicianId,
       });
+      // Notify assigned technician
+      supabase.functions.invoke('notify-status-change', {
+        body: { serviceOrderId: order.id, newStatus: 'aguardando_orcamento_prestador' },
+      }).catch(e => console.error('Notification error:', e));
       toast.success('Técnico designado com sucesso!');
     } catch (error: any) {
       toast.error('Erro ao designar técnico', { description: error.message });
@@ -238,10 +247,12 @@ const OSDetail = () => {
       const reportUrl = `${window.location.origin}/ordens/${order.id}/relatorio`;
       supabase.functions.invoke('send-completion-report', {
         body: { serviceOrderId: order.id, reportUrl },
-      }).then(({ data, error }) => {
-        if (error) console.error('Email send error:', error);
-        else console.log('Email result:', data);
-      });
+      }).catch(e => console.error('Email send error:', e));
+
+      // Notify imobiliaria of completion
+      supabase.functions.invoke('notify-status-change', {
+        body: { serviceOrderId: order.id, newStatus: 'concluido' },
+      }).catch(e => console.error('Notification error:', e));
 
       toast.success('Serviço finalizado!', { description: 'Relatório gerado e e-mail enviado para a imobiliária.' });
     } catch (error: any) {
@@ -582,6 +593,18 @@ const OSDetail = () => {
             <div className="os-card">
               <h2 className="font-display font-semibold text-lg mb-3">Problema Reportado</h2>
               <p className="text-foreground">{order.problem}</p>
+              {order.photos && order.photos.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Fotos do problema ({order.photos.length})</p>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {order.photos.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="aspect-square rounded-lg overflow-hidden border border-border hover:border-primary/30 transition-colors">
+                        <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {order.technicianDescription && (
@@ -733,6 +756,9 @@ const OSDetail = () => {
             )}
 
             {renderActionSection()}
+
+            {/* Comments Section */}
+            <ServiceOrderComments serviceOrderId={order.id} />
           </div>
 
           {/* Sidebar */}

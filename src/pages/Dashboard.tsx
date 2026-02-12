@@ -119,7 +119,7 @@ const Dashboard = () => {
               <StatCard title="Aguardando Aprovação" value={isLoading ? '...' : currentStats.pending} icon={Clock} variant="accent" />
               <StatCard title="Em Execução" value={isLoading ? '...' : currentStats.inProgress} icon={Wrench} variant="primary" />
               <StatCard title="Concluídas" value={isLoading ? '...' : currentStats.completed} icon={CheckCircle2} />
-              <StatCard title="Faturamento" value={isLoading ? '...' : `R$ ${(currentStats.revenue || 0).toLocaleString('pt-BR')}`} icon={DollarSign} />
+              <StatCard title="Faturamento" value={isLoading ? '...' : (currentStats.revenue || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} icon={DollarSign} />
             </div>
           </>
         );

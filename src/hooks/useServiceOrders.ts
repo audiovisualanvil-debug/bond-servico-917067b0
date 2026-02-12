@@ -286,11 +286,11 @@ export function useCreateServiceOrder() {
           os_number: 'TEMP', // Will be overwritten by trigger
           photos: data.photos || [],
         })
-        .select()
+        .select('id, os_number')
         .single();
 
       if (error) throw error;
-      return result;
+      return result as { id: string; os_number: string };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });

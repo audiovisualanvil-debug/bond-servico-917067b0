@@ -17,6 +17,7 @@ import { Upload, MapPin, AlertTriangle, User, Send, ArrowLeft, Loader2, Building
 import { UrgencyLevel, URGENCY_LABELS } from '@/types/serviceOrder';
 import { useProperties, useCreateProperty } from '@/hooks/useProperties';
 import { useCreateServiceOrder } from '@/hooks/useServiceOrders';
+import { useFileUpload } from '@/hooks/useFileUpload';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
@@ -28,6 +29,7 @@ const NovoChamado = () => {
   const { data: userProperties = [], isLoading: propertiesLoading } = useProperties();
   const createProperty = useCreateProperty();
   const createOrder = useCreateServiceOrder();
+  const { uploadFiles, isUploading } = useFileUpload();
 
   const { data: imobiliarias = [] } = useQuery({
     queryKey: ['imobiliarias-list'],
@@ -88,7 +90,7 @@ const NovoChamado = () => {
 
   if (!user) return null;
 
-  const isSubmitting = createOrder.isPending || createProperty.isPending;
+  const isSubmitting = createOrder.isPending || createProperty.isPending || isUploading;
   const effectiveImobiliariaId = role === 'admin' ? selectedImobiliariaId : user.id;
 
   const handleCepLookup = async (cep: string) => {
@@ -171,19 +173,27 @@ const NovoChamado = () => {
         return;
       }
 
-      await createOrder.mutateAsync({
+      // Upload photos to storage if any
+      let photoUrls: string[] = [];
+      if (formData.photos.length > 0) {
+        photoUrls = await uploadFiles(formData.photos, `os-creation/${crypto.randomUUID()}`);
+      }
+
+      const newOrder = await createOrder.mutateAsync({
         property_id: propertyId,
         imobiliaria_id: effectiveImobiliariaId,
         problem: formData.problem,
         urgency: formData.urgency,
         requester_name: formData.requesterName,
+        photos: photoUrls.length > 0 ? photoUrls : undefined,
       });
 
-      toast.success('Chamado aberto com sucesso!', {
-        description: 'O técnico será notificado em breve.',
+      toast.success('Ordem de Serviço criada com sucesso!', {
+        description: `Número: ${newOrder.os_number || 'Gerado automaticamente'}`,
+        duration: 5000,
       });
 
-      navigate('/ordens');
+      navigate(`/ordens/${newOrder.id}`);
     } catch (error: any) {
       toast.error('Erro ao abrir chamado', {
         description: error.message || 'Tente novamente.',
@@ -413,11 +423,11 @@ const NovoChamado = () => {
                 {formData.photos.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {formData.photos.map((file, index) => (
-                      <div key={index} className="relative">
-                        <div className="h-16 w-16 rounded-lg bg-secondary flex items-center justify-center text-xs text-muted-foreground">
-                          {file.name.slice(0, 8)}...
+                      <div key={index} className="relative group">
+                        <div className="h-16 w-16 rounded-lg overflow-hidden border border-border">
+                          <img src={URL.createObjectURL(file)} alt={file.name} className="w-full h-full object-cover" />
                         </div>
-                        <button type="button" onClick={() => setFormData(prev => ({ ...prev, photos: prev.photos.filter((_, i) => i !== index) }))} className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
+                        <button type="button" onClick={() => setFormData(prev => ({ ...prev, photos: prev.photos.filter((_, i) => i !== index) }))} className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                           ×
                         </button>
                       </div>
