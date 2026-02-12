@@ -40,11 +40,18 @@ const VALIDITY_OPTIONS = [
   { value: '60', label: '60 dias' },
 ];
 
-const getDefaultTerms = (warrantyDays: string, validityDays: string) => [
+const PAYMENT_OPTIONS = [
+  { value: 'imobiliaria', label: 'Pgto via Imobiliária' },
+  { value: 'pix', label: 'Pgto PIX' },
+  { value: 'cartao', label: 'Pgto Cartão' },
+];
+
+const getDefaultTerms = (warrantyDays: string, validityDays: string, paymentMethod: string) => [
   'O prazo inicia após a aprovação formal do orçamento.',
   `Valores válidos por ${VALIDITY_OPTIONS.find(v => v.value === validityDays)?.label || validityDays + ' dias'} a partir da data de emissão.`,
   'Materiais e mão de obra inclusos no valor apresentado.',
   `Garantia de ${WARRANTY_OPTIONS.find(w => w.value === warrantyDays)?.label || warrantyDays + ' dias'} sobre o serviço executado.`,
+  `Forma de pagamento: ${PAYMENT_OPTIONS.find(p => p.value === paymentMethod)?.label || paymentMethod}.`,
 ];
 
 const OrcamentoPDF = () => {
@@ -54,8 +61,9 @@ const OrcamentoPDF = () => {
   const { data: order, isLoading, error } = useServiceOrder(id);
   const [warrantyDays, setWarrantyDays] = useState('90');
   const [validityDays, setValidityDays] = useState('15');
+  const [paymentMethod, setPaymentMethod] = useState('imobiliaria');
   const [isEditingTerms, setIsEditingTerms] = useState(false);
-  const [terms, setTerms] = useState<string[]>(getDefaultTerms('90', '15'));
+  const [terms, setTerms] = useState<string[]>(getDefaultTerms('90', '15', 'imobiliaria'));
 
   const handleWarrantyChange = (value: string) => {
     setWarrantyDays(value);
@@ -71,6 +79,15 @@ const OrcamentoPDF = () => {
     setTerms(prev => prev.map(t =>
       t.startsWith('Valores válidos por ')
         ? `Valores válidos por ${VALIDITY_OPTIONS.find(v => v.value === value)?.label || value + ' dias'} a partir da data de emissão.`
+        : t
+    ));
+  };
+
+  const handlePaymentChange = (value: string) => {
+    setPaymentMethod(value);
+    setTerms(prev => prev.map(t =>
+      t.startsWith('Forma de pagamento:')
+        ? `Forma de pagamento: ${PAYMENT_OPTIONS.find(p => p.value === value)?.label || value}.`
         : t
     ));
   };
@@ -300,6 +317,19 @@ const OrcamentoPDF = () => {
                         </SelectTrigger>
                         <SelectContent>
                           {VALIDITY_OPTIONS.map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Pagamento:</span>
+                      <Select value={paymentMethod} onValueChange={handlePaymentChange}>
+                        <SelectTrigger className="w-[180px] h-8 text-sm">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PAYMENT_OPTIONS.map(opt => (
                             <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                           ))}
                         </SelectContent>
