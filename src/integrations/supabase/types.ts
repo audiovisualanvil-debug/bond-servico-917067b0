@@ -163,6 +163,48 @@ export type Database = {
           },
         ]
       }
+      service_order_comments: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          service_order_id: string
+          user_id: string
+          visible_to_imobiliaria: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          service_order_id: string
+          user_id: string
+          visible_to_imobiliaria?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          service_order_id?: string
+          user_id?: string
+          visible_to_imobiliaria?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_order_comments_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_order_comments_service_order_id_fkey"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders_client"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_order_items: {
         Row: {
           created_at: string

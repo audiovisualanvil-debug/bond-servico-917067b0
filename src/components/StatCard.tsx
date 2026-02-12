@@ -35,15 +35,15 @@ export const StatCard: React.FC<StatCardProps> = ({
 
   return (
     <div className={cn('stat-card border', variantStyles[variant], className)}>
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
           <p className={cn(
             'text-sm font-medium',
             variant === 'default' ? 'text-muted-foreground' : 'opacity-80'
           )}>
             {title}
           </p>
-          <p className="mt-2 text-3xl font-bold font-display">{value}</p>
+          <p className="mt-2 text-2xl sm:text-3xl font-bold font-display break-words">{value}</p>
           {trend && (
             <p className={cn(
               'mt-1 text-xs font-medium',
@@ -53,7 +53,7 @@ export const StatCard: React.FC<StatCardProps> = ({
             </p>
           )}
         </div>
-        <div className={cn('rounded-xl p-3', iconBgStyles[variant])}>
+        <div className={cn('rounded-xl p-3 shrink-0', iconBgStyles[variant])}>
           <Icon className="h-6 w-6" />
         </div>
       </div>
