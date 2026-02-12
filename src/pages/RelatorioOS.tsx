@@ -24,6 +24,12 @@ const VALIDITY_OPTIONS = [
   { value: '30', label: '30 dias' },
   { value: '60', label: '60 dias' },
 ];
+
+const PAYMENT_OPTIONS = [
+  { value: 'imobiliaria', label: 'Pgto via Imobiliária' },
+  { value: 'pix', label: 'Pgto PIX' },
+  { value: 'cartao', label: 'Pgto Cartão' },
+];
 const RelatorioOS = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -31,6 +37,7 @@ const RelatorioOS = () => {
   const { data: order, isLoading, error } = useServiceOrder(id);
   const [warrantyDays, setWarrantyDays] = useState('90');
   const [validityDays, setValidityDays] = useState('30');
+  const [paymentMethod, setPaymentMethod] = useState('imobiliaria');
 
   if (isLoading) {
     return (
@@ -91,6 +98,19 @@ const RelatorioOS = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {VALIDITY_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Pagamento:</span>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger className="h-8 w-44 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_OPTIONS.map(opt => (
                     <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -225,9 +245,9 @@ const RelatorioOS = () => {
               </>
             )}
 
-            {/* Warranty & Validity */}
+            {/* Warranty, Validity & Payment */}
             <Section title="Condições">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="p-3 bg-secondary/30 rounded-lg">
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Garantia do Serviço</p>
                   <p className="text-sm font-medium text-foreground mt-1">
@@ -238,6 +258,12 @@ const RelatorioOS = () => {
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Validade do Relatório</p>
                   <p className="text-sm font-medium text-foreground mt-1">
                     {VALIDITY_OPTIONS.find(v => v.value === validityDays)?.label || validityDays + ' dias'} a partir da emissão
+                  </p>
+                </div>
+                <div className="p-3 bg-secondary/30 rounded-lg">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Forma de Pagamento</p>
+                  <p className="text-sm font-medium text-foreground mt-1">
+                    {PAYMENT_OPTIONS.find(p => p.value === paymentMethod)?.label || paymentMethod}
                   </p>
                 </div>
               </div>
