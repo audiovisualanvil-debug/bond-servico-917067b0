@@ -153,9 +153,11 @@ const OSDetail = () => {
 
   const handleAdminApprove = async () => {
     try {
+      const paymentValue = (order as any).paymentMethod || undefined;
       await updateOrder.mutateAsync({
         id: order.id,
         final_price: finalPrice,
+        payment_method: paymentValue,
         status: 'enviado_imobiliaria',
       });
 
@@ -256,8 +258,9 @@ const OSDetail = () => {
     }
   };
 
-  const handleSendReport = async (sendTo: ('imobiliaria' | 'tecnico')[]) => {
-    const label = sendTo.includes('tecnico') ? 'técnico' : 'imobiliária';
+  const handleSendReport = async (sendTo: ('imobiliaria' | 'tecnico' | 'proprietario')[]) => {
+    const labelMap: Record<string, string> = { imobiliaria: 'imobiliária', tecnico: 'técnico', proprietario: 'proprietário' };
+    const label = sendTo.map(s => labelMap[s] || s).join(' e ');
     setSendingReportTo(sendTo.join(','));
     try {
       const reportUrl = `${window.location.origin}/ordens/${order.id}/relatorio`;
@@ -445,6 +448,29 @@ const OSDetail = () => {
                     </p>
                   )}
                 </div>
+                <div>
+                  <Label className="text-base font-semibold">Forma de Pagamento</Label>
+                  <Select
+                    value={order.paymentMethod || ''}
+                    onValueChange={async (value) => {
+                      try {
+                        await updateOrder.mutateAsync({ id: order.id, payment_method: value });
+                        toast.success('Forma de pagamento salva!');
+                      } catch (e: any) {
+                        toast.error('Erro ao salvar', { description: e.message });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="imobiliaria">Pgto via Imobiliária</SelectItem>
+                      <SelectItem value="pix">Pgto PIX</SelectItem>
+                      <SelectItem value="cartao">Pgto Cartão</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button onClick={handleAdminApprove} className="w-full" size="lg" disabled={isMutating}>
                   {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   Aprovar e Enviar Orçamento
@@ -614,6 +640,22 @@ const OSDetail = () => {
                           {sendingReportTo === 'tecnico' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
                           Enviar p/ Técnico
                         </Button>
+                        {order.property.ownerEmail ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSendReport(['proprietario'])}
+                            disabled={!!sendingReportTo}
+                          >
+                            {sendingReportTo === 'proprietario' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                            Enviar p/ Proprietário
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" disabled title="Cadastre o e-mail do proprietário no imóvel">
+                            <Mail className="h-3.5 w-3.5" />
+                            Proprietário (sem e-mail)
+                          </Button>
+                        )}
                       </>
                     )}
                     <Button variant="outline" size="sm" asChild>

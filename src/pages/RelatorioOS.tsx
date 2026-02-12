@@ -37,7 +37,12 @@ const RelatorioOS = () => {
   const { data: order, isLoading, error } = useServiceOrder(id);
   const [warrantyDays, setWarrantyDays] = useState('90');
   const [validityDays, setValidityDays] = useState('30');
-  const [paymentMethod, setPaymentMethod] = useState('imobiliaria');
+  const [paymentMethod, setPaymentMethod] = useState<string>(order?.paymentMethod || 'imobiliaria');
+
+  // Sync payment method when order loads
+  if (order?.paymentMethod && paymentMethod !== order.paymentMethod && paymentMethod === 'imobiliaria') {
+    setPaymentMethod(order.paymentMethod);
+  }
 
   if (isLoading) {
     return (

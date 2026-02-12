@@ -61,9 +61,16 @@ const OrcamentoPDF = () => {
   const { data: order, isLoading, error } = useServiceOrder(id);
   const [warrantyDays, setWarrantyDays] = useState('90');
   const [validityDays, setValidityDays] = useState('15');
-  const [paymentMethod, setPaymentMethod] = useState('imobiliaria');
+  const savedPayment = order?.paymentMethod || 'imobiliaria';
+  const [paymentMethod, setPaymentMethod] = useState<string>(savedPayment);
   const [isEditingTerms, setIsEditingTerms] = useState(false);
-  const [terms, setTerms] = useState<string[]>(getDefaultTerms('90', '15', 'imobiliaria'));
+  const [terms, setTerms] = useState<string[]>(getDefaultTerms('90', '15', savedPayment));
+
+  // Sync payment method when order loads
+  if (order?.paymentMethod && paymentMethod !== order.paymentMethod && paymentMethod === 'imobiliaria') {
+    setPaymentMethod(order.paymentMethod);
+    setTerms(getDefaultTerms('90', '15', order.paymentMethod));
+  }
 
   const handleWarrantyChange = (value: string) => {
     setWarrantyDays(value);

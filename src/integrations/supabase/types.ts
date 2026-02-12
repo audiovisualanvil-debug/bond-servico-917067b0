@@ -110,6 +110,7 @@ export type Database = {
           id: string
           imobiliaria_id: string
           neighborhood: string
+          owner_email: string | null
           owner_name: string | null
           owner_phone: string | null
           state: string
@@ -126,6 +127,7 @@ export type Database = {
           id?: string
           imobiliaria_id: string
           neighborhood: string
+          owner_email?: string | null
           owner_name?: string | null
           owner_phone?: string | null
           state?: string
@@ -142,6 +144,7 @@ export type Database = {
           id?: string
           imobiliaria_id?: string
           neighborhood?: string
+          owner_email?: string | null
           owner_name?: string | null
           owner_phone?: string | null
           state?: string
@@ -216,6 +219,7 @@ export type Database = {
           labor_cost: number | null
           material_cost: number | null
           os_number: string
+          payment_method: string | null
           photos: string[] | null
           problem: string
           property_id: string
@@ -242,6 +246,7 @@ export type Database = {
           labor_cost?: number | null
           material_cost?: number | null
           os_number: string
+          payment_method?: string | null
           photos?: string[] | null
           problem: string
           property_id: string
@@ -268,6 +273,7 @@ export type Database = {
           labor_cost?: number | null
           material_cost?: number | null
           os_number?: string
+          payment_method?: string | null
           photos?: string[] | null
           problem?: string
           property_id?: string
