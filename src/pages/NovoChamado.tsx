@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, MapPin, AlertTriangle, User, Send, ArrowLeft, Loader2, Building2, Search } from 'lucide-react';
 import { UrgencyLevel, URGENCY_LABELS } from '@/types/serviceOrder';
@@ -87,6 +87,8 @@ const NovoChamado = () => {
   });
 
   const [isFetchingCep, setIsFetchingCep] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const formRef = useRef<HTMLFormElement>(null);
 
   if (!user) return null;
 
@@ -122,26 +124,68 @@ const NovoChamado = () => {
     }
   };
 
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (role === 'admin' && !selectedImobiliariaId) {
+      errors.imobiliaria = 'Selecione uma imobiliária';
+    }
+
+    if (!formData.propertyId) {
+      errors.property = 'Selecione ou cadastre um imóvel';
+    }
+
+    if (formData.propertyId === 'new') {
+      if (!formData.street.trim()) errors.street = 'Informe a rua do imóvel';
+      if (!formData.neighborhood.trim()) errors.neighborhood = 'Informe o bairro do imóvel';
+    }
+
+    if (!formData.problem.trim()) {
+      errors.problem = 'Descreva o problema a ser resolvido';
+    }
+
+    if (!formData.urgency) {
+      errors.urgency = 'Selecione o grau de urgência';
+    }
+
+    if (!formData.requesterName.trim()) {
+      errors.requesterName = 'Informe o nome do solicitante';
+    }
+
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      // Scroll to first error
+      const firstErrorKey = Object.keys(errors)[0];
+      const el = document.getElementById(`field-${firstErrorKey}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return false;
+    }
+    return true;
+  };
+
+  const clearFieldError = (field: string) => {
+    setFieldErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.problem || !formData.urgency || !formData.requesterName) {
-      toast.error('Preencha todos os campos obrigatórios');
-      return;
-    }
-
-    if (role === 'admin' && !selectedImobiliariaId) {
-      toast.error('Selecione a imobiliária');
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       let propertyId = formData.propertyId;
 
       if (propertyId === 'new') {
         if (!formData.street || !formData.neighborhood) {
-          toast.error('Preencha a rua e bairro do novo imóvel');
-          return;
+          return; // Already caught by validateForm
         }
 
         const fullAddress = [
@@ -169,8 +213,7 @@ const NovoChamado = () => {
       }
 
       if (!propertyId || propertyId === 'new') {
-        toast.error('Selecione ou cadastre um imóvel');
-        return;
+        return; // Already caught by validateForm
       }
 
       // Upload photos to storage if any
@@ -225,7 +268,7 @@ const NovoChamado = () => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} ref={formRef} className="space-y-8" noValidate>
           {/* Admin: Select Imobiliária */}
           {role === 'admin' && (
             <div className="os-card">
@@ -233,16 +276,17 @@ const NovoChamado = () => {
                 <Building2 className="h-5 w-5 text-primary" />
                 <h2 className="font-display font-semibold text-lg">Imobiliária</h2>
               </div>
-              <div>
+              <div id="field-imobiliaria">
                 <Label>Selecionar imobiliária *</Label>
                 <Select
                   value={selectedImobiliariaId}
                   onValueChange={(value) => {
                     setSelectedImobiliariaId(value);
                     setFormData(prev => ({ ...prev, propertyId: '' }));
+                    clearFieldError('imobiliaria');
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={fieldErrors.imobiliaria ? 'border-destructive ring-destructive' : ''}>
                     <SelectValue placeholder="Escolha uma imobiliária..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -253,6 +297,7 @@ const NovoChamado = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldErrors.imobiliaria && <p className="text-sm text-destructive mt-1">{fieldErrors.imobiliaria}</p>}
               </div>
             </div>
           )}
@@ -265,14 +310,17 @@ const NovoChamado = () => {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="property">Selecionar imóvel cadastrado</Label>
+              <div id="field-property">
+                <Label htmlFor="property">Selecionar imóvel cadastrado *</Label>
                 <Select
                   value={formData.propertyId}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, propertyId: value }))}
+                  onValueChange={(value) => {
+                    setFormData(prev => ({ ...prev, propertyId: value }));
+                    clearFieldError('property');
+                  }}
                   disabled={role === 'admin' && !selectedImobiliariaId}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={fieldErrors.property ? 'border-destructive ring-destructive' : ''}>
                     <SelectValue placeholder={
                       role === 'admin' && !selectedImobiliariaId
                         ? 'Selecione uma imobiliária primeiro'
@@ -290,6 +338,7 @@ const NovoChamado = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldErrors.property && <p className="text-sm text-destructive mt-1">{fieldErrors.property}</p>}
               </div>
 
               {formData.propertyId === 'new' && (
@@ -324,9 +373,10 @@ const NovoChamado = () => {
                   </div>
 
                   {/* Street */}
-                  <div className="md:col-span-2">
-                    <Label htmlFor="street">Rua / Logradouro</Label>
-                    <Input id="street" placeholder="Rua, Avenida, etc." value={formData.street} onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))} />
+                  <div className="md:col-span-2" id="field-street">
+                    <Label htmlFor="street">Rua / Logradouro *</Label>
+                    <Input id="street" placeholder="Rua, Avenida, etc." value={formData.street} onChange={(e) => { setFormData(prev => ({ ...prev, street: e.target.value })); clearFieldError('street'); }} className={fieldErrors.street ? 'border-destructive' : ''} />
+                    {fieldErrors.street && <p className="text-sm text-destructive mt-1">{fieldErrors.street}</p>}
                   </div>
 
                   {/* Number + Complement */}
@@ -339,9 +389,10 @@ const NovoChamado = () => {
                     <Input id="complement" placeholder="Apto, Bloco, Sala..." value={formData.complement} onChange={(e) => setFormData(prev => ({ ...prev, complement: e.target.value }))} />
                   </div>
 
-                  <div>
-                    <Label htmlFor="neighborhood">Bairro</Label>
-                    <Input id="neighborhood" placeholder="Bairro" value={formData.neighborhood} onChange={(e) => setFormData(prev => ({ ...prev, neighborhood: e.target.value }))} />
+                  <div id="field-neighborhood">
+                    <Label htmlFor="neighborhood">Bairro *</Label>
+                    <Input id="neighborhood" placeholder="Bairro" value={formData.neighborhood} onChange={(e) => { setFormData(prev => ({ ...prev, neighborhood: e.target.value })); clearFieldError('neighborhood'); }} className={fieldErrors.neighborhood ? 'border-destructive' : ''} />
+                    {fieldErrors.neighborhood && <p className="text-sm text-destructive mt-1">{fieldErrors.neighborhood}</p>}
                   </div>
                   <div>
                     <Label htmlFor="city">Cidade</Label>
@@ -385,15 +436,16 @@ const NovoChamado = () => {
             </div>
 
             <div className="space-y-4">
-              <div>
+              <div id="field-problem">
                 <Label htmlFor="problem">Descrição do problema *</Label>
-                <Textarea id="problem" placeholder="Descreva detalhadamente o problema a ser resolvido..." rows={4} value={formData.problem} onChange={(e) => setFormData(prev => ({ ...prev, problem: e.target.value }))} required />
+                <Textarea id="problem" placeholder="Descreva detalhadamente o problema a ser resolvido..." rows={4} value={formData.problem} onChange={(e) => { setFormData(prev => ({ ...prev, problem: e.target.value })); clearFieldError('problem'); }} className={fieldErrors.problem ? 'border-destructive' : ''} />
+                {fieldErrors.problem && <p className="text-sm text-destructive mt-1">{fieldErrors.problem}</p>}
               </div>
 
-              <div>
+              <div id="field-urgency">
                 <Label htmlFor="urgency">Grau de urgência *</Label>
-                <Select value={formData.urgency} onValueChange={(value) => setFormData(prev => ({ ...prev, urgency: value as UrgencyLevel }))}>
-                  <SelectTrigger>
+                <Select value={formData.urgency} onValueChange={(value) => { setFormData(prev => ({ ...prev, urgency: value as UrgencyLevel })); clearFieldError('urgency'); }}>
+                  <SelectTrigger className={fieldErrors.urgency ? 'border-destructive ring-destructive' : ''}>
                     <SelectValue placeholder="Selecione a urgência" />
                   </SelectTrigger>
                   <SelectContent>
@@ -407,6 +459,7 @@ const NovoChamado = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {fieldErrors.urgency && <p className="text-sm text-destructive mt-1">{fieldErrors.urgency}</p>}
               </div>
 
               {/* Photo Upload */}
@@ -444,9 +497,10 @@ const NovoChamado = () => {
               <User className="h-5 w-5 text-primary" />
               <h2 className="font-display font-semibold text-lg">Solicitante</h2>
             </div>
-            <div>
+            <div id="field-requesterName">
               <Label htmlFor="requesterName">Nome do solicitante *</Label>
-              <Input id="requesterName" placeholder="Nome do inquilino, proprietário ou responsável" value={formData.requesterName} onChange={(e) => setFormData(prev => ({ ...prev, requesterName: e.target.value }))} required />
+              <Input id="requesterName" placeholder="Nome do inquilino, proprietário ou responsável" value={formData.requesterName} onChange={(e) => { setFormData(prev => ({ ...prev, requesterName: e.target.value })); clearFieldError('requesterName'); }} className={fieldErrors.requesterName ? 'border-destructive' : ''} />
+              {fieldErrors.requesterName && <p className="text-sm text-destructive mt-1">{fieldErrors.requesterName}</p>}
             </div>
           </div>
 
