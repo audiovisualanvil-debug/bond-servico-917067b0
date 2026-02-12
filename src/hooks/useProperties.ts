@@ -16,6 +16,7 @@ interface DbProperty {
   tenant_phone: string | null;
   owner_name: string | null;
   owner_phone: string | null;
+  owner_email: string | null;
 }
 
 function mapProperty(db: DbProperty): Property {
@@ -32,6 +33,7 @@ function mapProperty(db: DbProperty): Property {
     tenantPhone: db.tenant_phone || undefined,
     ownerName: db.owner_name || undefined,
     ownerPhone: db.owner_phone || undefined,
+    ownerEmail: db.owner_email || undefined,
   };
 }
 
@@ -76,6 +78,7 @@ export function useCreateProperty() {
       tenant_phone?: string;
       owner_name?: string;
       owner_phone?: string;
+      owner_email?: string;
     }) => {
       const { data: result, error } = await typedFrom('properties')
         .insert(data)

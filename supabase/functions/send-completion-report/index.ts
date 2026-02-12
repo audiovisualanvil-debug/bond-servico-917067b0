@@ -94,10 +94,8 @@ serve(async (req: Request) => {
       if (target === 'tecnico' && order.tecnico?.email) {
         emailTargets.push({ email: order.tecnico.email, name: order.tecnico.name || 'Técnico', type: 'tecnico' });
       }
-      if (target === 'proprietario' && order.property?.owner_name) {
-        // Owner doesn't have email in properties table, but we'll check owner_phone as fallback info
-        // For now, we skip if no email is available for the owner
-        console.log('Proprietário selecionado, mas sem e-mail cadastrado no imóvel.');
+      if (target === 'proprietario' && order.property?.owner_email) {
+        emailTargets.push({ email: order.property.owner_email, name: order.property.owner_name || 'Proprietário', type: 'proprietario' });
       }
     }
 

@@ -134,6 +134,7 @@ const HistoricoImoveis = () => {
                             <p className="text-sm text-muted-foreground">
                               Proprietário: {selectedProperty.ownerName}
                               {selectedProperty.ownerPhone && ` • ${formatPhone(selectedProperty.ownerPhone)}`}
+                              {selectedProperty.ownerEmail && ` • ${selectedProperty.ownerEmail}`}
                             </p>
                           )}
                         </div>

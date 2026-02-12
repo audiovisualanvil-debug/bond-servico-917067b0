@@ -30,6 +30,7 @@ interface DbProperty {
   tenant_phone: string | null;
   owner_name: string | null;
   owner_phone: string | null;
+  owner_email: string | null;
 }
 
 interface DbServiceOrder {
@@ -55,6 +56,7 @@ interface DbServiceOrder {
   execution_started_at: string | null;
   completed_at: string | null;
   status: string;
+  payment_method: string | null;
   created_at: string;
   updated_at: string;
   property?: DbProperty;
@@ -102,6 +104,7 @@ function mapProperty(p: DbProperty | null | undefined): Property {
     tenantPhone: p?.tenant_phone || undefined,
     ownerName: p?.owner_name || undefined,
     ownerPhone: p?.owner_phone || undefined,
+    ownerEmail: p?.owner_email || undefined,
   };
 }
 
@@ -144,6 +147,7 @@ function mapServiceOrder(db: DbServiceOrder): ServiceOrder {
     estimatedDeadline: db.estimated_deadline || undefined,
     quoteSentAt: db.quote_sent_at ? new Date(db.quote_sent_at) : undefined,
     finalPrice: db.final_price || undefined,
+    paymentMethod: (db.payment_method as any) || undefined,
     adminApprovedAt: db.admin_approved_at ? new Date(db.admin_approved_at) : undefined,
     clientApprovedAt: db.client_approved_at ? new Date(db.client_approved_at) : undefined,
     executionStartedAt: db.execution_started_at ? new Date(db.execution_started_at) : undefined,

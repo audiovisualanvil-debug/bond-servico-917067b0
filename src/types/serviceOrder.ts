@@ -35,6 +35,7 @@ export interface Property {
   tenantPhone?: string;
   ownerName?: string;
   ownerPhone?: string;
+  ownerEmail?: string;
 }
 
 export interface ServiceOrder {
@@ -65,6 +66,7 @@ export interface ServiceOrder {
   
   // Admin pricing
   finalPrice?: number;
+  paymentMethod?: 'imobiliaria' | 'pix' | 'cartao';
   adminApprovedAt?: Date;
   
   // Client approval

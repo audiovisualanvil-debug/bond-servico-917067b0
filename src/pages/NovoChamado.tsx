@@ -77,6 +77,7 @@ const NovoChamado = () => {
     tenantPhone: '',
     ownerName: '',
     ownerPhone: '',
+    ownerEmail: '',
     problem: '',
     urgency: '' as UrgencyLevel | '',
     requesterName: '',
@@ -159,6 +160,7 @@ const NovoChamado = () => {
           tenant_phone: formData.tenantPhone || undefined,
           owner_name: formData.ownerName || undefined,
           owner_phone: formData.ownerPhone || undefined,
+          owner_email: formData.ownerEmail || undefined,
         });
 
         propertyId = newProperty.id;
@@ -355,6 +357,10 @@ const NovoChamado = () => {
                   <div>
                     <Label htmlFor="ownerPhone">Celular do proprietário</Label>
                     <PhoneInput id="ownerPhone" placeholder="(11) 99999-9999" value={formData.ownerPhone} onChange={(value) => setFormData(prev => ({ ...prev, ownerPhone: value }))} />
+                  </div>
+                  <div>
+                    <Label htmlFor="ownerEmail">E-mail do proprietário</Label>
+                    <Input id="ownerEmail" type="email" placeholder="proprietario@email.com" value={formData.ownerEmail} onChange={(e) => setFormData(prev => ({ ...prev, ownerEmail: e.target.value }))} />
                   </div>
                 </div>
               )}
