@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft, MapPin, Calendar, User, Building2, Wrench,
-  DollarSign, Send, CheckCircle2, Clock, FileText, Loader2, ExternalLink, UserPlus, Phone, FileDown, Trash2,
+  DollarSign, Send, CheckCircle2, Clock, FileText, Loader2, ExternalLink, UserPlus, Phone, FileDown, Trash2, Mail,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -52,6 +52,7 @@ const OSDetail = () => {
 
   // Admin technician assignment
   const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
+  const [sendingReportTo, setSendingReportTo] = useState<string | null>(null);
 
   // Technician quote form (itemized)
   const [techQuote, setTechQuote] = useState({
@@ -252,6 +253,27 @@ const OSDetail = () => {
       navigate('/ordens');
     } catch (error: any) {
       toast.error('Erro ao excluir ordem de serviço', { description: error.message });
+    }
+  };
+
+  const handleSendReport = async (sendTo: ('imobiliaria' | 'tecnico')[]) => {
+    const label = sendTo.includes('tecnico') ? 'técnico' : 'imobiliária';
+    setSendingReportTo(sendTo.join(','));
+    try {
+      const reportUrl = `${window.location.origin}/ordens/${order.id}/relatorio`;
+      const { data, error } = await supabase.functions.invoke('send-completion-report', {
+        body: { serviceOrderId: order.id, reportUrl, sendTo },
+      });
+      if (error) throw error;
+      if (data?.emailSent) {
+        toast.success(`Relatório enviado para ${label}!`);
+      } else {
+        toast.info(data?.message || 'E-mail não enviado.');
+      }
+    } catch (error: any) {
+      toast.error(`Erro ao enviar relatório para ${label}`, { description: error.message });
+    } finally {
+      setSendingReportTo(null);
     }
   };
 
@@ -571,12 +593,36 @@ const OSDetail = () => {
                     <CheckCircle2 className="h-5 w-5 text-status-completed" />
                     <h2 className="font-display font-semibold text-lg">Relatório de Conclusão</h2>
                   </div>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to={`/ordens/${order.id}/relatorio`}>
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Ver Relatório Completo
-                    </Link>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {role === 'admin' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSendReport(['imobiliaria'])}
+                          disabled={!!sendingReportTo}
+                        >
+                          {sendingReportTo?.includes('imobiliaria') && !sendingReportTo?.includes('tecnico') ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                          Enviar p/ Imobiliária
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSendReport(['tecnico'])}
+                          disabled={!!sendingReportTo}
+                        >
+                          {sendingReportTo === 'tecnico' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                          Enviar p/ Técnico
+                        </Button>
+                      </>
+                    )}
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/ordens/${order.id}/relatorio`}>
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Ver Relatório Completo
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
                 <p className="text-foreground mb-4">{order.completionReport.description}</p>
 
