@@ -204,9 +204,9 @@
     @apply border-primary/20;
   }
 
-  /* Dashboard Stats */
+  /* Dashboard Stats - FIX: Erro #1/#4/#11 - overflow visible para não truncar valores */
   .stat-card {
-    @apply bg-card rounded-xl border border-border p-6;
+    @apply bg-card rounded-xl border border-border p-6 overflow-visible;
     box-shadow: var(--shadow-card);
   }
 
