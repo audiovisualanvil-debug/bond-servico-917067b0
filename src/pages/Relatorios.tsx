@@ -90,11 +90,12 @@ const Relatorios = () => {
           return (
             <div key={kpi.title} className={`stat-card border ${variantStyles[kpi.variant]}`}>
               <div className="flex items-start justify-between">
-                <div className="min-w-0">
-                  <p className={`text-xs font-medium truncate ${kpi.variant === 'default' ? 'text-muted-foreground' : 'opacity-80'}`}>
+              {/* FIX: Erro #4/#11 - Valores monetários nunca truncados */}
+              <div className="min-w-0">
+                  <p className={`text-xs font-medium ${kpi.variant === 'default' ? 'text-muted-foreground' : 'opacity-80'}`}>
                     {kpi.title}
                   </p>
-                  <p className="mt-1 text-xl font-bold font-display truncate">{kpi.value}</p>
+                  <p className="mt-1 text-base sm:text-lg lg:text-xl font-bold font-display whitespace-nowrap">{kpi.value}</p>
                 </div>
                 <div className={`rounded-lg p-2 shrink-0 ${iconBgStyles[kpi.variant]}`}>
                   <Icon className="h-4 w-4" />

@@ -1,1 +1,10 @@
 project_id = "kfrqqdyxzgeodbzovggo"
+
+[functions.send-completion-report]
+verify_jwt = false
+
+[functions.send-budget-approved]
+verify_jwt = false
+
+[functions.notify-status-change]
+verify_jwt = false

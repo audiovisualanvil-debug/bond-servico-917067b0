@@ -1,3 +1,4 @@
+// FIX: Erro #2 - Tooltips descritivos nos ícones do menu lateral
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -16,6 +17,12 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppRole } from '@/types/database';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface NavItem {
   label: string;
@@ -54,71 +61,94 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar text-sidebar-foreground">
-      <div className="flex h-full flex-col">
-        {/* Logo */}
-        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
-            <Wrench className="h-5 w-5 text-sidebar-primary-foreground" />
+    <TooltipProvider delayDuration={300}>
+      <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar text-sidebar-foreground">
+        <div className="flex h-full flex-col">
+          {/* Logo */}
+          <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary">
+              <Wrench className="h-5 w-5 text-sidebar-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="font-display font-bold text-sidebar-accent-foreground">Faz-Tudo</h1>
+              <p className="text-xs text-sidebar-foreground/60">Imobiliário</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-display font-bold text-sidebar-accent-foreground">Faz-Tudo</h1>
-            <p className="text-xs text-sidebar-foreground/60">Imobiliário</p>
+
+          {/* User Info */}
+          <div className="border-b border-sidebar-border px-6 py-4">
+            <p className="text-sm font-medium text-sidebar-accent-foreground">{profile.name}</p>
+            <p className="text-xs text-sidebar-foreground/60">{getRoleLabel(role)}</p>
+            {profile.company && (
+              <p className="mt-1 text-xs text-sidebar-primary">{profile.company}</p>
+            )}
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto px-3 py-4">
+            <ul className="space-y-1">
+              {filteredItems.map((item) => {
+                const isActive = location.pathname === item.href;
+                return (
+                  <li key={item.href}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Link
+                          to={item.href}
+                          className={cn(
+                            'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                            isActive
+                              ? 'sidebar-item-active'
+                              : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                          )}
+                        >
+                          <item.icon className="h-5 w-5" />
+                          {item.label}
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="bg-popover text-popover-foreground border z-50">
+                        {item.label}
+                      </TooltipContent>
+                    </Tooltip>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+
+          {/* Footer */}
+          <div className="border-t border-sidebar-border p-3">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/configuracoes"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                >
+                  <Settings className="h-5 w-5" />
+                  Configurações
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-popover text-popover-foreground border z-50">
+                Configurações
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={signOut}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-destructive/20 hover:text-destructive"
+                >
+                  <LogOut className="h-5 w-5" />
+                  Sair
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-popover text-popover-foreground border z-50">
+                Sair do sistema
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
-
-        {/* User Info */}
-        <div className="border-b border-sidebar-border px-6 py-4">
-          <p className="text-sm font-medium text-sidebar-accent-foreground">{profile.name}</p>
-          <p className="text-xs text-sidebar-foreground/60">{getRoleLabel(role)}</p>
-          {profile.company && (
-            <p className="mt-1 text-xs text-sidebar-primary">{profile.company}</p>
-          )}
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <ul className="space-y-1">
-            {filteredItems.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <li key={item.href}>
-                  <Link
-                    to={item.href}
-                    className={cn(
-                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                      isActive
-                        ? 'sidebar-item-active'
-                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                    )}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        {/* Footer */}
-        <div className="border-t border-sidebar-border p-3">
-          <Link
-            to="/configuracoes"
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          >
-            <Settings className="h-5 w-5" />
-            Configurações
-          </Link>
-          <button
-            onClick={signOut}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-destructive/20 hover:text-destructive"
-          >
-            <LogOut className="h-5 w-5" />
-            Sair
-          </button>
-        </div>
-      </div>
-    </aside>
+      </aside>
+    </TooltipProvider>
   );
 };

@@ -199,12 +199,13 @@ const AuthPage = () => {
           </div>
 
           <div className="bg-card rounded-2xl shadow-xl p-8">
-            <form onSubmit={handleLogin} className="space-y-4">
+            {/* FIX: Erro #7/#8/#9 - Feedback de erro, validação PT-BR, destaque visual */}
+            <form onSubmit={handleLogin} className="space-y-4" noValidate>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="email" type="email" placeholder="seu@email.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className="pl-10" />
+                  <Input id="email" type="email" placeholder="seu@email.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className={`pl-10 ${errors.email ? 'border-destructive ring-destructive' : ''}`} />
                 </div>
                 {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
               </div>
@@ -213,7 +214,7 @@ const AuthPage = () => {
                 <Label htmlFor="password">Senha</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="password" type="password" placeholder="••••••••" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="pl-10" />
+                  <Input id="password" type="password" placeholder="••••••••" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className={`pl-10 ${errors.password ? 'border-destructive ring-destructive' : ''}`} />
                 </div>
                 {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
               </div>

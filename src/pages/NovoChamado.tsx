@@ -244,12 +244,36 @@ const NovoChamado = () => {
     }
   };
 
+  // FIX: Erro #10 - Validação de upload de fotos (tipo, tamanho, limite)
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setFormData(prev => ({
-      ...prev,
-      photos: [...prev.photos, ...files].slice(0, 5),
-    }));
+    const validFiles: File[] = [];
+
+    for (const file of files) {
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        toast.error(`"${file.name}" — formato inválido. Use JPG, PNG ou WebP.`);
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`"${file.name}" — tamanho excede 5MB.`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    setFormData(prev => {
+      const combined = [...prev.photos, ...validFiles];
+      if (combined.length > 5) {
+        toast.error('Máximo de 5 fotos permitido.');
+      }
+      return { ...prev, photos: combined.slice(0, 5) };
+    });
+
+    // Reset input to allow re-selecting same file
+    e.target.value = '';
   };
 
   return (
@@ -466,7 +490,8 @@ const NovoChamado = () => {
               <div>
                 <Label>Fotos do problema (opcional)</Label>
                 <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
-                  <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" id="photo-upload" />
+                  {/* FIX: Erro #10 - Aceitar apenas jpg/png/webp */}
+                  <input type="file" accept=".jpg,.jpeg,.png,.webp" multiple onChange={handlePhotoUpload} className="hidden" id="photo-upload" />
                   <label htmlFor="photo-upload" className="cursor-pointer">
                     <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">Clique para enviar ou arraste as fotos</p>
