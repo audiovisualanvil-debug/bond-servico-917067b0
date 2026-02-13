@@ -226,7 +226,8 @@ const GerenciarUsuarios = () => {
               <CardDescription>Crie uma conta para imobiliária ou técnico</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              {/* FIX: Erro #8 - noValidate para evitar mensagens nativas em inglês */}
+              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <div className="space-y-2">
                   <Label>Tipo de Usuário *</Label>
                   <Select value={form.role} onValueChange={(v) => setForm(f => ({ ...f, role: v }))}>
@@ -267,6 +268,7 @@ const GerenciarUsuarios = () => {
                   </div>
                 </div>
 
+                {/* FIX: Erro #3 - Indicador de força de senha */}
                 <div className="space-y-2">
                   <Label>Senha *</Label>
                   <div className="relative">
@@ -275,6 +277,7 @@ const GerenciarUsuarios = () => {
                       value={form.password}
                       onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
                       placeholder="Mínimo 6 caracteres"
+                      className={form.password.length > 0 && form.password.length < 6 ? 'border-destructive' : ''}
                     />
                     <button
                       type="button"
@@ -284,6 +287,27 @@ const GerenciarUsuarios = () => {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  {form.password.length > 0 && (() => {
+                    const len = form.password.length;
+                    const hasUpper = /[A-Z]/.test(form.password);
+                    const hasNumber = /[0-9]/.test(form.password);
+                    const hasSpecial = /[^A-Za-z0-9]/.test(form.password);
+                    const score = (len >= 6 ? 1 : 0) + (len >= 8 ? 1 : 0) + (hasUpper ? 1 : 0) + (hasNumber ? 1 : 0) + (hasSpecial ? 1 : 0);
+                    const strength = score <= 1 ? { label: 'Fraca', color: 'bg-destructive', width: '33%' } 
+                      : score <= 3 ? { label: 'Média', color: 'bg-status-pending', width: '66%' } 
+                      : { label: 'Forte', color: 'bg-status-approved', width: '100%' };
+                    return (
+                      <div className="space-y-1">
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div className={`h-full rounded-full transition-all duration-300 ${strength.color}`} style={{ width: strength.width }} />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Força: <span className="font-medium">{strength.label}</span>
+                          {len < 6 && <span className="text-destructive ml-1">— mínimo 6 caracteres</span>}
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="space-y-2">

@@ -35,6 +35,7 @@ export const StatCard: React.FC<StatCardProps> = ({
 
   return (
     <div className={cn('stat-card border', variantStyles[variant], className)}>
+      {/* FIX: Erro #1/#4/#11 - Valores monetários nunca truncados */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <p className={cn(
@@ -43,7 +44,7 @@ export const StatCard: React.FC<StatCardProps> = ({
           )}>
             {title}
           </p>
-          <p className="mt-2 text-2xl sm:text-3xl font-bold font-display break-words">{value}</p>
+          <p className="mt-2 text-xl sm:text-2xl lg:text-3xl font-bold font-display whitespace-nowrap overflow-visible">{value}</p>
           {trend && (
             <p className={cn(
               'mt-1 text-xs font-medium',
