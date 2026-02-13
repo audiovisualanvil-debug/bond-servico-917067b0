@@ -83,19 +83,19 @@ const Relatorios = () => {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8 stagger-children">
+      {/* FIX: Erro #4/#11 - KPI Cards sem truncamento */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8 stagger-children">
         {kpiCards.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <div key={kpi.title} className={`stat-card border ${variantStyles[kpi.variant]}`}>
-              <div className="flex items-start justify-between">
-              {/* FIX: Erro #4/#11 - Valores monetários nunca truncados */}
-              <div className="min-w-0">
+            <div key={kpi.title} className={`stat-card border overflow-visible ${variantStyles[kpi.variant]}`}>
+              <div className="flex items-start justify-between gap-2">
+              {/* FIX: Erro #4/#11 - Valores monetários e títulos nunca truncados */}
+              <div className="overflow-visible">
                   <p className={`text-xs font-medium ${kpi.variant === 'default' ? 'text-muted-foreground' : 'opacity-80'}`}>
                     {kpi.title}
                   </p>
-                  <p className="mt-1 text-base sm:text-lg lg:text-xl font-bold font-display whitespace-nowrap">{kpi.value}</p>
+                  <p className="mt-1 text-sm sm:text-base lg:text-lg font-bold font-display whitespace-nowrap">{kpi.value}</p>
                 </div>
                 <div className={`rounded-lg p-2 shrink-0 ${iconBgStyles[kpi.variant]}`}>
                   <Icon className="h-4 w-4" />

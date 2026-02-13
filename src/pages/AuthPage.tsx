@@ -82,12 +82,15 @@ const AuthPage = () => {
     setIsLoading(false);
 
     if (error) {
-      if (error.message.includes('Invalid login credentials')) {
-        toast({ variant: 'destructive', title: 'Erro no login', description: 'Email ou senha incorretos.' });
-      } else if (error.message.includes('Email not confirmed')) {
+      // FIX: Erro #7 - Feedback claro de erro de login com destaque nos campos
+      const msg = error.message || '';
+      if (msg.includes('Invalid login credentials') || msg.includes('invalid') || msg.includes('credentials')) {
+        setErrors({ email: ' ', password: ' ' }); // destaque visual nos campos
+        toast({ variant: 'destructive', title: 'Erro no login', description: 'E-mail ou senha inválidos. Tente novamente.' });
+      } else if (msg.includes('Email not confirmed')) {
         toast({ variant: 'destructive', title: 'Email não confirmado', description: 'Verifique seu email para confirmar a conta.' });
       } else {
-        toast({ variant: 'destructive', title: 'Erro no login', description: error.message });
+        toast({ variant: 'destructive', title: 'Erro no login', description: msg || 'Erro desconhecido. Tente novamente.' });
       }
       return;
     }
