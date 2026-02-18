@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ArrowLeft, Printer, Download, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import logoFazTudo from '@/assets/logo-faztudo.png';
 
 const WARRANTY_OPTIONS = [
@@ -31,6 +31,7 @@ const PAYMENT_OPTIONS = [
   { value: 'cartao', label: 'Pgto Cartão' },
 ];
 const RelatorioOS = () => {
+  const reportRef = useRef<HTMLDivElement>(null);
   const { id } = useParams();
   const navigate = useNavigate();
   const { role } = useAuth();
@@ -38,6 +39,7 @@ const RelatorioOS = () => {
   const [warrantyDays, setWarrantyDays] = useState('90');
   const [validityDays, setValidityDays] = useState('30');
   const [paymentMethod, setPaymentMethod] = useState<string>(order?.paymentMethod || 'imobiliaria');
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Sync payment method when order loads
   if (order?.paymentMethod && paymentMethod !== order.paymentMethod && paymentMethod === 'imobiliaria') {
@@ -71,6 +73,26 @@ const RelatorioOS = () => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!reportRef.current || !order) return;
+    setIsDownloading(true);
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const opt = {
+        margin: 0,
+        filename: `Relatorio-${order.osNumber}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+      };
+      await html2pdf().set(opt).from(reportRef.current).save();
+    } catch (e) {
+      console.error('PDF generation error:', e);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -122,7 +144,11 @@ const RelatorioOS = () => {
               </Select>
             </div>
             <Button variant="outline" onClick={handlePrint}>
-              <Printer className="h-4 w-4" /> Imprimir / PDF
+              <Printer className="h-4 w-4" /> Imprimir
+            </Button>
+            <Button onClick={handleDownloadPDF} disabled={isDownloading}>
+              {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Baixar PDF
             </Button>
           </div>
         </div>
@@ -130,7 +156,7 @@ const RelatorioOS = () => {
 
       {/* Report content */}
       <div className="max-w-4xl mx-auto p-8 print:p-0 print:max-w-full">
-        <div className="bg-card border border-border rounded-xl print:border-0 print:rounded-none overflow-hidden">
+        <div ref={reportRef} className="bg-card border border-border rounded-xl print:border-0 print:rounded-none overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-hero text-primary-foreground p-8 print:p-6">
             <div className="flex items-start justify-between">
