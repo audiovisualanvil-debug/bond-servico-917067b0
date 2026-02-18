@@ -555,6 +555,15 @@ const OSDetail = () => {
                   </Link>
                 </Button>
               )}
+              {/* FIX: Relatório PDF disponível para admin quando OS concluída */}
+              {order.completionReport && (role === 'admin' || role === 'imobiliaria') && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/ordens/${order.id}/relatorio`}>
+                    <FileText className="h-3.5 w-3.5" />
+                    Relatório PDF
+                  </Link>
+                </Button>
+              )}
               {role === 'admin' && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
