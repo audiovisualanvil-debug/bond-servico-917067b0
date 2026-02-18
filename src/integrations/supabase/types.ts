@@ -210,6 +210,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          item_type: string
           real_cost: number
           service_order_id: string
           updated_at: string
@@ -218,6 +219,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          item_type?: string
           real_cost?: number
           service_order_id: string
           updated_at?: string
@@ -226,6 +228,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          item_type?: string
           real_cost?: number
           service_order_id?: string
           updated_at?: string
@@ -381,6 +384,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string | null
+          item_type: string | null
           service_order_id: string | null
           updated_at: string | null
         }
@@ -388,6 +392,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string | null
+          item_type?: string | null
           service_order_id?: string | null
           updated_at?: string | null
         }
@@ -395,6 +400,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string | null
+          item_type?: string | null
           service_order_id?: string | null
           updated_at?: string | null
         }
