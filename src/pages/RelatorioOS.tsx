@@ -75,11 +75,34 @@ const RelatorioOS = () => {
     window.print();
   };
 
+  const convertImagesToBase64 = async (container: HTMLElement) => {
+    const images = container.querySelectorAll('img');
+    await Promise.all(
+      Array.from(images).map(async (img) => {
+        if (img.src.startsWith('data:')) return;
+        try {
+          const response = await fetch(img.src);
+          const blob = await response.blob();
+          const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+          img.src = base64;
+        } catch (e) {
+          console.warn('Could not convert image to base64:', img.src, e);
+        }
+      })
+    );
+  };
+
   const handleDownloadPDF = async () => {
     if (!reportRef.current || !order) return;
     setIsDownloading(true);
     try {
       const html2pdf = (await import('html2pdf.js')).default;
+      const clone = reportRef.current.cloneNode(true) as HTMLElement;
+      await convertImagesToBase64(clone);
       const opt = {
         margin: 0,
         filename: `FazTudo_${format(order.createdAt, 'dd-MM-yyyy')}_${(order.imobiliaria.company || order.imobiliaria.name).replace(/\s+/g, '_')}_${order.osNumber}.pdf`,
@@ -87,7 +110,7 @@ const RelatorioOS = () => {
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
       };
-      await html2pdf().set(opt).from(reportRef.current).save();
+      await html2pdf().set(opt).from(clone).save();
     } catch (e) {
       console.error('PDF generation error:', e);
     } finally {
