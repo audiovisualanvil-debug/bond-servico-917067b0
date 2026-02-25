@@ -11,12 +11,12 @@ import {
 } from "@/components/ui/select";
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Printer, Loader2, Pencil, Check } from 'lucide-react';
+import { ArrowLeft, Printer, Download, Loader2, Pencil, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import logoFazTudo from '@/assets/logo-faztudo.png';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface ServiceOrderItem {
   id: string;
@@ -57,6 +57,8 @@ const getDefaultTerms = (warrantyDays: string, validityDays: string, paymentMeth
 const OrcamentoPDF = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const pdfRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   const { role } = useAuth();
   const { data: order, isLoading, error } = useServiceOrder(id);
   const [warrantyDays, setWarrantyDays] = useState('90');
@@ -152,6 +154,28 @@ const OrcamentoPDF = () => {
     window.print();
   };
 
+  const handleDownloadPDF = async () => {
+    if (!pdfRef.current || !order) return;
+    setIsDownloading(true);
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const imobName = (order.imobiliaria.company || order.imobiliaria.name).replace(/\s+/g, '_');
+      const dateStr = format(order.createdAt, 'dd-MM-yyyy');
+      const opt = {
+        margin: 0,
+        filename: `FazTudo_${dateStr}_${imobName}_${order.osNumber}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+      };
+      await html2pdf().set(opt).from(pdfRef.current).save();
+    } catch (e) {
+      console.error('PDF generation error:', e);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Action bar - hidden on print */}
@@ -160,14 +184,20 @@ const OrcamentoPDF = () => {
           <Button variant="ghost" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" /> Voltar
           </Button>
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer className="h-4 w-4" /> Imprimir / PDF
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handlePrint}>
+              <Printer className="h-4 w-4" /> Imprimir
+            </Button>
+            <Button onClick={handleDownloadPDF} disabled={isDownloading}>
+              {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Baixar PDF
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* PDF content */}
-      <div className="max-w-4xl mx-auto p-8 print:p-0 print:max-w-full">
+      <div ref={pdfRef} className="max-w-4xl mx-auto p-8 print:p-0 print:max-w-full">
         <div className="bg-card border border-border rounded-xl print:border-0 print:rounded-none overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-hero text-primary-foreground p-8 print:p-6">
