@@ -3,20 +3,40 @@ import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
-import { STATUS_LABELS } from '@/types/serviceOrder';
+import { STATUS_LABELS, OSStatus } from '@/types/serviceOrder';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, ExternalLink, Loader2, Search } from 'lucide-react';
+import { FileText, ExternalLink, Loader2, Search, Clock, CheckCircle, Wrench, Send, ShieldCheck, FileCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+
+const STATUS_ICONS: Record<OSStatus, React.ReactNode> = {
+  aguardando_orcamento_prestador: <Clock className="h-4 w-4" />,
+  aguardando_aprovacao_admin: <ShieldCheck className="h-4 w-4" />,
+  enviado_imobiliaria: <Send className="h-4 w-4" />,
+  aprovado_aguardando: <CheckCircle className="h-4 w-4" />,
+  em_execucao: <Wrench className="h-4 w-4" />,
+  concluido: <FileCheck className="h-4 w-4" />,
+};
 
 const RelatoriosFinais = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const { data: orders = [], isLoading } = useServiceOrders(statusFilter === 'all' ? undefined : statusFilter);
+  // Always fetch ALL orders for counting, use separate filtered list for display
+  const { data: allOrders = [], isLoading } = useServiceOrders();
   const [search, setSearch] = useState('');
 
-  const filtered = orders.filter(o => {
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: allOrders.length };
+    for (const key of Object.keys(STATUS_LABELS)) {
+      counts[key] = allOrders.filter(o => o.status === key).length;
+    }
+    return counts;
+  }, [allOrders]);
+
+  const displayOrders = statusFilter === 'all' ? allOrders : allOrders.filter(o => o.status === statusFilter);
+
+  const filtered = displayOrders.filter(o => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
@@ -40,6 +60,34 @@ const RelatoriosFinais = () => {
           </div>
         </div>
 
+        {/* Status Counters */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition-colors text-center ${
+              statusFilter === 'all' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:border-primary/30'
+            }`}
+          >
+            <span className="text-2xl font-bold">{statusCounts.all}</span>
+            <span className="text-[10px] leading-tight font-medium">Todas</span>
+          </button>
+          {(Object.entries(STATUS_LABELS) as [OSStatus, string][]).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setStatusFilter(key)}
+              className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition-colors text-center ${
+                statusFilter === key ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-muted-foreground hover:border-primary/30'
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                {STATUS_ICONS[key]}
+                <span className="text-2xl font-bold">{statusCounts[key] || 0}</span>
+              </div>
+              <span className="text-[10px] leading-tight font-medium">{label}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
@@ -51,17 +99,6 @@ const RelatoriosFinais = () => {
               className="pl-10"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[220px]">
-              <SelectValue placeholder="Filtrar por status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os status</SelectItem>
-              {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         {isLoading ? (
