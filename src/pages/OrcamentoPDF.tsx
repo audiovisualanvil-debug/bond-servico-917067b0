@@ -154,11 +154,42 @@ const OrcamentoPDF = () => {
     window.print();
   };
 
+  const convertImagesToBase64 = async (container: HTMLElement) => {
+    const images = container.querySelectorAll('img');
+    await Promise.all(
+      Array.from(images).map(async (img) => {
+        if (img.src.startsWith('data:') || img.src.startsWith('blob:')) return;
+        try {
+          const response = await fetch(img.src);
+          const blob = await response.blob();
+          const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+          img.src = base64;
+        } catch (e) {
+          console.warn('Failed to convert image to base64:', img.src, e);
+        }
+      })
+    );
+  };
+
   const handleDownloadPDF = async () => {
     if (!pdfRef.current || !order) return;
     setIsDownloading(true);
     try {
       const html2pdf = (await import('html2pdf.js')).default;
+      // Clone the element so we don't mutate the DOM
+      const clone = pdfRef.current.cloneNode(true) as HTMLElement;
+      document.body.appendChild(clone);
+      clone.style.position = 'absolute';
+      clone.style.left = '-9999px';
+      clone.style.top = '0';
+      
+      // Convert all images to base64 in the clone
+      await convertImagesToBase64(clone);
+      
       const imobName = (order.imobiliaria.company || order.imobiliaria.name).replace(/\s+/g, '_');
       const dateStr = format(order.createdAt, 'dd-MM-yyyy');
       const opt = {
@@ -168,7 +199,8 @@ const OrcamentoPDF = () => {
         html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
       };
-      await html2pdf().set(opt).from(pdfRef.current).save();
+      await html2pdf().set(opt).from(clone).save();
+      document.body.removeChild(clone);
     } catch (e) {
       console.error('PDF generation error:', e);
     } finally {
