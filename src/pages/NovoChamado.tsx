@@ -25,7 +25,7 @@ import { typedFrom } from '@/integrations/supabase/helpers';
 
 const NovoChamado = () => {
   const navigate = useNavigate();
-  const { user, role } = useAuth();
+  const { user, role, isLoading: authLoading } = useAuth();
   const { data: userProperties = [], isLoading: propertiesLoading } = useProperties();
   const createProperty = useCreateProperty();
   const createOrder = useCreateServiceOrder();
@@ -90,7 +90,17 @@ const NovoChamado = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLFormElement>(null);
 
-  if (!user) return null;
+  if (authLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!user || !role) return null;
 
   const isSubmitting = createOrder.isPending || createProperty.isPending || isUploading;
   const effectiveImobiliariaId = role === 'admin' ? selectedImobiliariaId : user.id;
