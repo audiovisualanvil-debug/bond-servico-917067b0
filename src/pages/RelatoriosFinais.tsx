@@ -3,19 +3,20 @@ import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
+import { STATUS_LABELS } from '@/types/serviceOrder';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, Download, ExternalLink, Loader2, Search } from 'lucide-react';
+import { FileText, ExternalLink, Loader2, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
 
 const RelatoriosFinais = () => {
-  const { data: orders = [], isLoading } = useServiceOrders('concluido');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const { data: orders = [], isLoading } = useServiceOrders(statusFilter === 'all' ? undefined : statusFilter);
   const [search, setSearch] = useState('');
 
-  const completedWithReport = orders.filter(o => o.completionReport);
-
-  const filtered = completedWithReport.filter(o => {
+  const filtered = orders.filter(o => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
@@ -34,20 +35,33 @@ const RelatoriosFinais = () => {
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Relatórios Finais</h1>
             <p className="text-muted-foreground mt-1">
-              Relatórios de conclusão de serviços ({completedWithReport.length})
+              Todas as ordens de serviço ({filtered.length})
             </p>
           </div>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por OS, endereço, imobiliária, técnico..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por OS, endereço, imobiliária, técnico..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <SelectValue placeholder="Filtrar por status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {isLoading ? (
@@ -58,7 +72,7 @@ const RelatoriosFinais = () => {
           <div className="text-center py-12 os-card">
             <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              {search ? 'Nenhum relatório encontrado para essa busca.' : 'Nenhum relatório de conclusão disponível.'}
+              {search || statusFilter !== 'all' ? 'Nenhuma OS encontrada para esses filtros.' : 'Nenhuma ordem de serviço disponível.'}
             </p>
           </div>
         ) : (
@@ -83,10 +97,8 @@ const RelatoriosFinais = () => {
                         <strong>Técnico:</strong> {order.tecnico?.name || 'N/A'}
                       </span>
                       <span>
-                        <strong>Concluído em:</strong>{' '}
-                        {order.completionReport?.completedAt
-                          ? format(order.completionReport.completedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                          : 'N/A'}
+                        <strong>Criado em:</strong>{' '}
+                        {format(order.createdAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                       </span>
                       {order.finalPrice && (
                         <span>
@@ -97,12 +109,14 @@ const RelatoriosFinais = () => {
                   </div>
 
                   <div className="flex flex-col gap-2 shrink-0">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link to={`/ordens/${order.id}/relatorio`}>
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        Ver Relatório
-                      </Link>
-                    </Button>
+                    {order.completionReport && (
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/ordens/${order.id}/relatorio`}>
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Ver Relatório
+                        </Link>
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" asChild>
                       <Link to={`/ordens/${order.id}`}>
                         <FileText className="h-3.5 w-3.5" />
