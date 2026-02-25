@@ -4,10 +4,20 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Printer, Download, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Printer, Download, CheckCircle2, XCircle, Loader2, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { typedFrom } from '@/integrations/supabase/helpers';
 import logoFazTudo from '@/assets/logo-faztudo.png';
+
+interface ReportComment {
+  id: string;
+  message: string;
+  visible_to_imobiliaria: boolean;
+  created_at: string;
+  profile?: { name: string; company: string | null } | null;
+}
 
 const WARRANTY_OPTIONS = [
   { value: '30', label: '30 dias' },
@@ -40,6 +50,32 @@ const RelatorioOS = () => {
   const [validityDays, setValidityDays] = useState('30');
   const [paymentMethod, setPaymentMethod] = useState<string>(order?.paymentMethod || 'imobiliaria');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [comments, setComments] = useState<ReportComment[]>([]);
+
+  // Fetch comments for this OS
+  useEffect(() => {
+    if (!id) return;
+    const fetchComments = async () => {
+      try {
+        const { data, error } = await typedFrom('service_order_comments')
+          .select('*, profile:profiles!service_order_comments_user_id_fkey(name, company)')
+          .eq('service_order_id', id)
+          .order('created_at', { ascending: true });
+        if (error) {
+          const { data: fallback } = await typedFrom('service_order_comments')
+            .select('*')
+            .eq('service_order_id', id)
+            .order('created_at', { ascending: true });
+          setComments((fallback || []) as ReportComment[]);
+        } else {
+          setComments((data || []) as ReportComment[]);
+        }
+      } catch (e) {
+        console.error('Error fetching comments for report:', e);
+      }
+    };
+    fetchComments();
+  }, [id]);
 
   // Sync payment method when order loads
   if (order?.paymentMethod && paymentMethod !== order.paymentMethod && paymentMethod === 'imobiliaria') {
@@ -186,7 +222,7 @@ const RelatorioOS = () => {
               <div className="flex items-center gap-4">
                 <img src={logoFazTudo} alt="Faz-Tudo Imobiliário" className="h-16 w-16 rounded-full object-cover print:h-14 print:w-14" />
                 <div>
-                  <h1 className="text-2xl font-display font-bold">RELATÓRIO DE SERVIÇO</h1>
+                  <h1 className="text-2xl font-display font-bold">RELATÓRIO FINAL</h1>
                   <p className="text-primary-foreground/80 mt-1 text-sm">Faz-Tudo Imobiliário</p>
                 </div>
               </div>
@@ -279,6 +315,31 @@ const RelatorioOS = () => {
               </Section>
             )}
 
+            {/* Histórico de Conversas / Comentários */}
+            {comments.length > 0 && (
+              <Section title="Histórico de Acompanhamento">
+                <div className="space-y-2">
+                  {comments.map((comment) => (
+                    <div key={comment.id} className="flex gap-3 text-sm p-3 rounded-lg bg-secondary/30 border border-border/50">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-foreground text-xs">
+                            {comment.profile?.name || 'Usuário'}
+                            {comment.profile?.company ? ` (${comment.profile.company})` : ''}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {format(new Date(comment.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                          </span>
+                        </div>
+                        <p className="text-foreground whitespace-pre-wrap text-xs leading-relaxed">{comment.message}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
+
             {/* Observations */}
             {report.observations && (
               <Section title="Observações e Recomendações">
@@ -338,7 +399,7 @@ const RelatorioOS = () => {
             {/* Footer */}
             <div className="text-center pt-4 border-t border-border">
               <p className="text-xs text-muted-foreground">
-                Faz-Tudo Imobiliário — Relatório de Serviço — {order.osNumber}
+                Faz-Tudo Imobiliário — Relatório Final — {order.osNumber}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 Este documento é gerado automaticamente e tem validade como comprovante de serviço.
