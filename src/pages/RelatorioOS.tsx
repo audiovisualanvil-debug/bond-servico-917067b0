@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ArrowLeft, Printer, Download, CheckCircle2, XCircle, Loader2, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Printer, Download, CheckCircle2, XCircle, Loader2, MessageSquare, ClipboardList, Wrench, FileCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRef, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +17,13 @@ interface ReportComment {
   visible_to_imobiliaria: boolean;
   created_at: string;
   profile?: { name: string; company: string | null } | null;
+}
+
+interface ServiceOrderItem {
+  id: string;
+  description: string;
+  real_cost: number;
+  item_type: string;
 }
 
 const WARRANTY_OPTIONS = [
@@ -40,6 +47,7 @@ const PAYMENT_OPTIONS = [
   { value: 'pix', label: 'Pgto PIX' },
   { value: 'cartao', label: 'Pgto Cartão' },
 ];
+
 const RelatorioOS = () => {
   const reportRef = useRef<HTMLDivElement>(null);
   const { id } = useParams();
@@ -51,6 +59,7 @@ const RelatorioOS = () => {
   const [paymentMethod, setPaymentMethod] = useState<string>(order?.paymentMethod || 'imobiliaria');
   const [isDownloading, setIsDownloading] = useState(false);
   const [comments, setComments] = useState<ReportComment[]>([]);
+  const [items, setItems] = useState<ServiceOrderItem[]>([]);
 
   // Fetch comments for this OS
   useEffect(() => {
@@ -75,6 +84,23 @@ const RelatorioOS = () => {
       }
     };
     fetchComments();
+  }, [id]);
+
+  // Fetch service order items
+  useEffect(() => {
+    if (!id) return;
+    const fetchItems = async () => {
+      try {
+        const { data } = await typedFrom('service_order_items')
+          .select('*')
+          .eq('service_order_id', id)
+          .order('created_at', { ascending: true });
+        setItems((data || []) as ServiceOrderItem[]);
+      } catch (e) {
+        console.error('Error fetching items for report:', e);
+      }
+    };
+    fetchItems();
   }, [id]);
 
   // Sync payment method when order loads
@@ -162,7 +188,7 @@ const RelatorioOS = () => {
           <Button variant="ghost" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" /> Voltar
           </Button>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Garantia:</span>
               <Select value={warrantyDays} onValueChange={setWarrantyDays}>
@@ -248,22 +274,101 @@ const RelatorioOS = () => {
 
             <hr className="border-border" />
 
-            {/* Problem */}
+            {/* ==================== ETAPA 1: SOLICITAÇÃO ==================== */}
+            <StageHeader
+              number={1}
+              icon={<ClipboardList className="h-5 w-5" />}
+              title="Solicitação da Imobiliária"
+              date={format(order.createdAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+            />
+
             <Section title="Problema Reportado">
               <p className="text-foreground text-sm leading-relaxed">{order.problem}</p>
             </Section>
 
-            {/* Technician Description */}
-            {order.technicianDescription && (
-              <Section title="Diagnóstico Técnico">
-                <p className="text-foreground text-sm leading-relaxed">{order.technicianDescription}</p>
+            {/* Photos from initial request */}
+            {order.photos && order.photos.length > 0 && (
+              <Section title="Fotos da Solicitação">
+                <div className="grid grid-cols-3 gap-2">
+                  {order.photos.map((url: string, i: number) => (
+                    <div key={i} className="aspect-[4/3] rounded-lg overflow-hidden border border-border">
+                      <img src={url} alt={`Solicitação ${i + 1}`} className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
               </Section>
             )}
 
+            <hr className="border-border" />
+
+            {/* ==================== ETAPA 2: DIAGNÓSTICO TÉCNICO ==================== */}
+            <StageHeader
+              number={2}
+              icon={<Wrench className="h-5 w-5" />}
+              title="Diagnóstico e Orçamento do Técnico"
+              date={order.quoteSentAt ? format(order.quoteSentAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : undefined}
+            />
+
+            {order.technicianDescription && (
+              <Section title="Diagnóstico Técnico">
+                <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">{order.technicianDescription}</p>
+              </Section>
+            )}
+
+            {/* Service order items (what the technician listed) */}
+            {items.length > 0 && role !== 'tecnico' && (
+              <Section title="Itens do Orçamento">
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-secondary/50">
+                        <th className="text-left p-2 font-medium text-muted-foreground">Descrição</th>
+                        <th className="text-left p-2 font-medium text-muted-foreground w-20">Tipo</th>
+                        <th className="text-right p-2 font-medium text-muted-foreground w-28">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item) => (
+                        <tr key={item.id} className="border-t border-border">
+                          <td className="p-2 text-foreground">{item.description}</td>
+                          <td className="p-2 text-muted-foreground capitalize">{item.item_type === 'material' ? 'Material' : 'Serviço'}</td>
+                          <td className="p-2 text-foreground text-right">R$ {item.real_cost.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Section>
+            )}
+
+            {order.estimatedDeadline && (
+              <div className="p-3 bg-secondary/30 rounded-lg inline-block">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Prazo Estimado</p>
+                <p className="text-sm font-medium text-foreground mt-1">{order.estimatedDeadline} dias úteis</p>
+              </div>
+            )}
+
+            <hr className="border-border" />
+
+            {/* ==================== ETAPA 3: RELATÓRIO FINAL ==================== */}
+            <StageHeader
+              number={3}
+              icon={<FileCheck className="h-5 w-5" />}
+              title="Relatório Final — Conclusão do Serviço"
+              date={format(report.completedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+            />
+
             {/* Service Description */}
-            <Section title="Serviço Executado">
+            <Section title="O que foi feito">
               <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">{report.description}</p>
             </Section>
+
+            {/* Observations / motivos */}
+            {report.observations && (
+              <Section title="Motivos e Recomendações Técnicas">
+                <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">{report.observations}</p>
+              </Section>
+            )}
 
             {/* Checklist */}
             {report.checklist && report.checklist.length > 0 && (
@@ -283,9 +388,9 @@ const RelatorioOS = () => {
               </Section>
             )}
 
-            {/* Photos */}
+            {/* Before / After Photos */}
             {((report.photosBefore && report.photosBefore.length > 0) || (report.photosAfter && report.photosAfter.length > 0)) && (
-              <Section title="Registro Fotográfico">
+              <Section title="Registro Fotográfico — Antes e Depois">
                 <div className="grid gap-6 md:grid-cols-2">
                   {report.photosBefore && report.photosBefore.length > 0 && (
                     <div>
@@ -315,44 +420,42 @@ const RelatorioOS = () => {
               </Section>
             )}
 
-            {/* Histórico de Conversas / Comentários */}
-            {comments.length > 0 && (
-              <Section title="Histórico de Acompanhamento">
-                <div className="space-y-2">
-                  {comments.map((comment) => (
-                    <div key={comment.id} className="flex gap-3 text-sm p-3 rounded-lg bg-secondary/30 border border-border/50">
-                      <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-foreground text-xs">
-                            {comment.profile?.name || 'Usuário'}
-                            {comment.profile?.company ? ` (${comment.profile.company})` : ''}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {format(new Date(comment.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                          </span>
-                        </div>
-                        <p className="text-foreground whitespace-pre-wrap text-xs leading-relaxed">{comment.message}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Section>
-            )}
+            <hr className="border-border" />
 
-            {/* Observations */}
-            {report.observations && (
-              <Section title="Observações e Recomendações">
-                <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">{report.observations}</p>
-              </Section>
+            {/* ==================== HISTÓRICO DE CONVERSAS ==================== */}
+            {comments.length > 0 && (
+              <>
+                <Section title="Histórico de Conversas">
+                  <p className="text-xs text-muted-foreground mb-3">Registro completo de comunicações entre Imobiliária, Técnico e Admin durante o ciclo da OS.</p>
+                  <div className="space-y-2">
+                    {comments.map((comment) => (
+                      <div key={comment.id} className="flex gap-3 text-sm p-3 rounded-lg bg-secondary/30 border border-border/50">
+                        <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-foreground text-xs">
+                              {comment.profile?.name || 'Usuário'}
+                              {comment.profile?.company ? ` (${comment.profile.company})` : ''}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {format(new Date(comment.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                            </span>
+                          </div>
+                          <p className="text-foreground whitespace-pre-wrap text-xs leading-relaxed">{comment.message}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Section>
+                <hr className="border-border" />
+              </>
             )}
 
             {/* Pricing - hidden from technicians */}
             {order.finalPrice && role !== 'tecnico' && (
               <>
-                <hr className="border-border" />
                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl">
-                  <span className="text-sm font-medium text-muted-foreground">Valor do Serviço</span>
+                  <span className="text-sm font-medium text-muted-foreground">Valor Total do Serviço</span>
                   <span className="text-2xl font-display font-bold text-primary">
                     R$ {order.finalPrice.toFixed(2)}
                   </span>
@@ -411,6 +514,25 @@ const RelatorioOS = () => {
     </div>
   );
 };
+
+/* ==================== SUB-COMPONENTS ==================== */
+
+function StageHeader({ number, icon, title, date }: { number: number; icon: React.ReactNode; title: string; date?: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center justify-center h-10 w-10 rounded-full bg-primary text-primary-foreground font-display font-bold text-lg flex-shrink-0">
+        {number}
+      </div>
+      <div className="flex items-center gap-2 flex-1">
+        {icon}
+        <h2 className="font-display font-semibold text-lg text-foreground">{title}</h2>
+      </div>
+      {date && (
+        <span className="text-xs text-muted-foreground whitespace-nowrap">{date}</span>
+      )}
+    </div>
+  );
+}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
