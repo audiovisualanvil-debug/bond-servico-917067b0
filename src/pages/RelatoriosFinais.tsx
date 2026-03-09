@@ -6,7 +6,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { STATUS_LABELS, OSStatus } from '@/types/serviceOrder';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, ExternalLink, Loader2, Search, Clock, CheckCircle, Wrench, Send, ShieldCheck, FileCheck } from 'lucide-react';
+import { FileText, Loader2, Search, Clock, CheckCircle, Wrench, Send, ShieldCheck, FileCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, useMemo } from 'react';
