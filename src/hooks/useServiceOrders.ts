@@ -123,7 +123,9 @@ function mapCompletionReport(r: DbCompletionReport | null | undefined): Completi
 
 function mapServiceOrder(db: DbServiceOrder): ServiceOrder {
   const reports = db.completion_report;
-  const report = Array.isArray(reports) && reports.length > 0 ? reports[0] : null;
+  const report = Array.isArray(reports) 
+    ? (reports.length > 0 ? reports[0] : null) 
+    : (reports || null);
 
   return {
     id: db.id,
