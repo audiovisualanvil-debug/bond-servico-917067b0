@@ -146,11 +146,11 @@ const RelatoriosFinais = () => {
                   </div>
 
                   <div className="flex flex-col gap-2 shrink-0">
-                    {order.completionReport && (
-                      <Button variant="outline" size="sm" asChild>
+                    {order.status === 'concluido' && (
+                      <Button size="sm" asChild>
                         <Link to={`/ordens/${order.id}/relatorio`}>
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          Ver Relatório
+                          <FileCheck className="h-3.5 w-3.5" />
+                          Relatório Final
                         </Link>
                       </Button>
                     )}
