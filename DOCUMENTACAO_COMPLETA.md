@@ -717,9 +717,14 @@ O sistema utiliza a biblioteca **html2pdf.js** para gerar PDFs a partir do conte
 - Formato: A4 retrato, escala 2x, JPEG quality 0.98
 - Nome do arquivo: `FazTudo_{data}_{imobiliaria}_{osNumber}.pdf`
 
-### Relatório de Serviço PDF (`RelatorioOS.tsx`)
-- Mesmo mecanismo de geração
-- Inclui fotos antes/depois, checklist, assinatura
+### Relatório Final PDF (`RelatorioOS.tsx`)
+- Título do documento: **"RELATÓRIO FINAL"**
+- Mesmo mecanismo de geração (clone do DOM + conversão de imagens para base64)
+- Inclui todas as seções do relatório de conclusão: descrição do serviço, checklist, fotos antes/depois, observações e recomendações, assinatura do técnico
+- **Histórico de Acompanhamento:** busca todos os comentários da OS na tabela `service_order_comments` (com join em `profiles` para nome e empresa do autor) e exibe cronologicamente no PDF, incluindo autor, empresa, data/hora e mensagem
+- **Diagnóstico Técnico:** exibe a descrição do técnico (`technician_description`) quando disponível
+- Condições configuráveis na barra de ações (não imprimível): garantia, validade do relatório e forma de pagamento
+- Valor do serviço oculto para técnicos
 - Nome do arquivo: `FazTudo_{data}_{imobiliaria}_{osNumber}.pdf`
 
 ---
