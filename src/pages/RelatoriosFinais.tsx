@@ -6,7 +6,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { STATUS_LABELS, OSStatus } from '@/types/serviceOrder';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { FileText, ExternalLink, Loader2, Search, Clock, CheckCircle, Wrench, Send, ShieldCheck, FileCheck } from 'lucide-react';
+import { FileText, Loader2, Search, Clock, CheckCircle, Wrench, Send, ShieldCheck, FileCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, useMemo } from 'react';
@@ -146,11 +146,11 @@ const RelatoriosFinais = () => {
                   </div>
 
                   <div className="flex flex-col gap-2 shrink-0">
-                    {order.completionReport && (
-                      <Button variant="outline" size="sm" asChild>
+                    {order.status === 'concluido' && (
+                      <Button size="sm" asChild>
                         <Link to={`/ordens/${order.id}/relatorio`}>
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          Ver Relatório
+                          <FileCheck className="h-3.5 w-3.5" />
+                          Relatório Final
                         </Link>
                       </Button>
                     )}
