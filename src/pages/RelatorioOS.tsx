@@ -166,25 +166,43 @@ const RelatorioOS = () => {
       const clone = reportRef.current.cloneNode(true) as HTMLElement;
       await convertImagesToBase64(clone);
 
-      // Fix html2canvas word spacing issues
+      // Fix html2canvas word/letter spacing issues
       clone.style.position = 'absolute';
       clone.style.left = '-9999px';
       clone.style.top = '0';
-      clone.style.width = reportRef.current.offsetWidth + 'px';
+      clone.style.width = '794px'; // A4 width at 96dpi
+      clone.style.fontKerning = 'none';
+      clone.style.fontFeatureSettings = '"kern" 0';
       document.body.appendChild(clone);
-      const allTextElements = clone.querySelectorAll('*');
-      allTextElements.forEach((el) => {
+      
+      // Force explicit spacing on all text elements to prevent html2canvas rendering bugs
+      const allElements = clone.querySelectorAll('*');
+      allElements.forEach((el) => {
         const htmlEl = el as HTMLElement;
-        htmlEl.style.letterSpacing = '0px';
-        htmlEl.style.wordSpacing = 'normal';
-        htmlEl.style.textRendering = 'geometricPrecision';
+        htmlEl.style.letterSpacing = 'normal';
+        htmlEl.style.wordSpacing = '0.15em';
+        htmlEl.style.textRendering = 'optimizeLegibility';
+        htmlEl.style.fontKerning = 'none';
+        // Prevent overlapping text by ensuring proper line-height
+        const computed = window.getComputedStyle(htmlEl);
+        if (computed.lineHeight === 'normal') {
+          htmlEl.style.lineHeight = '1.5';
+        }
       });
+
+      // Wait for layout to settle
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const opt = {
         margin: 0,
         filename: `FazTudo_${format(order.createdAt, 'dd-MM-yyyy')}_${(order.imobiliaria.company || order.imobiliaria.name).replace(/\s+/g, '_')}_${order.osNumber}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 3, useCORS: true, logging: false, letterRendering: true },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          logging: false,
+          windowWidth: 794,
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
       };
       await html2pdf().set(opt).from(clone).save();
