@@ -182,21 +182,40 @@ const OrcamentoPDF = () => {
       const html2pdf = (await import('html2pdf.js')).default;
       // Clone the element so we don't mutate the DOM
       const clone = pdfRef.current.cloneNode(true) as HTMLElement;
-      document.body.appendChild(clone);
       clone.style.position = 'absolute';
       clone.style.left = '-9999px';
       clone.style.top = '0';
+      clone.style.width = '794px';
+      clone.style.fontKerning = 'none';
+      clone.style.fontFeatureSettings = '"kern" 0';
+      document.body.appendChild(clone);
       
       // Convert all images to base64 in the clone
       await convertImagesToBase64(clone);
-      
+
+      // Fix html2canvas word/letter spacing issues
+      const allElements = clone.querySelectorAll('*');
+      allElements.forEach((el) => {
+        const htmlEl = el as HTMLElement;
+        htmlEl.style.letterSpacing = 'normal';
+        htmlEl.style.wordSpacing = '0.15em';
+        htmlEl.style.textRendering = 'optimizeLegibility';
+        htmlEl.style.fontKerning = 'none';
+        const computed = window.getComputedStyle(htmlEl);
+        if (computed.lineHeight === 'normal') {
+          htmlEl.style.lineHeight = '1.5';
+        }
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
       const imobName = (order.imobiliaria.company || order.imobiliaria.name).replace(/\s+/g, '_');
       const dateStr = format(order.createdAt, 'dd-MM-yyyy');
       const opt = {
         margin: 0,
         filename: `FazTudo_${dateStr}_${imobName}_${order.osNumber}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
+        html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 794 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
       };
       await html2pdf().set(opt).from(clone).save();
