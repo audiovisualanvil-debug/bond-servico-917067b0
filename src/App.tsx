@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SystemBlockScreen } from "@/components/SystemBlockScreen";
 
 // ⚠️ CONTROLE DE BLOQUEIO - Só alterar via conversa com o desenvolvedor
-const SYSTEM_BLOCKED = true;
+const SYSTEM_BLOCKED = false;
 import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import OrdensServico from "./pages/OrdensServico";
