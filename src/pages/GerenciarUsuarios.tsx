@@ -492,6 +492,16 @@ const GerenciarUsuarios = () => {
                 placeholder="Nome da empresa"
               />
             </div>
+            {editUser?.role === 'imobiliaria' && (
+              <div className="space-y-2">
+                <Label>CNPJ</Label>
+                <Input
+                  value={editForm.cnpj}
+                  onChange={(e) => setEditForm(f => ({ ...f, cnpj: e.target.value }))}
+                  placeholder="00.000.000/0000-00"
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditUser(null)}>Cancelar</Button>

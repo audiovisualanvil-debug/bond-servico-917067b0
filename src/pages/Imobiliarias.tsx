@@ -85,6 +85,7 @@ const Imobiliarias = () => {
               </CardHeader>
               <CardContent className="space-y-1 text-sm">
                 {imob.company && <p className="text-muted-foreground">{imob.company}</p>}
+                {imob.cnpj && <p className="text-muted-foreground">CNPJ: {imob.cnpj}</p>}
                 <p className="text-muted-foreground">{imob.email}</p>
                 {imob.phone && <p className="text-muted-foreground">{imob.phone}</p>}
               </CardContent>
