@@ -38,6 +38,7 @@ const GerenciarUsuarios = () => {
     name: '',
     phone: '',
     company: '',
+    cnpj: '',
     role: '' as string,
   });
 
