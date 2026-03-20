@@ -142,7 +142,7 @@ const OSDetail = () => {
 
   const handleAssignTechnician = async () => {
     if (!selectedTechnicianId) {
-      toast.error('Selecione um técnico');
+      toast.error('Selecione um profissional');
       return;
     }
     try {
