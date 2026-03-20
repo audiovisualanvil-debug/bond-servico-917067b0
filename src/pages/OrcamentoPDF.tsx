@@ -327,7 +327,7 @@ const OrcamentoPDF = () => {
 
             {/* Technical description */}
             {order.technicianDescription && (
-              <Section title="Diagnóstico Técnico">
+              <Section title="Diagnóstico Profissional">
                 <p className="text-foreground text-sm leading-relaxed">{order.technicianDescription}</p>
               </Section>
             )}
