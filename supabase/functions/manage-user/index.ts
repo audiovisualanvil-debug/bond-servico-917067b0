@@ -13,6 +13,7 @@ interface ManageUserRequest {
   name?: string;
   phone?: string;
   company?: string;
+  cnpj?: string;
 }
 
 serve(async (req) => {
@@ -62,6 +63,7 @@ serve(async (req) => {
       if (body.name !== undefined) updates.name = body.name.trim();
       if (body.phone !== undefined) updates.phone = body.phone.trim() || null;
       if (body.company !== undefined) updates.company = body.company.trim() || null;
+      if (body.cnpj !== undefined) updates.cnpj = body.cnpj.trim() || null;
 
       if (Object.keys(updates).length === 0) {
         throw new Error("Nenhum campo para atualizar");

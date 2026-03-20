@@ -21,6 +21,7 @@ interface UserWithRole {
   email: string;
   phone: string | null;
   company: string | null;
+  cnpj: string | null;
   role: string;
   created_at: string;
   is_banned: boolean;
@@ -37,12 +38,13 @@ const GerenciarUsuarios = () => {
     name: '',
     phone: '',
     company: '',
+    cnpj: '',
     role: '' as string,
   });
 
   // Edit dialog state
   const [editUser, setEditUser] = useState<UserWithRole | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', phone: '', company: '' });
+  const [editForm, setEditForm] = useState({ name: '', phone: '', company: '', cnpj: '' });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Ban/unban confirm dialog
@@ -67,9 +69,10 @@ const GerenciarUsuarios = () => {
           email: profile?.email || '',
           phone: profile?.phone || null,
           company: profile?.company || null,
+          cnpj: profile?.cnpj || null,
           role: r.role,
           created_at: profile?.created_at || '',
-          is_banned: false, // Will be determined by UI state after actions
+          is_banned: false,
         };
       });
 
@@ -82,6 +85,10 @@ const GerenciarUsuarios = () => {
     e.preventDefault();
     if (!form.email || !form.password || !form.name || !form.role) {
       toast.error('Preencha todos os campos obrigatórios');
+      return;
+    }
+    if (form.role === 'imobiliaria' && (!form.company || !form.phone || !form.cnpj)) {
+      toast.error('Para imobiliária, empresa, telefone e CNPJ são obrigatórios');
       return;
     }
     if (form.password.length < 6) {
@@ -98,6 +105,7 @@ const GerenciarUsuarios = () => {
           name: form.name,
           phone: form.phone || undefined,
           company: form.company || undefined,
+          cnpj: form.cnpj || undefined,
           role: form.role,
         },
       });
@@ -106,7 +114,7 @@ const GerenciarUsuarios = () => {
       if (response.data?.error) throw new Error(response.data.error);
 
       toast.success(`Usuário ${form.name} criado com sucesso!`);
-      setForm({ email: '', password: '', name: '', phone: '', company: '', role: '' });
+      setForm({ email: '', password: '', name: '', phone: '', company: '', cnpj: '', role: '' });
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     } catch (err: any) {
       toast.error(err.message || 'Erro ao criar usuário');
@@ -116,7 +124,7 @@ const GerenciarUsuarios = () => {
   };
 
   const handleOpenEdit = (u: UserWithRole) => {
-    setEditForm({ name: u.name, phone: u.phone || '', company: u.company || '' });
+    setEditForm({ name: u.name, phone: u.phone || '', company: u.company || '', cnpj: u.cnpj || '' });
     setEditUser(u);
   };
 
@@ -136,6 +144,7 @@ const GerenciarUsuarios = () => {
           name: editForm.name,
           phone: editForm.phone,
           company: editForm.company,
+          cnpj: editForm.cnpj,
         },
       });
 
@@ -324,18 +333,28 @@ const GerenciarUsuarios = () => {
                 </div>
 
                 {form.role === 'imobiliaria' && (
-                  <div className="space-y-2">
-                    <Label>Empresa</Label>
-                    <div className="relative">
-                      <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <>
+                    <div className="space-y-2">
+                      <Label>Empresa *</Label>
+                      <div className="relative">
+                        <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          value={form.company}
+                          onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
+                          placeholder="Nome da imobiliária"
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>CNPJ *</Label>
                       <Input
-                        value={form.company}
-                        onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
-                        placeholder="Nome da imobiliária"
-                        className="pl-10"
+                        value={form.cnpj}
+                        onChange={(e) => setForm(f => ({ ...f, cnpj: e.target.value }))}
+                        placeholder="00.000.000/0000-00"
                       />
                     </div>
-                  </div>
+                  </>
                 )}
 
                 <Button type="submit" className="w-full" disabled={isCreating}>
@@ -395,6 +414,9 @@ const GerenciarUsuarios = () => {
                             <p className="text-sm text-muted-foreground">{u.email}</p>
                             {u.company && (
                               <p className="text-xs text-muted-foreground">{u.company}</p>
+                            )}
+                            {u.cnpj && (
+                              <p className="text-xs text-muted-foreground">CNPJ: {u.cnpj}</p>
                             )}
                           </div>
                         </div>
@@ -473,6 +495,16 @@ const GerenciarUsuarios = () => {
                 placeholder="Nome da empresa"
               />
             </div>
+            {editUser?.role === 'imobiliaria' && (
+              <div className="space-y-2">
+                <Label>CNPJ</Label>
+                <Input
+                  value={editForm.cnpj}
+                  onChange={(e) => setEditForm(f => ({ ...f, cnpj: e.target.value }))}
+                  placeholder="00.000.000/0000-00"
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditUser(null)}>Cancelar</Button>

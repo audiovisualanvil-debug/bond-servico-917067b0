@@ -13,6 +13,7 @@ interface CreateUserRequest {
   name: string;
   phone?: string;
   company?: string;
+  cnpj?: string;
   role: "imobiliaria" | "tecnico";
 }
 
@@ -49,7 +50,7 @@ serve(async (req) => {
     if (!roleData) throw new Error("Apenas administradores podem criar usuários");
 
     const body: CreateUserRequest = await req.json();
-    const { email, password, name, phone, company, role } = body;
+    const { email, password, name, phone, company, cnpj, role } = body;
 
     if (!email || !password || !name || !role) {
       throw new Error("Campos obrigatórios: email, password, name, role");
@@ -76,6 +77,7 @@ serve(async (req) => {
       name,
       phone: phone || null,
       company: company || null,
+      cnpj: cnpj || null,
     });
 
     if (profileError) {
