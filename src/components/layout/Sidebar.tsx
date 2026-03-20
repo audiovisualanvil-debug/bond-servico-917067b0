@@ -56,7 +56,7 @@ export const Sidebar = () => {
   const getRoleLabel = (r: AppRole) => {
     switch (r) {
       case 'imobiliaria': return 'Imobiliária';
-      case 'tecnico': return 'Técnico';
+      case 'tecnico': return 'Profissional';
       case 'admin': return 'Administrador';
     }
   };

@@ -28,7 +28,7 @@ const profileCards = [
   },
   {
     key: 'tecnico' as const,
-    title: 'Técnico',
+    title: 'Profissional',
     icon: Wrench,
     description: 'Receba OSs, envie orçamentos e relatórios',
     gradient: 'from-blue-500/20 to-cyan-500/20',

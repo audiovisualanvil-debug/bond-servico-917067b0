@@ -63,7 +63,7 @@ export const OSCard: React.FC<OSCardProps> = ({ order, showActions = true }) => 
           {role === 'admin' && order.technicianCost && (
             <div className="mt-3 flex items-center gap-4 text-sm">
               <span className="text-muted-foreground">
-                Custo técnico: <strong className="text-foreground">R$ {order.technicianCost.toFixed(2)}</strong>
+                Custo profissional: <strong className="text-foreground">R$ {order.technicianCost.toFixed(2)}</strong>
               </span>
               {order.finalPrice && (
                 <span className="text-muted-foreground">

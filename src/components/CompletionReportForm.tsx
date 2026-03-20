@@ -262,7 +262,7 @@ export function CompletionReportForm({ onSubmit, isSubmitting, serviceOrderId }:
           <div className="flex items-center gap-2 mt-1.5">
             <Pencil className="h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Nome completo do técnico responsável"
+              placeholder="Nome completo do profissional responsável"
               value={technicianSignature}
               onChange={(e) => setTechnicianSignature(e.target.value)}
             />
