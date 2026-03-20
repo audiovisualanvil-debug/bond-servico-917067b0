@@ -52,7 +52,7 @@ const AprovarOrcamentos = () => {
                   <OSCard order={order} showActions={false} />
                 </div>
                 <div className="flex-shrink-0 text-right">
-                  <p className="text-sm text-muted-foreground">Custo técnico</p>
+                  <p className="text-sm text-muted-foreground">Custo profissional</p>
                   <p className="text-lg font-bold text-foreground">R$ {order.technicianCost?.toFixed(2)}</p>
                   <p className="text-sm text-muted-foreground mt-1">Valor sugerido (+40%)</p>
                   <p className="text-2xl font-bold text-accent">R$ {order.finalPrice?.toFixed(2) || (order.technicianCost ? (order.technicianCost * 1.4).toFixed(2) : '0.00')}</p>

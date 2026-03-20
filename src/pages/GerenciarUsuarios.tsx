@@ -362,7 +362,7 @@ const GerenciarUsuarios = () => {
                   </Card>
                   <Card className="p-4 text-center">
                     <p className="text-2xl font-bold text-foreground">{tecnicos.length}</p>
-                    <p className="text-xs text-muted-foreground">Técnicos</p>
+                    <p className="text-xs text-muted-foreground">Profissionais</p>
                   </Card>
                   <Card className="p-4 text-center">
                     <p className="text-2xl font-bold text-foreground">{admins.length}</p>

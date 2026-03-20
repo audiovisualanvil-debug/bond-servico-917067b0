@@ -34,7 +34,7 @@ const Relatorios = () => {
 
   const kpiCards = [
     { title: 'Faturamento Total', value: formatCurrency(report.faturamentoTotal), icon: DollarSign, variant: 'primary' as const },
-    { title: 'Custo Técnico', value: formatCurrency(report.custoTotal), icon: Receipt, variant: 'default' as const },
+    { title: 'Custo Profissional', value: formatCurrency(report.custoTotal), icon: Receipt, variant: 'default' as const },
     { title: 'Lucro Bruto', value: formatCurrency(report.lucroTotal), icon: TrendingUp, variant: 'accent' as const },
     { title: 'Total de OS', value: report.totalOS, icon: BarChart3, variant: 'default' as const },
     { title: 'Ticket Médio', value: formatCurrency(report.ticketMedio), icon: DollarSign, variant: 'default' as const },

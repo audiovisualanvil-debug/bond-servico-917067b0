@@ -91,7 +91,7 @@ const Tecnicos = () => {
       ) : (
         <div className="text-center py-12">
           <Users className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-          <p className="text-muted-foreground">Nenhum técnico encontrado</p>
+          <p className="text-muted-foreground">Nenhum profissional encontrado</p>
         </div>
       )}
     </DashboardLayout>
