@@ -620,7 +620,7 @@ const OSDetail = () => {
               <div className="os-card">
                 <div className="flex items-center gap-2 mb-3">
                   <Wrench className="h-5 w-5 text-primary" />
-                  <h2 className="font-display font-semibold text-lg">Diagnóstico do Técnico</h2>
+                  <h2 className="font-display font-semibold text-lg">Diagnóstico do Profissional</h2>
                 </div>
                 <p className="text-foreground mb-4">{order.technicianDescription}</p>
                 <div className="flex gap-4">
