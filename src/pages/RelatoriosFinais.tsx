@@ -131,7 +131,7 @@ const RelatoriosFinais = () => {
                         <strong>Imobiliária:</strong> {order.imobiliaria.company || order.imobiliaria.name}
                       </span>
                       <span>
-                        <strong>Técnico:</strong> {order.tecnico?.name || 'N/A'}
+                        <strong>Profissional:</strong> {order.tecnico?.name || 'N/A'}
                       </span>
                       <span>
                         <strong>Criado em:</strong>{' '}

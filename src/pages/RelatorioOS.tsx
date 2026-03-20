@@ -527,7 +527,7 @@ const RelatorioOS = () => {
               <div className="inline-block border-b-2 border-foreground pb-1 px-12 mb-2">
                 <p className="font-display text-lg italic">{report.technicianSignature}</p>
               </div>
-              <p className="text-xs text-muted-foreground">Técnico Responsável</p>
+              <p className="text-xs text-muted-foreground">Profissional Responsável</p>
               <p className="text-xs text-muted-foreground mt-1">
                 Relatório gerado em {format(report.completedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
               </p>
