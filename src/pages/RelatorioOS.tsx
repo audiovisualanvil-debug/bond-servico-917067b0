@@ -344,7 +344,7 @@ const RelatorioOS = () => {
             />
 
             {order.technicianDescription && (
-              <Section title="Diagnóstico Técnico">
+              <Section title="Diagnóstico Profissional">
                 <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">{order.technicianDescription}</p>
               </Section>
             )}
