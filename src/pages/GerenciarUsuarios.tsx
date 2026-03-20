@@ -44,7 +44,7 @@ const GerenciarUsuarios = () => {
 
   // Edit dialog state
   const [editUser, setEditUser] = useState<UserWithRole | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', phone: '', company: '' });
+  const [editForm, setEditForm] = useState({ name: '', phone: '', company: '', cnpj: '' });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Ban/unban confirm dialog
