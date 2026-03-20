@@ -188,7 +188,7 @@ const GerenciarUsuarios = () => {
   const roleLabel = (r: string) => {
     switch (r) {
       case 'admin': return 'Admin';
-      case 'tecnico': return 'Técnico';
+      case 'tecnico': return 'Profissional';
       case 'imobiliaria': return 'Imobiliária';
       default: return r;
     }
@@ -212,7 +212,7 @@ const GerenciarUsuarios = () => {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-display font-bold text-foreground">Gerenciar Usuários</h1>
-          <p className="text-muted-foreground mt-1">Cadastre, edite e gerencie imobiliárias e técnicos.</p>
+          <p className="text-muted-foreground mt-1">Cadastre, edite e gerencie imobiliárias e profissionais.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -223,7 +223,7 @@ const GerenciarUsuarios = () => {
                 <UserPlus className="h-5 w-5 text-primary" />
                 Novo Usuário
               </CardTitle>
-              <CardDescription>Crie uma conta para imobiliária ou técnico</CardDescription>
+              <CardDescription>Crie uma conta para imobiliária ou profissional</CardDescription>
             </CardHeader>
             <CardContent>
               {/* FIX: Erro #8 - noValidate para evitar mensagens nativas em inglês */}
@@ -239,7 +239,7 @@ const GerenciarUsuarios = () => {
                         <span className="flex items-center gap-2"><Building2 className="h-4 w-4" /> Imobiliária</span>
                       </SelectItem>
                       <SelectItem value="tecnico">
-                        <span className="flex items-center gap-2"><Wrench className="h-4 w-4" /> Técnico</span>
+                        <span className="flex items-center gap-2"><Wrench className="h-4 w-4" /> Profissional</span>
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -362,7 +362,7 @@ const GerenciarUsuarios = () => {
                   </Card>
                   <Card className="p-4 text-center">
                     <p className="text-2xl font-bold text-foreground">{tecnicos.length}</p>
-                    <p className="text-xs text-muted-foreground">Técnicos</p>
+                    <p className="text-xs text-muted-foreground">Profissionais</p>
                   </Card>
                   <Card className="p-4 text-center">
                     <p className="text-2xl font-bold text-foreground">{admins.length}</p>

@@ -20,7 +20,7 @@ const profileCards = [
     key: 'admin' as const,
     title: 'Administrador',
     icon: ShieldCheck,
-    description: 'Gerencie orçamentos, técnicos e operações',
+    description: 'Gerencie orçamentos, profissionais e operações',
     gradient: 'from-amber-500/20 to-orange-500/20',
     borderColor: 'border-amber-500/40 hover:border-amber-400',
     iconColor: 'text-amber-500',
@@ -28,7 +28,7 @@ const profileCards = [
   },
   {
     key: 'tecnico' as const,
-    title: 'Técnico',
+    title: 'Profissional',
     icon: Wrench,
     description: 'Receba OSs, envie orçamentos e relatórios',
     gradient: 'from-blue-500/20 to-cyan-500/20',

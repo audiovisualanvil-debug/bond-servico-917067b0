@@ -301,7 +301,7 @@ const RelatorioOS = () => {
               <InfoBlock label="Imóvel" value={order.property.address} subtext={`${order.property.neighborhood}, ${order.property.city} - ${order.property.state}`} />
               <InfoBlock label="Imobiliária" value={order.imobiliaria.company || order.imobiliaria.name} subtext={order.imobiliaria.email} />
               <InfoBlock label="Solicitante" value={order.requesterName} />
-              <InfoBlock label="Técnico Responsável" value={order.tecnico?.name || 'N/A'} subtext={order.tecnico?.phone} />
+              <InfoBlock label="Profissional Responsável" value={order.tecnico?.name || 'N/A'} subtext={order.tecnico?.phone} />
               <InfoBlock label="Data de Abertura" value={format(order.createdAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} />
               <InfoBlock label="Data de Conclusão" value={format(report.completedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} />
             </div>
@@ -339,12 +339,12 @@ const RelatorioOS = () => {
             <StageHeader
               number={2}
               icon={<Wrench className="h-5 w-5" />}
-              title="Diagnóstico e Orçamento do Técnico"
+              title="Diagnóstico e Orçamento do Profissional"
               date={order.quoteSentAt ? format(order.quoteSentAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : undefined}
             />
 
             {order.technicianDescription && (
-              <Section title="Diagnóstico Técnico">
+              <Section title="Diagnóstico Profissional">
                 <p className="text-foreground text-sm leading-relaxed whitespace-pre-wrap">{order.technicianDescription}</p>
               </Section>
             )}
@@ -460,7 +460,7 @@ const RelatorioOS = () => {
             {comments.length > 0 && (
               <>
                 <Section title="Histórico de Conversas">
-                  <p className="text-xs text-muted-foreground mb-3">Registro completo de comunicações entre Imobiliária, Técnico e Admin durante o ciclo da OS.</p>
+                  <p className="text-xs text-muted-foreground mb-3">Registro completo de comunicações entre Imobiliária, Profissional e Admin durante o ciclo da OS.</p>
                   <div className="space-y-2">
                     {comments.map((comment) => (
                       <div key={comment.id} className="flex gap-3 text-sm p-3 rounded-lg bg-secondary/30 border border-border/50">
@@ -527,7 +527,7 @@ const RelatorioOS = () => {
               <div className="inline-block border-b-2 border-foreground pb-1 px-12 mb-2">
                 <p className="font-display text-lg italic">{report.technicianSignature}</p>
               </div>
-              <p className="text-xs text-muted-foreground">Técnico Responsável</p>
+              <p className="text-xs text-muted-foreground">Profissional Responsável</p>
               <p className="text-xs text-muted-foreground mt-1">
                 Relatório gerado em {format(report.completedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
               </p>

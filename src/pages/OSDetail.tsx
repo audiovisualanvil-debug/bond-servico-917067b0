@@ -142,7 +142,7 @@ const OSDetail = () => {
 
   const handleAssignTechnician = async () => {
     if (!selectedTechnicianId) {
-      toast.error('Selecione um técnico');
+      toast.error('Selecione um profissional');
       return;
     }
     try {
@@ -154,9 +154,9 @@ const OSDetail = () => {
       supabase.functions.invoke('notify-status-change', {
         body: { serviceOrderId: order.id, newStatus: 'aguardando_orcamento_prestador' },
       }).catch(e => console.error('Notification error:', e));
-      toast.success('Técnico designado com sucesso!');
+      toast.success('Profissional designado com sucesso!');
     } catch (error: any) {
-      toast.error('Erro ao designar técnico', { description: error.message });
+      toast.error('Erro ao designar profissional', { description: error.message });
     }
   };
 
@@ -202,7 +202,7 @@ const OSDetail = () => {
         id: order.id,
         status: 'aprovado_aguardando',
       });
-      toast.success('Serviço aprovado!', { description: 'O técnico foi notificado para iniciar a execução.' });
+      toast.success('Serviço aprovado!', { description: 'O profissional foi notificado para iniciar a execução.' });
     } catch (error: any) {
       toast.error('Erro ao aprovar serviço', { description: error.message });
     }
@@ -270,7 +270,7 @@ const OSDetail = () => {
   };
 
   const handleSendReport = async (sendTo: ('imobiliaria' | 'tecnico' | 'proprietario')[]) => {
-    const labelMap: Record<string, string> = { imobiliaria: 'imobiliária', tecnico: 'técnico', proprietario: 'proprietário' };
+    const labelMap: Record<string, string> = { imobiliaria: 'imobiliária', tecnico: 'profissional', proprietario: 'proprietário' };
     const label = sendTo.map(s => labelMap[s] || s).join(' e ');
     setSendingReportTo(sendTo.join(','));
     try {
@@ -370,14 +370,14 @@ const OSDetail = () => {
             <div key="assign" className="os-card border-2 border-primary/30">
               <div className="flex items-center gap-2 mb-4">
                 <UserPlus className="h-5 w-5 text-primary" />
-                <h2 className="font-display font-semibold text-lg">Designar Técnico</h2>
+                <h2 className="font-display font-semibold text-lg">Designar Profissional</h2>
               </div>
               <div className="space-y-4">
                 <div>
-                  <Label>Selecionar técnico</Label>
+                  <Label>Selecionar profissional</Label>
                   <Select value={selectedTechnicianId} onValueChange={setSelectedTechnicianId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Escolha um técnico..." />
+                      <SelectValue placeholder="Escolha um profissional..." />
                     </SelectTrigger>
                     <SelectContent>
                       {technicians.map((tech) => (
@@ -390,7 +390,7 @@ const OSDetail = () => {
                 </div>
                 <Button onClick={handleAssignTechnician} className="w-full" disabled={isMutating || !selectedTechnicianId}>
                   {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-                  Designar Técnico
+                  Designar Profissional
                 </Button>
               </div>
             </div>
@@ -400,12 +400,12 @@ const OSDetail = () => {
             <div key="assigned" className="os-card border-2 border-primary/30">
               <div className="flex items-center gap-2 mb-4">
                 <UserPlus className="h-5 w-5 text-primary" />
-                <h2 className="font-display font-semibold text-lg">Técnico Designado</h2>
+                <h2 className="font-display font-semibold text-lg">Profissional Designado</h2>
               </div>
               <div className="p-4 bg-primary/5 rounded-lg">
-                <p className="text-sm text-muted-foreground">Técnico designado</p>
-                <p className="text-lg font-semibold text-foreground">{order.tecnico?.name || 'Técnico atribuído'}</p>
-                <p className="text-sm text-muted-foreground">Aguardando envio do orçamento pelo técnico</p>
+                <p className="text-sm text-muted-foreground">Profissional designado</p>
+                <p className="text-lg font-semibold text-foreground">{order.tecnico?.name || 'Profissional atribuído'}</p>
+                <p className="text-sm text-muted-foreground">Aguardando envio do orçamento pelo profissional</p>
               </div>
             </div>
           );
@@ -442,7 +442,7 @@ const OSDetail = () => {
                   )}
                 </div>
                 <div className="p-4 bg-secondary/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Custo Total do Técnico</p>
+                  <p className="text-sm text-muted-foreground">Custo Total do Profissional</p>
                   <p className="text-2xl font-bold text-foreground">R$ {order.technicianCost?.toFixed(2)}</p>
                 </div>
                 <div className="p-4 bg-accent/10 rounded-lg">
@@ -620,7 +620,7 @@ const OSDetail = () => {
               <div className="os-card">
                 <div className="flex items-center gap-2 mb-3">
                   <Wrench className="h-5 w-5 text-primary" />
-                  <h2 className="font-display font-semibold text-lg">Diagnóstico do Técnico</h2>
+                  <h2 className="font-display font-semibold text-lg">Diagnóstico do Profissional</h2>
                 </div>
                 <p className="text-foreground mb-4">{order.technicianDescription}</p>
                 <div className="flex gap-4">
@@ -670,7 +670,7 @@ const OSDetail = () => {
                           disabled={!!sendingReportTo}
                         >
                           {sendingReportTo === 'tecnico' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                          Enviar p/ Técnico
+                          Enviar p/ Profissional
                         </Button>
                         {order.property.ownerEmail ? (
                           <Button
@@ -758,7 +758,7 @@ const OSDetail = () => {
                   </div>
                 )}
                 <div className="mt-4 pt-4 border-t flex items-center justify-between text-sm text-muted-foreground">
-                  <span>Técnico: {order.completionReport.technicianSignature}</span>
+                  <span>Profissional: {order.completionReport.technicianSignature}</span>
                   <span>{format(order.completionReport.completedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
                 </div>
               </div>
@@ -814,7 +814,7 @@ const OSDetail = () => {
               <div className="os-card">
                 <div className="flex items-center gap-2 mb-3">
                   <Wrench className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold">Técnico Responsável</h3>
+                  <h3 className="font-semibold">Profissional Responsável</h3>
                 </div>
                 <p className="text-sm text-foreground">{order.tecnico.name}</p>
                 <p className="text-sm text-muted-foreground">{order.tecnico.phone}</p>

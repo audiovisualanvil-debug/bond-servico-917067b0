@@ -56,15 +56,15 @@ const Tecnicos = () => {
   return (
     <DashboardLayout>
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold text-foreground">Técnicos</h1>
+        <h1 className="font-display text-3xl font-bold text-foreground">Profissionais</h1>
         <p className="text-muted-foreground mt-1">
-          {tecnicos.length} técnico{tecnicos.length !== 1 ? 's' : ''} cadastrado{tecnicos.length !== 1 ? 's' : ''}
+          {tecnicos.length} profissional{tecnicos.length !== 1 ? 'is' : ''} cadastrado{tecnicos.length !== 1 ? 's' : ''}
         </p>
       </div>
 
       <div className="relative mb-6 max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Buscar técnicos..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+        <Input placeholder="Buscar profissionais..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
       </div>
 
       {isLoading ? (
@@ -91,7 +91,7 @@ const Tecnicos = () => {
       ) : (
         <div className="text-center py-12">
           <Users className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
-          <p className="text-muted-foreground">Nenhum técnico encontrado</p>
+          <p className="text-muted-foreground">Nenhum profissional encontrado</p>
         </div>
       )}
     </DashboardLayout>

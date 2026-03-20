@@ -39,7 +39,7 @@ const navItems: NavItem[] = [
   { label: 'Meus Serviços', href: '/meus-servicos', icon: Wrench, roles: ['tecnico'] },
   { label: 'Histórico Imóveis', href: '/historico', icon: History, roles: ['imobiliaria', 'admin'] },
   { label: 'Imobiliárias', href: '/imobiliarias', icon: Building2, roles: ['admin'] },
-  { label: 'Técnicos', href: '/tecnicos', icon: Users, roles: ['admin'] },
+  { label: 'Profissionais', href: '/tecnicos', icon: Users, roles: ['admin'] },
   { label: 'Gerenciar Usuários', href: '/usuarios', icon: UserPlus, roles: ['admin'] },
   { label: 'Relatórios', href: '/relatorios', icon: FileText, roles: ['admin'] },
   { label: 'Relatórios Finais', href: '/relatorios-finais', icon: ClipboardList, roles: ['admin'] },
@@ -56,7 +56,7 @@ export const Sidebar = () => {
   const getRoleLabel = (r: AppRole) => {
     switch (r) {
       case 'imobiliaria': return 'Imobiliária';
-      case 'tecnico': return 'Técnico';
+      case 'tecnico': return 'Profissional';
       case 'admin': return 'Administrador';
     }
   };

@@ -327,7 +327,7 @@ const OrcamentoPDF = () => {
 
             {/* Technical description */}
             {order.technicianDescription && (
-              <Section title="Diagnóstico Técnico">
+              <Section title="Diagnóstico Profissional">
                 <p className="text-foreground text-sm leading-relaxed">{order.technicianDescription}</p>
               </Section>
             )}
@@ -476,7 +476,7 @@ const OrcamentoPDF = () => {
               <div className="text-center">
                 <div className="border-b-2 border-foreground/30 pb-1 mb-2 mx-4 min-h-[40px]" />
                 <p className="text-xs text-muted-foreground">Faz-Tudo Imobiliário</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Responsável Técnico</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Responsável Profissional</p>
               </div>
             </div>
 
