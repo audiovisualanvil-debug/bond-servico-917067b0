@@ -18,6 +18,7 @@ export interface Profile {
   name: string;
   phone: string | null;
   company: string | null;
+  cnpj: string | null;
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
