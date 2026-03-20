@@ -13,6 +13,7 @@ interface ManageUserRequest {
   name?: string;
   phone?: string;
   company?: string;
+  cnpj?: string;
 }
 
 serve(async (req) => {
