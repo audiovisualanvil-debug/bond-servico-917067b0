@@ -339,7 +339,7 @@ const RelatorioOS = () => {
             <StageHeader
               number={2}
               icon={<Wrench className="h-5 w-5" />}
-              title="Diagnóstico e Orçamento do Técnico"
+              title="Diagnóstico e Orçamento do Profissional"
               date={order.quoteSentAt ? format(order.quoteSentAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : undefined}
             />
 
