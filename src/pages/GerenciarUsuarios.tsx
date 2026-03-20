@@ -239,7 +239,7 @@ const GerenciarUsuarios = () => {
                         <span className="flex items-center gap-2"><Building2 className="h-4 w-4" /> Imobiliária</span>
                       </SelectItem>
                       <SelectItem value="tecnico">
-                        <span className="flex items-center gap-2"><Wrench className="h-4 w-4" /> Técnico</span>
+                        <span className="flex items-center gap-2"><Wrench className="h-4 w-4" /> Profissional</span>
                       </SelectItem>
                     </SelectContent>
                   </Select>
