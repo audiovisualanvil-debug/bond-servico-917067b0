@@ -460,7 +460,7 @@ const RelatorioOS = () => {
             {comments.length > 0 && (
               <>
                 <Section title="Histórico de Conversas">
-                  <p className="text-xs text-muted-foreground mb-3">Registro completo de comunicações entre Imobiliária, Técnico e Admin durante o ciclo da OS.</p>
+                  <p className="text-xs text-muted-foreground mb-3">Registro completo de comunicações entre Imobiliária, Profissional e Admin durante o ciclo da OS.</p>
                   <div className="space-y-2">
                     {comments.map((comment) => (
                       <div key={comment.id} className="flex gap-3 text-sm p-3 rounded-lg bg-secondary/30 border border-border/50">
