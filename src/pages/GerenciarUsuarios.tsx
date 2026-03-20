@@ -69,9 +69,10 @@ const GerenciarUsuarios = () => {
           email: profile?.email || '',
           phone: profile?.phone || null,
           company: profile?.company || null,
+          cnpj: profile?.cnpj || null,
           role: r.role,
           created_at: profile?.created_at || '',
-          is_banned: false, // Will be determined by UI state after actions
+          is_banned: false,
         };
       });
 
