@@ -400,12 +400,12 @@ const OSDetail = () => {
             <div key="assigned" className="os-card border-2 border-primary/30">
               <div className="flex items-center gap-2 mb-4">
                 <UserPlus className="h-5 w-5 text-primary" />
-                <h2 className="font-display font-semibold text-lg">Técnico Designado</h2>
+                <h2 className="font-display font-semibold text-lg">Profissional Designado</h2>
               </div>
               <div className="p-4 bg-primary/5 rounded-lg">
-                <p className="text-sm text-muted-foreground">Técnico designado</p>
-                <p className="text-lg font-semibold text-foreground">{order.tecnico?.name || 'Técnico atribuído'}</p>
-                <p className="text-sm text-muted-foreground">Aguardando envio do orçamento pelo técnico</p>
+                <p className="text-sm text-muted-foreground">Profissional designado</p>
+                <p className="text-lg font-semibold text-foreground">{order.tecnico?.name || 'Profissional atribuído'}</p>
+                <p className="text-sm text-muted-foreground">Aguardando envio do orçamento pelo profissional</p>
               </div>
             </div>
           );
