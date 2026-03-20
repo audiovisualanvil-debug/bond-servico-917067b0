@@ -144,6 +144,7 @@ const GerenciarUsuarios = () => {
           name: editForm.name,
           phone: editForm.phone,
           company: editForm.company,
+          cnpj: editForm.cnpj,
         },
       });
 
