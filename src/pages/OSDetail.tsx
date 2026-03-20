@@ -814,7 +814,7 @@ const OSDetail = () => {
               <div className="os-card">
                 <div className="flex items-center gap-2 mb-3">
                   <Wrench className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold">Técnico Responsável</h3>
+                  <h3 className="font-semibold">Profissional Responsável</h3>
                 </div>
                 <p className="text-sm text-foreground">{order.tecnico.name}</p>
                 <p className="text-sm text-muted-foreground">{order.tecnico.phone}</p>
