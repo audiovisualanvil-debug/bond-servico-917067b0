@@ -415,6 +415,9 @@ const GerenciarUsuarios = () => {
                             {u.company && (
                               <p className="text-xs text-muted-foreground">{u.company}</p>
                             )}
+                            {u.cnpj && (
+                              <p className="text-xs text-muted-foreground">CNPJ: {u.cnpj}</p>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
