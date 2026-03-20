@@ -758,7 +758,7 @@ const OSDetail = () => {
                   </div>
                 )}
                 <div className="mt-4 pt-4 border-t flex items-center justify-between text-sm text-muted-foreground">
-                  <span>Técnico: {order.completionReport.technicianSignature}</span>
+                  <span>Profissional: {order.completionReport.technicianSignature}</span>
                   <span>{format(order.completionReport.completedAt, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
                 </div>
               </div>
