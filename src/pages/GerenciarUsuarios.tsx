@@ -188,7 +188,7 @@ const GerenciarUsuarios = () => {
   const roleLabel = (r: string) => {
     switch (r) {
       case 'admin': return 'Admin';
-      case 'tecnico': return 'Técnico';
+      case 'tecnico': return 'Profissional';
       case 'imobiliaria': return 'Imobiliária';
       default: return r;
     }
