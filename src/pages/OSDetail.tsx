@@ -202,7 +202,7 @@ const OSDetail = () => {
         id: order.id,
         status: 'aprovado_aguardando',
       });
-      toast.success('Serviço aprovado!', { description: 'O técnico foi notificado para iniciar a execução.' });
+      toast.success('Serviço aprovado!', { description: 'O profissional foi notificado para iniciar a execução.' });
     } catch (error: any) {
       toast.error('Erro ao aprovar serviço', { description: error.message });
     }
