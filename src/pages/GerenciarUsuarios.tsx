@@ -333,18 +333,28 @@ const GerenciarUsuarios = () => {
                 </div>
 
                 {form.role === 'imobiliaria' && (
-                  <div className="space-y-2">
-                    <Label>Empresa</Label>
-                    <div className="relative">
-                      <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <>
+                    <div className="space-y-2">
+                      <Label>Empresa *</Label>
+                      <div className="relative">
+                        <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          value={form.company}
+                          onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
+                          placeholder="Nome da imobiliária"
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>CNPJ *</Label>
                       <Input
-                        value={form.company}
-                        onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
-                        placeholder="Nome da imobiliária"
-                        className="pl-10"
+                        value={form.cnpj}
+                        onChange={(e) => setForm(f => ({ ...f, cnpj: e.target.value }))}
+                        placeholder="00.000.000/0000-00"
                       />
                     </div>
-                  </div>
+                  </>
                 )}
 
                 <Button type="submit" className="w-full" disabled={isCreating}>
