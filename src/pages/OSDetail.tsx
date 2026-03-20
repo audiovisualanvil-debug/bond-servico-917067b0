@@ -374,7 +374,7 @@ const OSDetail = () => {
               </div>
               <div className="space-y-4">
                 <div>
-                  <Label>Selecionar técnico</Label>
+                  <Label>Selecionar profissional</Label>
                   <Select value={selectedTechnicianId} onValueChange={setSelectedTechnicianId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Escolha um técnico..." />
