@@ -87,6 +87,10 @@ const GerenciarUsuarios = () => {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
+    if (form.role === 'imobiliaria' && (!form.company || !form.phone || !form.cnpj)) {
+      toast.error('Para imobiliária, empresa, telefone e CNPJ são obrigatórios');
+      return;
+    }
     if (form.password.length < 6) {
       toast.error('A senha deve ter pelo menos 6 caracteres');
       return;
