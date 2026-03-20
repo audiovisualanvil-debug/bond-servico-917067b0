@@ -270,7 +270,7 @@ const OSDetail = () => {
   };
 
   const handleSendReport = async (sendTo: ('imobiliaria' | 'tecnico' | 'proprietario')[]) => {
-    const labelMap: Record<string, string> = { imobiliaria: 'imobiliária', tecnico: 'técnico', proprietario: 'proprietário' };
+    const labelMap: Record<string, string> = { imobiliaria: 'imobiliária', tecnico: 'profissional', proprietario: 'proprietário' };
     const label = sendTo.map(s => labelMap[s] || s).join(' e ');
     setSendingReportTo(sendTo.join(','));
     try {
