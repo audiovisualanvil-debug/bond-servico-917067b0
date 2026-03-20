@@ -670,7 +670,7 @@ const OSDetail = () => {
                           disabled={!!sendingReportTo}
                         >
                           {sendingReportTo === 'tecnico' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                          Enviar p/ Técnico
+                          Enviar p/ Profissional
                         </Button>
                         {order.property.ownerEmail ? (
                           <Button
