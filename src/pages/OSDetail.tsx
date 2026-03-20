@@ -370,7 +370,7 @@ const OSDetail = () => {
             <div key="assign" className="os-card border-2 border-primary/30">
               <div className="flex items-center gap-2 mb-4">
                 <UserPlus className="h-5 w-5 text-primary" />
-                <h2 className="font-display font-semibold text-lg">Designar Técnico</h2>
+                <h2 className="font-display font-semibold text-lg">Designar Profissional</h2>
               </div>
               <div className="space-y-4">
                 <div>
