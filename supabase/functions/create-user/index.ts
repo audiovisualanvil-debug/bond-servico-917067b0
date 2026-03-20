@@ -13,6 +13,7 @@ interface CreateUserRequest {
   name: string;
   phone?: string;
   company?: string;
+  cnpj?: string;
   role: "imobiliaria" | "tecnico";
 }
 
