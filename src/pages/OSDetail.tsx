@@ -154,9 +154,9 @@ const OSDetail = () => {
       supabase.functions.invoke('notify-status-change', {
         body: { serviceOrderId: order.id, newStatus: 'aguardando_orcamento_prestador' },
       }).catch(e => console.error('Notification error:', e));
-      toast.success('Técnico designado com sucesso!');
+      toast.success('Profissional designado com sucesso!');
     } catch (error: any) {
-      toast.error('Erro ao designar técnico', { description: error.message });
+      toast.error('Erro ao designar profissional', { description: error.message });
     }
   };
 
