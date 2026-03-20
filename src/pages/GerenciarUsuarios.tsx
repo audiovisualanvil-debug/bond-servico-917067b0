@@ -105,6 +105,7 @@ const GerenciarUsuarios = () => {
           name: form.name,
           phone: form.phone || undefined,
           company: form.company || undefined,
+          cnpj: form.cnpj || undefined,
           role: form.role,
         },
       });
