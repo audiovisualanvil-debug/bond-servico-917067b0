@@ -56,9 +56,9 @@ const Tecnicos = () => {
   return (
     <DashboardLayout>
       <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold text-foreground">Técnicos</h1>
+        <h1 className="font-display text-3xl font-bold text-foreground">Profissionais</h1>
         <p className="text-muted-foreground mt-1">
-          {tecnicos.length} técnico{tecnicos.length !== 1 ? 's' : ''} cadastrado{tecnicos.length !== 1 ? 's' : ''}
+          {tecnicos.length} profissional{tecnicos.length !== 1 ? 'is' : ''} cadastrado{tecnicos.length !== 1 ? 's' : ''}
         </p>
       </div>
 
