@@ -390,7 +390,7 @@ const OSDetail = () => {
                 </div>
                 <Button onClick={handleAssignTechnician} className="w-full" disabled={isMutating || !selectedTechnicianId}>
                   {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-                  Designar Técnico
+                  Designar Profissional
                 </Button>
               </div>
             </div>
