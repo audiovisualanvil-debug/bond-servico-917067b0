@@ -21,6 +21,7 @@ interface UserWithRole {
   email: string;
   phone: string | null;
   company: string | null;
+  cnpj: string | null;
   role: string;
   created_at: string;
   is_banned: boolean;
