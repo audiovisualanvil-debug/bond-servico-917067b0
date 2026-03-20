@@ -11,6 +11,7 @@ interface Imobiliaria {
   email: string;
   phone: string | null;
   company: string | null;
+  cnpj: string | null;
   created_at: string;
 }
 
