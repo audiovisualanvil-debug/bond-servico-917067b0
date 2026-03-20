@@ -212,7 +212,7 @@ const GerenciarUsuarios = () => {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-display font-bold text-foreground">Gerenciar Usuários</h1>
-          <p className="text-muted-foreground mt-1">Cadastre, edite e gerencie imobiliárias e técnicos.</p>
+          <p className="text-muted-foreground mt-1">Cadastre, edite e gerencie imobiliárias e profissionais.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
