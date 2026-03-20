@@ -258,7 +258,7 @@ export function CompletionReportForm({ onSubmit, isSubmitting, serviceOrderId }:
 
         {/* Signature */}
         <div>
-          <Label className="text-sm font-semibold">Assinatura Digital do Técnico *</Label>
+          <Label className="text-sm font-semibold">Assinatura Digital do Profissional *</Label>
           <div className="flex items-center gap-2 mt-1.5">
             <Pencil className="h-4 w-4 text-muted-foreground" />
             <Input
