@@ -114,7 +114,7 @@ const GerenciarUsuarios = () => {
       if (response.data?.error) throw new Error(response.data.error);
 
       toast.success(`Usuário ${form.name} criado com sucesso!`);
-      setForm({ email: '', password: '', name: '', phone: '', company: '', role: '' });
+      setForm({ email: '', password: '', name: '', phone: '', company: '', cnpj: '', role: '' });
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     } catch (err: any) {
       toast.error(err.message || 'Erro ao criar usuário');
