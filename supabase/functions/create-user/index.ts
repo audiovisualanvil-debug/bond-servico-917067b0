@@ -77,6 +77,7 @@ serve(async (req) => {
       name,
       phone: phone || null,
       company: company || null,
+      cnpj: cnpj || null,
     });
 
     if (profileError) {
