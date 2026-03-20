@@ -377,7 +377,7 @@ const OSDetail = () => {
                   <Label>Selecionar profissional</Label>
                   <Select value={selectedTechnicianId} onValueChange={setSelectedTechnicianId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Escolha um técnico..." />
+                      <SelectValue placeholder="Escolha um profissional..." />
                     </SelectTrigger>
                     <SelectContent>
                       {technicians.map((tech) => (
