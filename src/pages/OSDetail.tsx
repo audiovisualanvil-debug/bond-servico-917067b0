@@ -442,7 +442,7 @@ const OSDetail = () => {
                   )}
                 </div>
                 <div className="p-4 bg-secondary/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Custo Total do Técnico</p>
+                  <p className="text-sm text-muted-foreground">Custo Total do Profissional</p>
                   <p className="text-2xl font-bold text-foreground">R$ {order.technicianCost?.toFixed(2)}</p>
                 </div>
                 <div className="p-4 bg-accent/10 rounded-lg">
