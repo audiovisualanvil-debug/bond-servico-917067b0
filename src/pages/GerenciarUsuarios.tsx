@@ -124,7 +124,7 @@ const GerenciarUsuarios = () => {
   };
 
   const handleOpenEdit = (u: UserWithRole) => {
-    setEditForm({ name: u.name, phone: u.phone || '', company: u.company || '' });
+    setEditForm({ name: u.name, phone: u.phone || '', company: u.company || '', cnpj: u.cnpj || '' });
     setEditUser(u);
   };
 
