@@ -223,7 +223,7 @@ const GerenciarUsuarios = () => {
                 <UserPlus className="h-5 w-5 text-primary" />
                 Novo Usuário
               </CardTitle>
-              <CardDescription>Crie uma conta para imobiliária ou técnico</CardDescription>
+              <CardDescription>Crie uma conta para imobiliária ou profissional</CardDescription>
             </CardHeader>
             <CardContent>
               {/* FIX: Erro #8 - noValidate para evitar mensagens nativas em inglês */}
