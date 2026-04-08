@@ -12,7 +12,8 @@ import {
   Users,
   Building2,
   FileText,
-  UserPlus
+  UserPlus,
+  Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
