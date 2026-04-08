@@ -90,7 +90,7 @@ const NovoChamado = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLFormElement>(null);
 
-  if (authLoading) {
+  if (authLoading || !user || !role) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-20">
@@ -99,8 +99,6 @@ const NovoChamado = () => {
       </DashboardLayout>
     );
   }
-
-  if (!user || !role) return null;
 
   const isSubmitting = createOrder.isPending || createProperty.isPending || isUploading;
   const effectiveImobiliariaId = role === 'admin' ? selectedImobiliariaId : user.id;
@@ -313,7 +311,7 @@ const NovoChamado = () => {
               <div id="field-imobiliaria">
                 <Label>Selecionar imobiliária *</Label>
                 <Select
-                  value={selectedImobiliariaId}
+                  value={selectedImobiliariaId || undefined}
                   onValueChange={(value) => {
                     setSelectedImobiliariaId(value);
                     setFormData(prev => ({ ...prev, propertyId: '' }));
@@ -347,7 +345,7 @@ const NovoChamado = () => {
               <div id="field-property">
                 <Label htmlFor="property">Selecionar imóvel cadastrado *</Label>
                 <Select
-                  value={formData.propertyId}
+                  value={formData.propertyId || undefined}
                   onValueChange={(value) => {
                     setFormData(prev => ({ ...prev, propertyId: value }));
                     clearFieldError('property');
@@ -478,7 +476,7 @@ const NovoChamado = () => {
 
               <div id="field-urgency">
                 <Label htmlFor="urgency">Grau de urgência *</Label>
-                <Select value={formData.urgency} onValueChange={(value) => { setFormData(prev => ({ ...prev, urgency: value as UrgencyLevel })); clearFieldError('urgency'); }}>
+                <Select value={formData.urgency || undefined} onValueChange={(value) => { setFormData(prev => ({ ...prev, urgency: value as UrgencyLevel })); clearFieldError('urgency'); }}>
                   <SelectTrigger className={fieldErrors.urgency ? 'border-destructive ring-destructive' : ''}>
                     <SelectValue placeholder="Selecione a urgência" />
                   </SelectTrigger>
