@@ -5,8 +5,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CompletionReportForm } from '@/components/CompletionReportForm';
 import { DollarSign, Send, Wrench, UserPlus, Loader2, CheckCircle2 } from 'lucide-react';
-import { ServiceOrder, User } from '@/types/serviceOrder';
+import { ServiceOrder } from '@/types/serviceOrder';
 import { toast } from 'sonner';
+
+interface TechOption {
+  id: string;
+  name: string;
+  company?: string | null;
+}
 
 interface TechQuote {
   description: string;
