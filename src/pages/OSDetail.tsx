@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { useServiceOrder, useUpdateServiceOrder, useCreateCompletionReport, useDeleteServiceOrder } from '@/hooks/useServiceOrders';
 import { useTechnicians } from '@/hooks/useTechnicians';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 // Subcomponents
 import { OSDetailHeader } from '@/components/os-detail/OSDetailHeader';
