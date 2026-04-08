@@ -284,7 +284,6 @@ export function useCreateServiceOrder() {
       const { data: result, error } = await typedFrom('service_orders')
         .insert({
           ...data,
-          os_number: 'TEMP', // Will be overwritten by trigger
           photos: data.photos || [],
         })
         .select('id, os_number')
