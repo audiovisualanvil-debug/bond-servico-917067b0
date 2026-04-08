@@ -73,7 +73,11 @@ export function useFinancialReport(filters: FinancialFilters) {
 
       if (error) throw error;
 
-      const typedOrders = (orders || []) as Array<{
+      const rawOrders = orders || [];
+      const typedOrders = rawOrders.map((o: any) => ({
+        ...o,
+        imobiliaria: Array.isArray(o.imobiliaria) ? o.imobiliaria[0] || null : o.imobiliaria,
+      })) as Array<{
         id: string;
         status: string;
         final_price: number | null;
