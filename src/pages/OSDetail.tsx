@@ -134,7 +134,7 @@ const OSDetail = () => {
   };
 
   const handleRequestRevision = async () => {
-    try { await updateOrder.mutateAsync({ id: order.id, status: 'aguardando_aprovacao_admin' }); toast.success('Revisão solicitada!'); }
+    try { await updateOrder.mutateAsync({ id: order.id, status: 'aguardando_aprovacao_admin' }); auditLog({ action: 'request_revision', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); toast.success('Revisão solicitada!'); }
     catch (e: any) { toast.error('Erro', { description: e.message }); }
   };
 
