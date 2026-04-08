@@ -44,6 +44,7 @@ const navItems: NavItem[] = [
   { label: 'Gerenciar Usuários', href: '/usuarios', icon: UserPlus, roles: ['admin'] },
   { label: 'Relatórios', href: '/relatorios', icon: FileText, roles: ['admin'] },
   { label: 'Relatórios Finais', href: '/relatorios-finais', icon: ClipboardList, roles: ['admin'] },
+  { label: 'Log de Auditoria', href: '/auditoria', icon: Shield, roles: ['admin'] },
 ];
 
 export const Sidebar = () => {
