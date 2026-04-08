@@ -347,7 +347,7 @@ const NovoChamado = () => {
               <div id="field-property">
                 <Label htmlFor="property">Selecionar imóvel cadastrado *</Label>
                 <Select
-                  value={formData.propertyId}
+                  value={formData.propertyId || undefined}
                   onValueChange={(value) => {
                     setFormData(prev => ({ ...prev, propertyId: value }));
                     clearFieldError('property');
