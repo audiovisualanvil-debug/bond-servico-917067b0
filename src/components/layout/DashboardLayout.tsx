@@ -10,6 +10,7 @@ interface DashboardLayoutProps {
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { isAuthenticated } = useAuth();
+  useRealtimeNotifications();
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
