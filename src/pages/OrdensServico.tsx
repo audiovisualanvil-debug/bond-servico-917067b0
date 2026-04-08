@@ -22,7 +22,7 @@ const OrdensServico = () => {
   const [statusFilter, setStatusFilter] = useState<OSStatus | 'all'>('all');
   
   const { data: orders = [], isLoading, error } = useServiceOrders(statusFilter !== 'all' ? statusFilter : undefined);
-  useServiceOrdersRealtime();
+  
 
   if (!user || !role) return null;
 

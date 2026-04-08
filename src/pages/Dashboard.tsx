@@ -21,7 +21,7 @@ const Dashboard = () => {
   const { user, profile, role, isLoading: authLoading } = useAuth();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: allOrders = [], isLoading: ordersLoading } = useServiceOrders();
-  useServiceOrdersRealtime();
+  
 
   if (authLoading) {
     return (

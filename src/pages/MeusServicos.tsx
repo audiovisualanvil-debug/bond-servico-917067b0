@@ -11,7 +11,7 @@ const MeusServicos = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const { data: allOrders = [], isLoading } = useServiceOrders();
-  useServiceOrdersRealtime();
+  
 
   if (!user) return null;
 

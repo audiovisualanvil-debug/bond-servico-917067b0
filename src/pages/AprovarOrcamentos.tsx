@@ -9,7 +9,7 @@ import { useServiceOrders } from '@/hooks/useServiceOrders';
 const AprovarOrcamentos = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const { data: pendingOrders = [], isLoading } = useServiceOrders('aguardando_aprovacao_admin');
-  useServiceOrdersRealtime();
+  
 
   const filteredOrders = pendingOrders.filter(os => {
     if (!searchTerm) return true;
