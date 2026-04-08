@@ -166,7 +166,7 @@ const OSDetail = () => {
   };
 
   const handleDeleteOrder = async () => {
-    try { await deleteOrder.mutateAsync(order.id); toast.success('OS excluída!'); navigate('/ordens'); }
+    try { const osNumber = order.osNumber; await deleteOrder.mutateAsync(order.id); auditLog({ action: 'delete_order', entity_type: 'service_order', entity_id: order.id, details: { os_number: osNumber } }); toast.success('OS excluída!'); navigate('/ordens'); }
     catch (e: any) { toast.error('Erro ao excluir', { description: e.message }); }
   };
 
