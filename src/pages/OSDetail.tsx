@@ -144,7 +144,7 @@ const OSDetail = () => {
   };
 
   const handleStartExecution = async () => {
-    try { await updateOrder.mutateAsync({ id: order.id, status: 'em_execucao' }); toast.success('Execução iniciada!'); }
+    try { await updateOrder.mutateAsync({ id: order.id, status: 'em_execucao' }); auditLog({ action: 'start_execution', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); toast.success('Execução iniciada!'); }
     catch (e: any) { toast.error('Erro', { description: e.message }); }
   };
 
