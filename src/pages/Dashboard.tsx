@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PWAInstallBanner } from '@/components/PWAInstallBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatCard } from '@/components/StatCard';
 import { OSCard } from '@/components/OSCard';
@@ -48,10 +49,12 @@ const Dashboard = () => {
   const currentStats = stats || { total: 0, pending: 0, inProgress: 0, completed: 0, thisMonth: 0 };
 
   const renderRoleContent = () => {
+    const banner = <PWAInstallBanner />;
     switch (role) {
       case 'imobiliaria':
         return (
           <>
+            {banner}
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h1 className="font-display text-3xl font-bold text-foreground">
@@ -81,6 +84,7 @@ const Dashboard = () => {
       case 'tecnico':
         return (
           <>
+            {banner}
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h1 className="font-display text-3xl font-bold text-foreground">
@@ -104,6 +108,7 @@ const Dashboard = () => {
       case 'admin':
         return (
           <>
+            {banner}
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h1 className="font-display text-3xl font-bold text-foreground">
