@@ -13,7 +13,7 @@ import {
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { Search, Plus, Filter, ClipboardList, Loader2 } from 'lucide-react';
-import { useServiceOrders, useServiceOrdersRealtime } from '@/hooks/useServiceOrders';
+import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { OSStatus, STATUS_LABELS } from '@/types/serviceOrder';
 
 const OrdensServico = () => {

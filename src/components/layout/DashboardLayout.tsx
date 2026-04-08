@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications';
 
 interface DashboardLayoutProps {
   children: ReactNode;
