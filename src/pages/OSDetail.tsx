@@ -119,6 +119,7 @@ const OSDetail = () => {
   const handleAdminApprove = async () => {
     try {
       await updateOrder.mutateAsync({ id: order.id, final_price: finalPrice, payment_method: order.paymentMethod || undefined, status: 'enviado_imobiliaria' });
+      auditLog({ action: 'approve_budget', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber, final_price: finalPrice } });
       supabase.functions.invoke('send-budget-approved', { body: { serviceOrderId: order.id } }).catch(console.error);
       toast.success('Orçamento aprovado e enviado!');
     } catch (e: any) { toast.error('Erro ao aprovar', { description: e.message }); }
