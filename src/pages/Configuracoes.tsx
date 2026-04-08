@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail, Phone, Building2, Lock, Loader2, Camera } from 'lucide-react';
+import { User, Mail, Building2, Lock, Loader2, Camera } from 'lucide-react';
 
 const Configuracoes = () => {
   const { profile, role, user } = useAuth();

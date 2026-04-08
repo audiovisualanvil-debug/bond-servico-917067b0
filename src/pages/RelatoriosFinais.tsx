@@ -8,7 +8,6 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { FileText, Loader2, Search, Clock, CheckCircle, Wrench, Send, ShieldCheck, FileCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, useMemo } from 'react';
 
 const STATUS_ICONS: Record<OSStatus, React.ReactNode> = {

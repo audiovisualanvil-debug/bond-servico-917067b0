@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceOrder, Property, User, CompletionReport, DashboardStats } from '@/types/serviceOrder';
-import { OsStatus } from '@/types/database';
 
 // ---------- MAPPERS ----------
 
