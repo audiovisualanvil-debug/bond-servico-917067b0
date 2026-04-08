@@ -65,7 +65,7 @@ export function useFinancialReport(filters: FinancialFilters) {
         .select(`
           id, status, final_price, technician_cost, created_at, completed_at,
           imobiliaria_id,
-          imobiliaria:profiles!fk_so_imobiliaria_profile(id, name, company)
+          imobiliaria:profiles!service_orders_imobiliaria_id_fkey(id, name, company)
         `)
         .gte('created_at', filters.startDate.toISOString())
         .lte('created_at', filters.endDate.toISOString())
