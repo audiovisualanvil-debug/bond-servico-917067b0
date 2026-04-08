@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DollarSign, Search, Clock, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { useServiceOrders, useServiceOrdersRealtime } from '@/hooks/useServiceOrders';
+import { useServiceOrders } from '@/hooks/useServiceOrders';
 
 const AprovarOrcamentos = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const { data: pendingOrders = [], isLoading } = useServiceOrders('aguardando_aprovacao_admin');
-  useServiceOrdersRealtime();
+  
 
   const filteredOrders = pendingOrders.filter(os => {
     if (!searchTerm) return true;

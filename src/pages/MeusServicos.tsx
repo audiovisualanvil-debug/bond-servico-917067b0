@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Wrench, Clock, CheckCircle2, Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { useServiceOrders, useServiceOrdersRealtime } from '@/hooks/useServiceOrders';
+import { useServiceOrders } from '@/hooks/useServiceOrders';
 
 const MeusServicos = () => {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const { data: allOrders = [], isLoading } = useServiceOrders();
-  useServiceOrdersRealtime();
+  
 
   if (!user) return null;
 

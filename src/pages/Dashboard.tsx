@@ -15,13 +15,13 @@ import {
   Wrench,
   Loader2
 } from 'lucide-react';
-import { useDashboardStats, useServiceOrders, useServiceOrdersRealtime } from '@/hooks/useServiceOrders';
+import { useDashboardStats, useServiceOrders } from '@/hooks/useServiceOrders';
 
 const Dashboard = () => {
   const { user, profile, role, isLoading: authLoading } = useAuth();
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: allOrders = [], isLoading: ordersLoading } = useServiceOrders();
-  useServiceOrdersRealtime();
+  
 
   if (authLoading) {
     return (
