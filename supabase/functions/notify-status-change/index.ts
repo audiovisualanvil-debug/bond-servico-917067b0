@@ -146,7 +146,7 @@ serve(async (req: Request) => {
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;background:#f5f5f5;">
   <div style="max-width:600px;margin:0 auto;background:#fff;">
     <div style="background:linear-gradient(135deg,#1a2332 0%,#1a6b7a 100%);padding:24px;text-align:center;">
-      <h1 style="color:#fff;margin:0;font-size:20px;">${escapeHtml(subject)}</h1>
+      <h1 style="color:#fff;margin:0;font-size:20px;">${subject}</h1>
       <p style="color:rgba(255,255,255,0.7);margin:6px 0 0;font-size:13px;">Faz-Tudo Imobiliário</p>
     </div>
     <div style="padding:24px;">
