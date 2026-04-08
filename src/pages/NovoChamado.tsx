@@ -478,7 +478,7 @@ const NovoChamado = () => {
 
               <div id="field-urgency">
                 <Label htmlFor="urgency">Grau de urgência *</Label>
-                <Select value={formData.urgency} onValueChange={(value) => { setFormData(prev => ({ ...prev, urgency: value as UrgencyLevel })); clearFieldError('urgency'); }}>
+                <Select value={formData.urgency || undefined} onValueChange={(value) => { setFormData(prev => ({ ...prev, urgency: value as UrgencyLevel })); clearFieldError('urgency'); }}>
                   <SelectTrigger className={fieldErrors.urgency ? 'border-destructive ring-destructive' : ''}>
                     <SelectValue placeholder="Selecione a urgência" />
                   </SelectTrigger>
