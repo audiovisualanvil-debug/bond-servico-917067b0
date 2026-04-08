@@ -128,6 +128,7 @@ const OSDetail = () => {
   const handlePaymentChange = async (value: string) => {
     try {
       await updateOrder.mutateAsync({ id: order.id, payment_method: value });
+      auditLog({ action: 'change_payment_method', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber, payment_method: value } });
       toast.success('Forma de pagamento salva!');
     } catch (e: any) { toast.error('Erro ao salvar', { description: e.message }); }
   };
