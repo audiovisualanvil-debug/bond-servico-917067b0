@@ -61,6 +61,16 @@ const GerenciarUsuarios = () => {
       const { data: profiles, error: profilesError } = await typedFrom('profiles').select('*');
       if (profilesError) throw profilesError;
 
+      // Check banned status for each user via DB function
+      const userIds = (roles || []).map((r: any) => r.user_id as string);
+      const bannedMap: Record<string, boolean> = {};
+      await Promise.all(
+        userIds.map(async (uid: string) => {
+          const { data } = await supabase.rpc('is_user_banned', { _user_id: uid });
+          bannedMap[uid] = !!data;
+        })
+      );
+
       const userList: UserWithRole[] = (roles || []).map((r: any) => {
         const profile = (profiles || []).find((p: any) => p.id === r.user_id);
         return {
@@ -72,7 +82,7 @@ const GerenciarUsuarios = () => {
           cnpj: profile?.cnpj || null,
           role: r.role,
           created_at: profile?.created_at || '',
-          is_banned: false,
+          is_banned: bannedMap[r.user_id] || false,
         };
       });
 

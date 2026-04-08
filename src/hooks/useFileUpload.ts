@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-const BUCKET = 'service-photos';
+const BUCKET = 'os-photos';
 
 export function useFileUpload() {
   const { user } = useAuth();
@@ -21,6 +21,7 @@ export function useFileUpload() {
     try {
       for (const file of files) {
         const ext = file.name.split('.').pop();
+        // Path starts with user.id to satisfy storage RLS ownership policy
         const fileName = `${user.id}/${folder}/${crypto.randomUUID()}.${ext}`;
 
         const { error } = await supabase.storage
@@ -36,11 +37,18 @@ export function useFileUpload() {
           continue;
         }
 
-        const { data: urlData } = supabase.storage
+        // Bucket is private — use signed URLs instead of public URLs
+        const { data: signedData, error: signError } = await supabase.storage
           .from(BUCKET)
-          .getPublicUrl(fileName);
+          .createSignedUrl(fileName, 60 * 60 * 24 * 365); // 1 year
 
-        urls.push(urlData.publicUrl);
+        if (signError || !signedData?.signedUrl) {
+          console.error('Signed URL error:', signError);
+          // Fallback: store the path for later resolution
+          urls.push(fileName);
+        } else {
+          urls.push(signedData.signedUrl);
+        }
       }
 
       if (urls.length > 0) {
