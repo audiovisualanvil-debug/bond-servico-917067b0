@@ -6,18 +6,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const escapeHtml = (str: string): string =>
+  str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Authenticate user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing authorization' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
@@ -25,16 +26,13 @@ serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify JWT
     const anonClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!);
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
 
     if (authError || !user) {
-      console.error('Auth error:', authError);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
@@ -43,12 +41,10 @@ serve(async (req: Request) => {
 
     if (!serviceOrderId) {
       return new Response(JSON.stringify({ error: 'Missing serviceOrderId' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
-    // Fetch service order with related data
     const { data: order, error: orderError } = await supabase
       .from('service_orders')
       .select(`
@@ -61,37 +57,28 @@ serve(async (req: Request) => {
       .single();
 
     if (orderError || !order) {
-      console.error('Order fetch error:', orderError);
       return new Response(JSON.stringify({ error: 'Service order not found' }), {
-        status: 404,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
-    // Template variables
-    const os_number = order.os_number;
-    const property_name = order.property?.address || 'Endereço não informado';
-    const service_description = order.technician_description || order.problem || 'Serviço não descrito';
+    const os_number = escapeHtml(order.os_number || '');
+    const property_name = escapeHtml(order.property?.address || 'Endereço não informado');
+    const service_description = escapeHtml(order.technician_description || order.problem || 'Serviço não descrito');
     const imobiliariaEmail = order.imobiliaria?.email;
-    const imobiliariaName = order.imobiliaria?.company || order.imobiliaria?.name || 'Cliente';
+    const imobiliariaName = escapeHtml(order.imobiliaria?.company || order.imobiliaria?.name || 'Cliente');
     const finalPrice = Number(order.final_price || 0).toFixed(2);
     const estimatedDeadline = order.estimated_deadline || '—';
 
     const resendKey = Deno.env.get('RESEND_API_KEY');
 
     if (!resendKey) {
-      console.log('[orcamento_aprovado] RESEND_API_KEY not configured — skipping email');
       return new Response(JSON.stringify({
-        success: true,
-        emailSent: false,
+        success: true, emailSent: false,
         message: 'Orçamento aprovado. E-mail não enviado (RESEND_API_KEY não configurada).',
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      });
+      }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    // Build orcamento_aprovado email HTML
     const emailHtml = `
 <!DOCTYPE html>
 <html>
@@ -113,7 +100,7 @@ serve(async (req: Request) => {
         <table style="width:100%;font-size:13px;color:#333;" cellpadding="4">
           <tr><td style="color:#888;width:140px;">Ordem de Serviço:</td><td><strong>${os_number}</strong></td></tr>
           <tr><td style="color:#888;">Imóvel:</td><td><strong>${property_name}</strong></td></tr>
-          <tr><td style="color:#888;">Prazo estimado:</td><td><strong>${estimatedDeadline} ${estimatedDeadline === 1 ? 'dia' : 'dias'}</strong></td></tr>
+          <tr><td style="color:#888;">Prazo estimado:</td><td><strong>${escapeHtml(String(estimatedDeadline))} ${estimatedDeadline === 1 ? 'dia' : 'dias'}</strong></td></tr>
         </table>
       </div>
 
@@ -122,7 +109,7 @@ serve(async (req: Request) => {
 
       <div style="background:linear-gradient(135deg,#f0fdf4 0%,#dcfce7 100%);border-radius:12px;padding:24px;margin:24px 0;text-align:center;">
         <p style="font-size:12px;color:#888;margin:0 0 4px;">Valor do Serviço</p>
-        <p style="font-size:32px;font-weight:800;color:#1a6b7a;margin:0;">R$ ${finalPrice}</p>
+        <p style="font-size:32px;font-weight:800;color:#1a6b7a;margin:0;">R$ ${escapeHtml(finalPrice)}</p>
       </div>
 
       <div style="text-align:center;margin:32px 0;">
@@ -142,7 +129,8 @@ serve(async (req: Request) => {
 </body>
 </html>`;
 
-    // Send via Resend — use testing sender if domain not verified
+    const subject = `Orçamento Aprovado - ${os_number}`;
+
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -152,7 +140,7 @@ serve(async (req: Request) => {
       body: JSON.stringify({
         from: 'Faz-Tudo <onboarding@resend.dev>',
         to: [imobiliariaEmail],
-        subject: `Orçamento Aprovado - ${os_number}`,
+        subject,
         html: emailHtml,
       }),
     });
@@ -161,34 +149,24 @@ serve(async (req: Request) => {
     console.log('[orcamento_aprovado] Resend response:', resendData);
 
     if (!resendResponse.ok) {
-      console.error('[orcamento_aprovado] Resend error:', resendData);
       return new Response(JSON.stringify({
-        success: true,
-        emailSent: false,
+        success: true, emailSent: false,
         message: 'Orçamento aprovado, mas houve erro ao enviar o e-mail.',
         emailError: resendData,
-      }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      });
+      }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
     console.log(`[orcamento_aprovado] Email sent to ${imobiliariaEmail} for ${os_number}`);
 
     return new Response(JSON.stringify({
-      success: true,
-      emailSent: true,
+      success: true, emailSent: true,
       message: 'Orçamento aprovado e e-mail enviado com sucesso!',
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-    });
+    }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
 
   } catch (error: any) {
     console.error('[orcamento_aprovado] Error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 });

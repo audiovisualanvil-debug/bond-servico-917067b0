@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const escapeHtml = (str: string): string =>
+  str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 interface RequestBody {
   serviceOrderId: string;
   reportUrl: string;
@@ -83,7 +86,6 @@ serve(async (req: Request) => {
       }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    // Determine recipients
     const recipients = sendTo || ['imobiliaria'];
     const emailTargets: { email: string; name: string; type: string }[] = [];
 
@@ -106,24 +108,32 @@ serve(async (req: Request) => {
       }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    const imobiliariaName = order.imobiliaria?.company || order.imobiliaria?.name || 'Cliente';
-    const propertyAddress = order.property?.address || 'Endereço não informado';
-    const tecnicoName = order.tecnico?.name || 'Técnico';
+    const propertyAddress = escapeHtml(order.property?.address || 'Endereço não informado');
+    const tecnicoName = escapeHtml(order.tecnico?.name || 'Técnico');
     const completedDate = new Date(report.completed_at).toLocaleDateString('pt-BR');
+    const osNumber = escapeHtml(order.os_number || '');
+    const reportDescription = escapeHtml(report.description || '');
+    const reportObservations = report.observations ? escapeHtml(report.observations) : '';
 
-    // Build email HTML
     const checklist = Array.isArray(report.checklist) ? report.checklist : [];
     const checklistHtml = checklist
-      .map((item: any) => `<li style="padding:4px 0;">${item.completed ? '✅' : '⬜'} ${item.item}</li>`)
+      .map((item: any) => `<li style="padding:4px 0;">${item.completed ? '✅' : '⬜'} ${escapeHtml(String(item.item || ''))}</li>`)
       .join('');
 
+    // Photos use signed URLs from storage — escape the URL to prevent attribute injection
+    const escapeAttr = (str: string): string =>
+      str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
     const photosBeforeHtml = (report.photos_before || [])
-      .map((url: string) => `<img src="${url}" alt="Antes" style="width:180px;height:135px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;" />`)
+      .map((url: string) => `<img src="${escapeAttr(url)}" alt="Antes" style="width:180px;height:135px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;" />`)
       .join('');
 
     const photosAfterHtml = (report.photos_after || [])
-      .map((url: string) => `<img src="${url}" alt="Depois" style="width:180px;height:135px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;" />`)
+      .map((url: string) => `<img src="${escapeAttr(url)}" alt="Depois" style="width:180px;height:135px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;" />`)
       .join('');
+
+    // Sanitize reportUrl for href attribute
+    const safeReportUrl = reportUrl ? escapeAttr(reportUrl) : '';
 
     const buildEmailHtml = (recipientName: string) => `
 <!DOCTYPE html>
@@ -136,21 +146,21 @@ serve(async (req: Request) => {
       <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px;">Faz-Tudo Imobiliário</p>
     </div>
     <div style="padding:32px;">
-      <p style="color:#333;font-size:14px;">Olá <strong>${recipientName}</strong>,</p>
+      <p style="color:#333;font-size:14px;">Olá <strong>${escapeHtml(recipientName)}</strong>,</p>
       <p style="color:#666;font-size:14px;line-height:1.6;">
-        O serviço referente à ordem <strong style="color:#1a6b7a;">${order.os_number}</strong> foi concluído com sucesso.
+        O serviço referente à ordem <strong style="color:#1a6b7a;">${osNumber}</strong> foi concluído com sucesso.
         Segue o resumo do relatório de execução.
       </p>
       <div style="background:#f8fafc;border-radius:12px;padding:20px;margin:20px 0;">
         <table style="width:100%;font-size:13px;color:#333;" cellpadding="4">
           <tr><td style="color:#888;">Imóvel:</td><td><strong>${propertyAddress}</strong></td></tr>
           <tr><td style="color:#888;">Técnico:</td><td><strong>${tecnicoName}</strong></td></tr>
-          <tr><td style="color:#888;">Concluído em:</td><td><strong>${completedDate}</strong></td></tr>
-          ${order.final_price ? `<tr><td style="color:#888;">Valor:</td><td><strong style="color:#1a6b7a;">R$ ${Number(order.final_price).toFixed(2)}</strong></td></tr>` : ''}
+          <tr><td style="color:#888;">Concluído em:</td><td><strong>${escapeHtml(completedDate)}</strong></td></tr>
+          ${order.final_price ? `<tr><td style="color:#888;">Valor:</td><td><strong style="color:#1a6b7a;">R$ ${escapeHtml(Number(order.final_price).toFixed(2))}</strong></td></tr>` : ''}
         </table>
       </div>
       <h3 style="font-size:15px;color:#333;margin:24px 0 8px;">Serviço Executado</h3>
-      <p style="font-size:13px;color:#555;line-height:1.6;">${report.description}</p>
+      <p style="font-size:13px;color:#555;line-height:1.6;">${reportDescription}</p>
       ${checklist.length > 0 ? `
         <h3 style="font-size:15px;color:#333;margin:24px 0 8px;">Checklist</h3>
         <ul style="list-style:none;padding:0;font-size:13px;color:#555;">${checklistHtml}</ul>
@@ -160,13 +170,13 @@ serve(async (req: Request) => {
         ${photosBeforeHtml ? `<p style="font-size:12px;color:#888;margin:8px 0 4px;">Antes:</p><div style="display:flex;gap:8px;flex-wrap:wrap;">${photosBeforeHtml}</div>` : ''}
         ${photosAfterHtml ? `<p style="font-size:12px;color:#888;margin:8px 0 4px;">Depois:</p><div style="display:flex;gap:8px;flex-wrap:wrap;">${photosAfterHtml}</div>` : ''}
       ` : ''}
-      ${report.observations ? `
+      ${reportObservations ? `
         <h3 style="font-size:15px;color:#333;margin:24px 0 8px;">Observações</h3>
-        <p style="font-size:13px;color:#555;line-height:1.6;">${report.observations}</p>
+        <p style="font-size:13px;color:#555;line-height:1.6;">${reportObservations}</p>
       ` : ''}
-      ${reportUrl ? `
+      ${safeReportUrl ? `
         <div style="text-align:center;margin:32px 0;">
-          <a href="${reportUrl}" style="background:#1a6b7a;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;display:inline-block;">
+          <a href="${safeReportUrl}" style="background:#1a6b7a;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;display:inline-block;">
             Ver Relatório Completo
           </a>
         </div>
@@ -174,7 +184,7 @@ serve(async (req: Request) => {
       <div style="text-align:center;border-top:1px solid #e2e8f0;padding-top:20px;margin-top:24px;">
         <p style="font-size:11px;color:#aaa;">
           Faz-Tudo Imobiliário — Relatório gerado automaticamente<br />
-          ${order.os_number} • ${completedDate}
+          ${osNumber} • ${escapeHtml(completedDate)}
         </p>
       </div>
     </div>
@@ -182,7 +192,6 @@ serve(async (req: Request) => {
 </body>
 </html>`;
 
-    // Send emails to all targets
     const results: { target: string; sent: boolean; error?: any }[] = [];
 
     for (const target of emailTargets) {
