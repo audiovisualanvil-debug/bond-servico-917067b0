@@ -36,7 +36,7 @@ export function ServiceOrderComments({ serviceOrderId }: ServiceOrderCommentsPro
   const fetchComments = async () => {
     try {
       const { data, error } = await typedFrom('service_order_comments')
-        .select('*, profile:profiles!service_order_comments_user_id_fkey(name, company)')
+        .select('*, profile:profiles!service_order_comments_author_id_fkey(name, company)')
         .eq('service_order_id', serviceOrderId)
         .order('created_at', { ascending: true });
 
