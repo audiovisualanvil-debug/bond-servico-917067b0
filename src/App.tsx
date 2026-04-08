@@ -24,6 +24,7 @@ import GerenciarUsuarios from "./pages/GerenciarUsuarios";
 import Relatorios from "./pages/Relatorios";
 import RelatoriosFinais from "./pages/RelatoriosFinais";
 import Configuracoes from "./pages/Configuracoes";
+import LogAuditoria from "./pages/LogAuditoria";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -91,6 +92,7 @@ const AppRoutes = () => {
       <Route path="/usuarios" element={<ProtectedRoute><GerenciarUsuarios /></ProtectedRoute>} />
       <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
       <Route path="/relatorios-finais" element={<ProtectedRoute><RelatoriosFinais /></ProtectedRoute>} />
+      <Route path="/auditoria" element={<ProtectedRoute><LogAuditoria /></ProtectedRoute>} />
       <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>

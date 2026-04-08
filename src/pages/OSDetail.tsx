@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { useServiceOrder, useUpdateServiceOrder, useCreateCompletionReport, useDeleteServiceOrder } from '@/hooks/useServiceOrders';
 import { useTechnicians } from '@/hooks/useTechnicians';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 // Subcomponents
 import { OSDetailHeader } from '@/components/os-detail/OSDetailHeader';
@@ -31,6 +32,7 @@ const OSDetail = () => {
   const createReport = useCreateCompletionReport();
   const deleteOrder = useDeleteServiceOrder();
   const { data: technicians = [] } = useTechnicians();
+  const { log: auditLog } = useAuditLog();
 
   const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
   const [sendingReportTo, setSendingReportTo] = useState<string | null>(null);
@@ -108,6 +110,7 @@ const OSDetail = () => {
     if (!selectedTechnicianId) { toast.error('Selecione um profissional'); return; }
     try {
       await updateOrder.mutateAsync({ id: order.id, tecnico_id: selectedTechnicianId });
+      auditLog({ action: 'assign_technician', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber, tecnico_id: selectedTechnicianId } });
       supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'aguardando_orcamento_prestador' } }).catch(console.error);
       toast.success('Profissional designado!');
     } catch (e: any) { toast.error('Erro ao designar', { description: e.message }); }
@@ -116,6 +119,7 @@ const OSDetail = () => {
   const handleAdminApprove = async () => {
     try {
       await updateOrder.mutateAsync({ id: order.id, final_price: finalPrice, payment_method: order.paymentMethod || undefined, status: 'enviado_imobiliaria' });
+      auditLog({ action: 'approve_budget', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber, final_price: finalPrice } });
       supabase.functions.invoke('send-budget-approved', { body: { serviceOrderId: order.id } }).catch(console.error);
       toast.success('Orçamento aprovado e enviado!');
     } catch (e: any) { toast.error('Erro ao aprovar', { description: e.message }); }
@@ -124,22 +128,23 @@ const OSDetail = () => {
   const handlePaymentChange = async (value: string) => {
     try {
       await updateOrder.mutateAsync({ id: order.id, payment_method: value });
+      auditLog({ action: 'change_payment_method', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber, payment_method: value } });
       toast.success('Forma de pagamento salva!');
     } catch (e: any) { toast.error('Erro ao salvar', { description: e.message }); }
   };
 
   const handleRequestRevision = async () => {
-    try { await updateOrder.mutateAsync({ id: order.id, status: 'aguardando_aprovacao_admin' }); toast.success('Revisão solicitada!'); }
+    try { await updateOrder.mutateAsync({ id: order.id, status: 'aguardando_aprovacao_admin' }); auditLog({ action: 'request_revision', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); toast.success('Revisão solicitada!'); }
     catch (e: any) { toast.error('Erro', { description: e.message }); }
   };
 
   const handleClientApprove = async () => {
-    try { await updateOrder.mutateAsync({ id: order.id, status: 'aprovado_aguardando' }); toast.success('Serviço aprovado!'); }
+    try { await updateOrder.mutateAsync({ id: order.id, status: 'aprovado_aguardando' }); auditLog({ action: 'client_approve', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); toast.success('Serviço aprovado!'); }
     catch (e: any) { toast.error('Erro', { description: e.message }); }
   };
 
   const handleStartExecution = async () => {
-    try { await updateOrder.mutateAsync({ id: order.id, status: 'em_execucao' }); toast.success('Execução iniciada!'); }
+    try { await updateOrder.mutateAsync({ id: order.id, status: 'em_execucao' }); auditLog({ action: 'start_execution', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); toast.success('Execução iniciada!'); }
     catch (e: any) { toast.error('Erro', { description: e.message }); }
   };
 
@@ -152,6 +157,7 @@ const OSDetail = () => {
         technician_signature: reportData.technicianSignature,
       });
       await updateOrder.mutateAsync({ id: order.id, status: 'concluido' });
+      auditLog({ action: 'complete_service', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } });
       const reportUrl = `${window.location.origin}/ordens/${order.id}/relatorio`;
       supabase.functions.invoke('send-completion-report', { body: { serviceOrderId: order.id, reportUrl } }).catch(console.error);
       supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'concluido' } }).catch(console.error);
@@ -160,7 +166,7 @@ const OSDetail = () => {
   };
 
   const handleDeleteOrder = async () => {
-    try { await deleteOrder.mutateAsync(order.id); toast.success('OS excluída!'); navigate('/ordens'); }
+    try { const osNumber = order.osNumber; await deleteOrder.mutateAsync(order.id); auditLog({ action: 'delete_order', entity_type: 'service_order', entity_id: order.id, details: { os_number: osNumber } }); toast.success('OS excluída!'); navigate('/ordens'); }
     catch (e: any) { toast.error('Erro ao excluir', { description: e.message }); }
   };
 
