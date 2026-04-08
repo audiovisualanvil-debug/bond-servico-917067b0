@@ -110,6 +110,7 @@ const OSDetail = () => {
     if (!selectedTechnicianId) { toast.error('Selecione um profissional'); return; }
     try {
       await updateOrder.mutateAsync({ id: order.id, tecnico_id: selectedTechnicianId });
+      auditLog({ action: 'assign_technician', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber, tecnico_id: selectedTechnicianId } });
       supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'aguardando_orcamento_prestador' } }).catch(console.error);
       toast.success('Profissional designado!');
     } catch (e: any) { toast.error('Erro ao designar', { description: e.message }); }
