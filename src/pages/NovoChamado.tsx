@@ -90,7 +90,7 @@ const NovoChamado = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLFormElement>(null);
 
-  if (authLoading) {
+  if (authLoading || !user || !role) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center py-20">
@@ -99,8 +99,6 @@ const NovoChamado = () => {
       </DashboardLayout>
     );
   }
-
-  if (!user || !role) return null;
 
   const isSubmitting = createOrder.isPending || createProperty.isPending || isUploading;
   const effectiveImobiliariaId = role === 'admin' ? selectedImobiliariaId : user.id;
