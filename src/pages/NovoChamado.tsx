@@ -313,7 +313,7 @@ const NovoChamado = () => {
               <div id="field-imobiliaria">
                 <Label>Selecionar imobiliária *</Label>
                 <Select
-                  value={selectedImobiliariaId}
+                  value={selectedImobiliariaId || undefined}
                   onValueChange={(value) => {
                     setSelectedImobiliariaId(value);
                     setFormData(prev => ({ ...prev, propertyId: '' }));
