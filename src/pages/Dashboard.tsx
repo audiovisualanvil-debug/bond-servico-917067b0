@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PWAInstallBanner } from '@/components/PWAInstallBanner';
 import { useAuth } from '@/contexts/AuthContext';
 import { StatCard } from '@/components/StatCard';
 import { OSCard } from '@/components/OSCard';
