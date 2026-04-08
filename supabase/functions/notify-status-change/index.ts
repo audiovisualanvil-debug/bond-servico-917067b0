@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const escapeHtml = (str: string): string =>
+  str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 interface RequestBody {
   serviceOrderId: string;
   newStatus: string;
@@ -29,7 +32,6 @@ serve(async (req: Request) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify JWT
     const anonClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!);
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
@@ -56,7 +58,6 @@ serve(async (req: Request) => {
       });
     }
 
-    // Fetch order with relations
     const { data: order, error: orderError } = await supabase
       .from('service_orders')
       .select(`
@@ -75,7 +76,6 @@ serve(async (req: Request) => {
       });
     }
 
-    // Fetch admin emails
     const { data: adminRoles } = await supabase
       .from('user_roles')
       .select('user_id')
@@ -91,44 +91,42 @@ serve(async (req: Request) => {
       adminEmails = (adminProfiles || []).map((p: any) => p.email).filter(Boolean);
     }
 
-    // Determine notification based on status
     let to: string[] = [];
     let subject = '';
     let body = '';
-    const osNumber = order.os_number;
-    const propertyAddr = order.property?.address || 'N/A';
+    const osNumber = escapeHtml(order.os_number || '');
+    const propertyAddr = escapeHtml(order.property?.address || 'N/A');
 
     switch (newStatus) {
       case 'aguardando_orcamento_prestador': {
-        // OS created → notify tecnico (if assigned)
         if (order.tecnico?.email) {
           to = [order.tecnico.email];
+          const tecnicoName = escapeHtml(order.tecnico.name || '');
+          const problem = escapeHtml(order.problem || '');
           subject = `Nova OS atribuída - ${osNumber}`;
-          body = `Olá ${order.tecnico.name},<br><br>Uma nova ordem de serviço (<strong>${osNumber}</strong>) foi atribuída a você.<br>Imóvel: ${propertyAddr}<br>Problema: ${order.problem}<br><br>Acesse a plataforma para enviar seu orçamento.`;
+          body = `Olá ${tecnicoName},<br><br>Uma nova ordem de serviço (<strong>${osNumber}</strong>) foi atribuída a você.<br>Imóvel: ${propertyAddr}<br>Problema: ${problem}<br><br>Acesse a plataforma para enviar seu orçamento.`;
         }
         break;
       }
       case 'aguardando_aprovacao_admin': {
-        // Tecnico submitted cost → notify admin
         if (adminEmails.length > 0) {
           to = adminEmails;
-          subject = `Orçamento recebido - ${osNumber}`;
+          const tecnicoName = escapeHtml(order.tecnico?.name || 'N/A');
           const cost = Number(order.technician_cost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-          body = `Um orçamento foi enviado para a OS <strong>${osNumber}</strong>.<br>Técnico: ${order.tecnico?.name || 'N/A'}<br>Valor do técnico: ${cost}<br>Imóvel: ${propertyAddr}<br><br>Acesse a plataforma para revisar e aprovar.`;
+          subject = `Orçamento recebido - ${osNumber}`;
+          body = `Um orçamento foi enviado para a OS <strong>${osNumber}</strong>.<br>Técnico: ${tecnicoName}<br>Valor do técnico: ${escapeHtml(cost)}<br>Imóvel: ${propertyAddr}<br><br>Acesse a plataforma para revisar e aprovar.`;
         }
         break;
       }
       case 'enviado_imobiliaria': {
-        // Admin approved → notify imobiliaria (already handled by send-budget-approved, but this is a fallback)
-        // Skip to avoid duplicate — send-budget-approved handles this
         break;
       }
       case 'concluido': {
-        // Completed → notify imobiliaria
         if (order.imobiliaria?.email) {
           to = [order.imobiliaria.email];
+          const imobName = escapeHtml(order.imobiliaria.company || order.imobiliaria.name || '');
           subject = `Serviço concluído - ${osNumber}`;
-          body = `Olá ${order.imobiliaria.company || order.imobiliaria.name},<br><br>O serviço da OS <strong>${osNumber}</strong> foi concluído.<br>Imóvel: ${propertyAddr}<br><br>Acesse a plataforma para ver o relatório de conclusão.`;
+          body = `Olá ${imobName},<br><br>O serviço da OS <strong>${osNumber}</strong> foi concluído.<br>Imóvel: ${propertyAddr}<br><br>Acesse a plataforma para ver o relatório de conclusão.`;
         }
         break;
       }
@@ -148,7 +146,7 @@ serve(async (req: Request) => {
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:0;background:#f5f5f5;">
   <div style="max-width:600px;margin:0 auto;background:#fff;">
     <div style="background:linear-gradient(135deg,#1a2332 0%,#1a6b7a 100%);padding:24px;text-align:center;">
-      <h1 style="color:#fff;margin:0;font-size:20px;">${subject}</h1>
+      <h1 style="color:#fff;margin:0;font-size:20px;">${escapeHtml(subject)}</h1>
       <p style="color:rgba(255,255,255,0.7);margin:6px 0 0;font-size:13px;">Faz-Tudo Imobiliário</p>
     </div>
     <div style="padding:24px;">
@@ -178,7 +176,6 @@ serve(async (req: Request) => {
       });
     } catch (emailErr: any) {
       console.error('[notify-status-change] Email send error:', emailErr.message);
-      // Fail silently
       return new Response(JSON.stringify({ success: true, emailSent: false, error: emailErr.message }), {
         status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
