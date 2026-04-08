@@ -24,6 +24,7 @@ import GerenciarUsuarios from "./pages/GerenciarUsuarios";
 import Relatorios from "./pages/Relatorios";
 import RelatoriosFinais from "./pages/RelatoriosFinais";
 import Configuracoes from "./pages/Configuracoes";
+import LogAuditoria from "./pages/LogAuditoria";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
