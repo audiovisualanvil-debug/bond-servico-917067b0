@@ -32,6 +32,7 @@ const OSDetail = () => {
   const createReport = useCreateCompletionReport();
   const deleteOrder = useDeleteServiceOrder();
   const { data: technicians = [] } = useTechnicians();
+  const { log: auditLog } = useAuditLog();
 
   const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
   const [sendingReportTo, setSendingReportTo] = useState<string | null>(null);
