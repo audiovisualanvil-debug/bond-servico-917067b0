@@ -41,27 +41,27 @@ const LogAuditoria = () => {
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ['audit-logs'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch logs
+      const { data: logsData, error } = await supabase
         .from('audit_logs')
-        .select('*, profile:profiles!audit_logs_user_id_fkey(name, email)')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(200);
+      if (error) throw error;
+      const logs = (logsData || []) as AuditLog[];
 
-      if (error) {
-        // If the join fails (no FK), fetch without it
-        const { data: logsOnly, error: err2 } = await supabase
-          .from('audit_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(200);
-        if (err2) throw err2;
-        return (logsOnly || []) as AuditLog[];
+      // Fetch profiles for unique user_ids
+      const userIds = [...new Set(logs.map(l => l.user_id))];
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, name, email')
+          .in('id', userIds);
+        const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+        return logs.map(l => ({ ...l, profile: profileMap.get(l.user_id) || null }));
       }
 
-      return (data || []).map((d: any) => ({
-        ...d,
-        profile: Array.isArray(d.profile) ? d.profile[0] || null : d.profile,
-      })) as AuditLog[];
+      return logs;
     },
   });
 
