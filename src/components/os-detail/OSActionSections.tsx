@@ -79,7 +79,7 @@ export function StartExecutionButton({ onStart, isMutating }: { onStart: () => v
 // ---------- ADMIN ACTIONS ----------
 
 interface AssignTechProps {
-  technicians: User[];
+  technicians: TechOption[];
   selectedId: string;
   onSelect: (id: string) => void;
   onAssign: () => void;
