@@ -71,14 +71,14 @@ serve(async (req) => {
     const userId = newUser.user.id;
 
     // Create profile
-    const { error: profileError } = await adminClient.from("profiles").insert({
+    const { error: profileError } = await adminClient.from("profiles").upsert({
       id: userId,
       email,
       name,
       phone: phone || null,
       company: company || null,
       cnpj: cnpj || null,
-    });
+    }, { onConflict: 'id' });
 
     if (profileError) {
       // Rollback: delete the auth user
