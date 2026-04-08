@@ -139,7 +139,7 @@ const OSDetail = () => {
   };
 
   const handleClientApprove = async () => {
-    try { await updateOrder.mutateAsync({ id: order.id, status: 'aprovado_aguardando' }); toast.success('Serviço aprovado!'); }
+    try { await updateOrder.mutateAsync({ id: order.id, status: 'aprovado_aguardando' }); auditLog({ action: 'client_approve', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); toast.success('Serviço aprovado!'); }
     catch (e: any) { toast.error('Erro', { description: e.message }); }
   };
 
