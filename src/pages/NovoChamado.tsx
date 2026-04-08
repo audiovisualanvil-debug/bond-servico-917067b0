@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, MapPin, AlertTriangle, User, Send, ArrowLeft, Loader2, Building2, Search } from 'lucide-react';
+import { Upload, MapPin, AlertTriangle, User, Send, ArrowLeft, Loader2, Building2 } from 'lucide-react';
 import { UrgencyLevel, URGENCY_LABELS } from '@/types/serviceOrder';
 import { useProperties, useCreateProperty } from '@/hooks/useProperties';
 import { useCreateServiceOrder } from '@/hooks/useServiceOrders';
