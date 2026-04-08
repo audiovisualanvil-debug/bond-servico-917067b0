@@ -157,6 +157,7 @@ const OSDetail = () => {
         technician_signature: reportData.technicianSignature,
       });
       await updateOrder.mutateAsync({ id: order.id, status: 'concluido' });
+      auditLog({ action: 'complete_service', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } });
       const reportUrl = `${window.location.origin}/ordens/${order.id}/relatorio`;
       supabase.functions.invoke('send-completion-report', { body: { serviceOrderId: order.id, reportUrl } }).catch(console.error);
       supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'concluido' } }).catch(console.error);
