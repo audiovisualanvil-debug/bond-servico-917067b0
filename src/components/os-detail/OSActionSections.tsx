@@ -31,6 +31,10 @@ interface TechQuoteFormProps {
 
 export function TechQuoteForm({ techQuote, setTechQuote, onSubmit, isMutating }: TechQuoteFormProps) {
   const total = techQuote.laborCost + techQuote.materialCost + techQuote.taxCost;
+  const missingDescription = !techQuote.description.trim();
+  const missingCost = total <= 0;
+  const canSubmit = !missingDescription && !missingCost && !isMutating;
+
   return (
     <div className="os-card">
       <div className="flex items-center gap-2 mb-4">
@@ -41,12 +45,14 @@ export function TechQuoteForm({ techQuote, setTechQuote, onSubmit, isMutating }:
         <div>
           <Label>Descrição do serviço necessário</Label>
           <Textarea placeholder="Descreva o que precisa ser feito..." value={techQuote.description} onChange={(e) => setTechQuote(prev => ({ ...prev, description: e.target.value }))} rows={3} />
+          {missingDescription && <p className="text-xs text-destructive mt-1">A descrição é obrigatória.</p>}
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           <div><Label>Mão de Obra (R$)</Label><Input type="number" placeholder="0.00" value={techQuote.laborCost || ''} onChange={(e) => setTechQuote(prev => ({ ...prev, laborCost: parseFloat(e.target.value) || 0 }))} /></div>
           <div><Label>Materiais (R$)</Label><Input type="number" placeholder="0.00" value={techQuote.materialCost || ''} onChange={(e) => setTechQuote(prev => ({ ...prev, materialCost: parseFloat(e.target.value) || 0 }))} /></div>
           <div><Label>Impostos (R$)</Label><Input type="number" placeholder="0.00" value={techQuote.taxCost || ''} onChange={(e) => setTechQuote(prev => ({ ...prev, taxCost: parseFloat(e.target.value) || 0 }))} /></div>
         </div>
+        {missingCost && <p className="text-xs text-destructive">Informe ao menos um valor de custo (mão de obra, materiais ou impostos).</p>}
         {total > 0 && (
           <div className="p-3 bg-secondary/50 rounded-lg text-sm">
             <span className="text-muted-foreground">Total: </span>
@@ -54,7 +60,7 @@ export function TechQuoteForm({ techQuote, setTechQuote, onSubmit, isMutating }:
           </div>
         )}
         <div><Label>Prazo (dias)</Label><Input type="number" placeholder="1" value={techQuote.deadline} onChange={(e) => setTechQuote(prev => ({ ...prev, deadline: parseInt(e.target.value) || 1 }))} /></div>
-        <Button onClick={onSubmit} className="w-full" disabled={isMutating}>
+        <Button onClick={onSubmit} className="w-full" disabled={!canSubmit}>
           {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           Enviar Orçamento
         </Button>
