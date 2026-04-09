@@ -119,54 +119,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signUp = async (email: string, password: string, name: string, userRole: AppRole, company?: string) => {
-    try {
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            name,
-          },
-        },
-      });
-
-      if (error) {
-        return { error };
-      }
-
-      // If user was created, update profile and add role
-      if (data.user) {
-        // Insert profile (no trigger on auth.users, so we create it here)
-        const { error: profileError } = await typedFrom('profiles')
-          .upsert({
-            id: data.user.id,
-            email,
-            name,
-            company: company || null,
-          });
-
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-        }
-
-        // Add user role
-        const { error: roleError } = await typedFrom('user_roles')
-          .insert({ user_id: data.user.id, role: userRole });
-
-        if (roleError) {
-          console.error('Error adding role:', roleError);
-        }
-      }
-
-      return { error: null };
-    } catch (error) {
-      return { error: error as Error };
-    }
-  };
+  // User creation is handled exclusively by the admin create-user edge function.
+  // Self-registration is disabled — no client-side signUp method is exposed.
 
   const signOut = async () => {
     await supabase.auth.signOut();
