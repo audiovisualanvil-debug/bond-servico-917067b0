@@ -286,13 +286,17 @@ export type Database = {
           final_price: number | null
           id: string
           imobiliaria_id: string
+          labor_cost: number | null
+          material_cost: number | null
           os_number: string | null
+          payment_method: string | null
           photos: string[] | null
           problem: string
           property_id: string
           quote_sent_at: string | null
           requester_name: string
           status: Database["public"]["Enums"]["os_status"]
+          tax_cost: number | null
           technician_cost: number | null
           technician_description: string | null
           tecnico_id: string | null
@@ -309,13 +313,17 @@ export type Database = {
           final_price?: number | null
           id?: string
           imobiliaria_id: string
+          labor_cost?: number | null
+          material_cost?: number | null
           os_number?: string | null
+          payment_method?: string | null
           photos?: string[] | null
           problem: string
           property_id: string
           quote_sent_at?: string | null
           requester_name?: string
           status?: Database["public"]["Enums"]["os_status"]
+          tax_cost?: number | null
           technician_cost?: number | null
           technician_description?: string | null
           tecnico_id?: string | null
@@ -332,13 +340,17 @@ export type Database = {
           final_price?: number | null
           id?: string
           imobiliaria_id?: string
+          labor_cost?: number | null
+          material_cost?: number | null
           os_number?: string | null
+          payment_method?: string | null
           photos?: string[] | null
           problem?: string
           property_id?: string
           quote_sent_at?: string | null
           requester_name?: string
           status?: Database["public"]["Enums"]["os_status"]
+          tax_cost?: number | null
           technician_cost?: number | null
           technician_description?: string | null
           tecnico_id?: string | null
