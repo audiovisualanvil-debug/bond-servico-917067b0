@@ -185,7 +185,8 @@ export function AdminPricingSection({ order, finalPrice, setFinalPrice, onApprov
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={onApprove} className="w-full" size="lg" disabled={isMutating}>
+        {finalPrice <= 0 && <p className="text-xs text-destructive">Informe um valor final maior que zero.</p>}
+        <Button onClick={onApprove} className="w-full" size="lg" disabled={isMutating || finalPrice <= 0}>
           {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           Aprovar e Enviar Orçamento
         </Button>
