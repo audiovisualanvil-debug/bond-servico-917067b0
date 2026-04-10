@@ -13,8 +13,7 @@ import logoFazTudo from '@/assets/logo-faztudo.png';
 
 interface ReportComment {
   id: string;
-  message: string;
-  visible_to_imobiliaria: boolean;
+  content: string;
   created_at: string;
   profile?: { name: string; company: string | null } | null;
 }
@@ -451,8 +450,32 @@ const RelatorioOS = () => {
                     </div>
                   )}
                 </div>
-              </Section>
+            </Section>
             )}
+
+            <hr className="border-border" />
+
+            {/* ==================== LINHA DO TEMPO ==================== */}
+            <Section title="Linha do Tempo — Histórico de Status">
+              <div className="space-y-2">
+                {[
+                  { label: 'Chamado aberto', date: order.createdAt, always: true },
+                  { label: 'Orçamento enviado pelo profissional', date: order.quoteSentAt },
+                  { label: 'Aprovado pelo admin', date: order.adminApprovedAt },
+                  { label: 'Aprovado pela imobiliária', date: order.clientApprovedAt },
+                  { label: 'Execução iniciada', date: order.executionStartedAt },
+                  { label: 'Serviço concluído', date: order.completedAt },
+                ].filter(e => e.always || e.date).map((event, i) => (
+                  <div key={i} className="flex items-center gap-3 text-sm p-2 rounded-lg bg-secondary/30">
+                    <div className="h-2.5 w-2.5 rounded-full bg-primary flex-shrink-0" />
+                    <span className="text-foreground font-medium flex-1">{event.label}</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {event.date ? format(new Date(event.date instanceof Date ? event.date : event.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Section>
 
             <hr className="border-border" />
 
@@ -475,7 +498,7 @@ const RelatorioOS = () => {
                               {format(new Date(comment.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                             </span>
                           </div>
-                          <p className="text-foreground whitespace-pre-wrap text-xs leading-relaxed">{comment.message}</p>
+                          <p className="text-foreground whitespace-pre-wrap text-xs leading-relaxed">{comment.content}</p>
                         </div>
                       </div>
                     ))}
