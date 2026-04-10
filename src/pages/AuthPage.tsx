@@ -141,8 +141,8 @@ const AuthPage = () => {
               <Wrench className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-display font-bold text-xl text-primary-foreground">Faz-Tudo</h1>
-              <p className="text-xs text-primary-foreground/60">Imobiliário</p>
+            <h1 className="font-display font-bold text-xl text-primary-foreground">Vita FAZ TUDO</h1>
+              <p className="text-xs text-primary-foreground/60">Gestão de Manutenção</p>
             </div>
           </div>
         </header>
@@ -181,7 +181,7 @@ const AuthPage = () => {
 
         <footer className="container py-6">
           <p className="text-center text-sm text-primary-foreground/40">
-            © 2024 Faz-Tudo Imobiliário. Sistema de Gestão de Ordens de Serviço.
+            © 2025 Vita FAZ TUDO. Sistema de Gestão de Manutenção Imobiliária.
           </p>
         </footer>
       </div>
@@ -197,8 +197,8 @@ const AuthPage = () => {
             <Wrench className="h-6 w-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-display font-bold text-xl text-primary-foreground">Faz-Tudo</h1>
-            <p className="text-xs text-primary-foreground/60">Imobiliário</p>
+            <h1 className="font-display font-bold text-xl text-primary-foreground">Vita FAZ TUDO</h1>
+            <p className="text-xs text-primary-foreground/60">Gestão de Manutenção</p>
           </div>
         </div>
       </header>
@@ -222,7 +222,7 @@ const AuthPage = () => {
               Entrar
             </h2>
             <p className="text-primary-foreground/70">
-              Acesse sua conta de {currentProfile?.title}
+              Acesse sua conta — {currentProfile?.title?.replace('Entrar como ', '')}
             </p>
           </div>
 
@@ -312,7 +312,7 @@ const AuthPage = () => {
 
       <footer className="container py-6">
         <p className="text-center text-sm text-primary-foreground/40">
-          © 2024 Faz-Tudo Imobiliário. Sistema de Gestão de Ordens de Serviço.
+          © 2025 Vita FAZ TUDO. Sistema de Gestão de Manutenção Imobiliária.
         </p>
       </footer>
     </div>

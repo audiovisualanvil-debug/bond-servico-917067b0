@@ -61,8 +61,8 @@ export const Sidebar = () => {
             <Wrench className="h-5 w-5 text-sidebar-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-display font-bold text-sidebar-accent-foreground">Faz-Tudo</h1>
-            <p className="text-xs text-sidebar-foreground/60">Imobiliário</p>
+            <h1 className="font-display font-bold text-sidebar-accent-foreground">Vita FAZ TUDO</h1>
+            <p className="text-xs text-sidebar-foreground/60">Gestão de Manutenção</p>
           </div>
         </div>
         {/* Mobile close button */}
