@@ -29,12 +29,23 @@ const Tecnicos = () => {
 
       if (roles && roles.length > 0) {
         const userIds = roles.map(r => r.user_id);
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', userIds);
+        
+        // Filter out banned users
+        const activeIds: string[] = [];
+        for (const id of userIds) {
+          const { data: isBanned } = await supabase.rpc('is_user_banned', { _user_id: id });
+          if (!isBanned) activeIds.push(id);
+        }
 
-        setTecnicos((profiles as Tecnico[]) || []);
+        if (activeIds.length === 0) {
+          setTecnicos([]);
+        } else {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', activeIds);
+          setTecnicos((profiles as Tecnico[]) || []);
+        }
       } else {
         setTecnicos([]);
       }
