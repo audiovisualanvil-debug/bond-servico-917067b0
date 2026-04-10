@@ -18,9 +18,9 @@ type SelectedProfile = 'admin' | 'imobiliaria' | 'tecnico' | null;
 const profileCards = [
   {
     key: 'admin' as const,
-    title: 'Administrador',
+    title: 'Entrar como Administrador',
     icon: ShieldCheck,
-    description: 'Gerencie orçamentos, profissionais e operações',
+    description: 'Aprova, controla e acompanha as OS.',
     gradient: 'from-amber-500/20 to-orange-500/20',
     borderColor: 'border-amber-500/40 hover:border-amber-400',
     iconColor: 'text-amber-500',
@@ -28,9 +28,9 @@ const profileCards = [
   },
   {
     key: 'tecnico' as const,
-    title: 'Profissional',
+    title: 'Entrar como Técnico',
     icon: Wrench,
-    description: 'Receba OSs, envie orçamentos e relatórios',
+    description: 'Orça, executa e finaliza o serviço.',
     gradient: 'from-blue-500/20 to-cyan-500/20',
     borderColor: 'border-blue-500/40 hover:border-blue-400',
     iconColor: 'text-blue-500',
@@ -38,9 +38,9 @@ const profileCards = [
   },
   {
     key: 'imobiliaria' as const,
-    title: 'Imobiliária',
+    title: 'Entrar como Imobiliária',
     icon: Building2,
-    description: 'Abra chamados e aprove serviços',
+    description: 'Abre chamados e acompanha tudo.',
     gradient: 'from-emerald-500/20 to-teal-500/20',
     borderColor: 'border-emerald-500/40 hover:border-emerald-400',
     iconColor: 'text-emerald-500',
