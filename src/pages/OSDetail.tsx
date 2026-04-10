@@ -121,6 +121,7 @@ const OSDetail = () => {
       await updateOrder.mutateAsync({ id: order.id, final_price: finalPrice, payment_method: order.paymentMethod || undefined, status: 'enviado_imobiliaria' });
       auditLog({ action: 'approve_budget', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber, final_price: finalPrice } });
       supabase.functions.invoke('send-budget-approved', { body: { serviceOrderId: order.id } }).catch(console.error);
+      supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'enviado_imobiliaria' } }).catch(console.error);
       toast.success('Orçamento aprovado e enviado!');
     } catch (e: any) { toast.error('Erro ao aprovar', { description: e.message }); }
   };
@@ -139,12 +140,12 @@ const OSDetail = () => {
   };
 
   const handleClientApprove = async () => {
-    try { await updateOrder.mutateAsync({ id: order.id, status: 'aprovado_aguardando' }); auditLog({ action: 'client_approve', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); toast.success('Serviço aprovado!'); }
+    try { await updateOrder.mutateAsync({ id: order.id, status: 'aprovado_aguardando' }); auditLog({ action: 'client_approve', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'aprovado_aguardando' } }).catch(console.error); toast.success('Serviço aprovado!'); }
     catch (e: any) { toast.error('Erro', { description: e.message }); }
   };
 
   const handleStartExecution = async () => {
-    try { await updateOrder.mutateAsync({ id: order.id, status: 'em_execucao' }); auditLog({ action: 'start_execution', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); toast.success('Execução iniciada!'); }
+    try { await updateOrder.mutateAsync({ id: order.id, status: 'em_execucao' }); auditLog({ action: 'start_execution', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'em_execucao' } }).catch(console.error); toast.success('Execução iniciada!'); }
     catch (e: any) { toast.error('Erro', { description: e.message }); }
   };
 
