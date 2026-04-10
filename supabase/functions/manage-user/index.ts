@@ -8,12 +8,13 @@ const corsHeaders = {
 };
 
 interface ManageUserRequest {
-  action: "update" | "ban" | "unban";
+  action: "update" | "ban" | "unban" | "reset_password";
   user_id: string;
   name?: string;
   phone?: string;
   company?: string;
   cnpj?: string;
+  password?: string;
 }
 
 serve(async (req) => {
@@ -111,7 +112,22 @@ serve(async (req) => {
       );
     }
 
-    throw new Error("Ação inválida. Use 'update', 'ban' ou 'unban'");
+    if (action === "reset_password") {
+      if (!body.password || body.password.length < 6) {
+        throw new Error("Senha deve ter no mínimo 6 caracteres");
+      }
+      const { error } = await adminClient.auth.admin.updateUserById(user_id, {
+        password: body.password,
+      });
+      if (error) throw new Error(`Erro ao resetar senha: ${error.message}`);
+
+      return new Response(
+        JSON.stringify({ success: true, action: "password_reset" }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    throw new Error("Ação inválida. Use 'update', 'ban', 'unban' ou 'reset_password'");
   } catch (error: any) {
     console.error("Error in manage-user:", error);
     return new Response(
