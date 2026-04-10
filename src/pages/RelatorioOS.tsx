@@ -482,7 +482,7 @@ const RelatorioOS = () => {
             {/* ==================== HISTÓRICO DE CONVERSAS ==================== */}
             {comments.length > 0 && (
               <>
-                <Section title="Histórico de Conversas">
+                <Section title="Histórico de Acompanhamento">
                   <p className="text-xs text-muted-foreground mb-3">Registro completo de comunicações entre Imobiliária, Profissional e Admin durante o ciclo da OS.</p>
                   <div className="space-y-2">
                     {comments.map((comment) => (
