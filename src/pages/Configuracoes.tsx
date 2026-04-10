@@ -5,10 +5,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Mail, Building2, Lock, Loader2, Camera } from 'lucide-react';
+import { User, Mail, Building2, Lock, Loader2, Camera, ShieldCheck, ShieldOff } from 'lucide-react';
+import MFAEnroll from '@/components/MFAEnroll';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const Configuracoes = () => {
   const { profile, role, user } = useAuth();
@@ -23,6 +34,50 @@ const Configuracoes = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // MFA state
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [mfaLoading, setMfaLoading] = useState(true);
+  const [showMFAEnroll, setShowMFAEnroll] = useState(false);
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  const [isDisablingMFA, setIsDisablingMFA] = useState(false);
+
+  useEffect(() => {
+    checkMFAStatus();
+  }, []);
+
+  const checkMFAStatus = async () => {
+    try {
+      const { data } = await supabase.auth.mfa.listFactors();
+      const hasVerifiedTOTP = data?.totp?.some(f => f.status === 'verified') || false;
+      setMfaEnabled(hasVerifiedTOTP);
+    } catch {
+      // ignore
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const handleDisableMFA = async () => {
+    setIsDisablingMFA(true);
+    try {
+      const { data } = await supabase.auth.mfa.listFactors();
+      const verifiedFactors = data?.totp?.filter(f => f.status === 'verified') || [];
+      
+      for (const factor of verifiedFactors) {
+        const { error } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+        if (error) throw error;
+      }
+
+      setMfaEnabled(false);
+      setShowDisableConfirm(false);
+      toast({ title: 'MFA desativado', description: 'A autenticação de dois fatores foi removida da sua conta.' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao desativar MFA', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsDisablingMFA(false);
+    }
+  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -234,7 +289,88 @@ const Configuracoes = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {/* MFA / Two-Factor Authentication */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" />
+              Autenticação de Dois Fatores (MFA)
+            </CardTitle>
+            <CardDescription>
+              Adicione uma camada extra de segurança à sua conta usando um app autenticador
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {mfaLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Verificando status...</span>
+              </div>
+            ) : showMFAEnroll ? (
+              <MFAEnroll
+                onSuccess={() => {
+                  setShowMFAEnroll(false);
+                  setMfaEnabled(true);
+                }}
+                onCancel={() => setShowMFAEnroll(false)}
+              />
+            ) : mfaEnabled ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-emerald-600">
+                  <ShieldCheck className="h-5 w-5" />
+                  <span className="font-medium text-sm">MFA ativado</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Sua conta está protegida com autenticação de dois fatores via app autenticador.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDisableConfirm(true)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <ShieldOff className="h-4 w-4 mr-2" />
+                  Desativar MFA
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  O MFA protege sua conta exigindo um código do app autenticador além da senha.
+                </p>
+                <Button onClick={() => setShowMFAEnroll(true)}>
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  Ativar MFA
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Disable MFA Confirmation Dialog */}
+      <AlertDialog open={showDisableConfirm} onOpenChange={setShowDisableConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desativar autenticação de dois fatores?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso removerá a proteção extra da sua conta. Você poderá reativá-la a qualquer momento.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDisableMFA}
+              disabled={isDisablingMFA}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDisablingMFA ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Desativar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };

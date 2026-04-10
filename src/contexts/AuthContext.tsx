@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthenticatorAssuranceLevels } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { AppRole, Profile } from '@/types/database';
@@ -11,8 +11,10 @@ interface AuthContextType {
   role: AppRole | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  needsMFA: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  completeMFA: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,11 +25,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [needsMFA, setNeedsMFA] = useState(false);
+
+  const checkMFAStatus = async () => {
+    try {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error) return false;
+      
+      // If user has enrolled MFA factors but current level is aal1, they need to verify
+      if (data.currentLevel === 'aal1' && data.nextLevel === 'aal2') {
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
 
   // Fetch profile and role with retry (profile may not exist yet during signup)
   const fetchUserData = async (userId: string, retries = 3) => {
     try {
-      // Fetch profile
       const { data: profileData, error: profileError } = await typedFrom('profiles')
         .select('*')
         .eq('id', userId)
@@ -35,7 +52,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (profileError) {
         if (retries > 0) {
-          // Profile might not be created yet during signup, retry after delay
           await new Promise(resolve => setTimeout(resolve, 500));
           return fetchUserData(userId, retries - 1);
         }
@@ -44,7 +60,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       setProfile(profileData as Profile);
 
-      // Fetch roles (user may have multiple)
       const { data: rolesData, error: roleError } = await typedFrom('user_roles')
         .select('role')
         .eq('user_id', userId);
@@ -58,7 +73,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      // Prioritize admin role when user has multiple roles
       const roles = (rolesData || []).map((r: any) => r.role as AppRole);
       const primaryRole = roles.includes('admin') ? 'admin' : (roles[0] || null);
       setRole(primaryRole);
@@ -68,33 +82,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Defer Supabase calls with setTimeout
         if (session?.user) {
-          setTimeout(() => {
-            fetchUserData(session.user.id);
-          }, 0);
+          // Check MFA status
+          const mfaRequired = await checkMFAStatus();
+          setNeedsMFA(mfaRequired);
+          
+          if (!mfaRequired) {
+            setTimeout(() => {
+              fetchUserData(session.user.id);
+            }, 0);
+          }
         } else {
           setProfile(null);
           setRole(null);
+          setNeedsMFA(false);
         }
         
         setIsLoading(false);
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchUserData(session.user.id);
+        const mfaRequired = await checkMFAStatus();
+        setNeedsMFA(mfaRequired);
+        
+        if (!mfaRequired) {
+          fetchUserData(session.user.id);
+        }
       }
       
       setIsLoading(false);
@@ -120,8 +143,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // User creation is handled exclusively by the admin create-user edge function.
-  // Self-registration is disabled — no client-side signUp method is exposed.
+  const completeMFA = () => {
+    setNeedsMFA(false);
+    if (session?.user) {
+      fetchUserData(session.user.id);
+    }
+  };
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -129,6 +156,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setSession(null);
     setProfile(null);
     setRole(null);
+    setNeedsMFA(false);
   };
 
   return (
@@ -139,9 +167,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         profile, 
         role, 
         isLoading, 
-        isAuthenticated: !!user,
+        isAuthenticated: !!user && !needsMFA,
+        needsMFA,
         signIn,
         signOut,
+        completeMFA,
       }}
     >
       {children}
