@@ -59,7 +59,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Public route wrapper (redirects to dashboard if already logged in)
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, needsMFA } = useAuth();
   
   if (isLoading) {
     return (
@@ -67,6 +67,11 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+  
+  // If user needs MFA, show the auth page (which handles the MFA screen)
+  if (needsMFA) {
+    return <>{children}</>;
   }
   
   if (isAuthenticated) {
