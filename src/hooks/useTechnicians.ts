@@ -27,10 +27,19 @@ export function useTechnicians() {
 
       const techIds = roleData.map(r => r.user_id);
 
+      // Filter out banned users
+      const activeTechIds: string[] = [];
+      for (const id of techIds) {
+        const { data: isBanned } = await supabase.rpc('is_user_banned', { _user_id: id });
+        if (!isBanned) activeTechIds.push(id);
+      }
+
+      if (activeTechIds.length === 0) return [];
+
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('id, name, email, phone, company')
-        .in('id', techIds)
+        .in('id', activeTechIds)
         .order('name');
 
       if (profileError) throw profileError;
