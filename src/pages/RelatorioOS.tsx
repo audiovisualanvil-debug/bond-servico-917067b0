@@ -22,7 +22,6 @@ interface ServiceOrderItem {
   id: string;
   description: string;
   real_cost: number;
-  item_type: string;
 }
 
 const WARRANTY_OPTIONS = [
