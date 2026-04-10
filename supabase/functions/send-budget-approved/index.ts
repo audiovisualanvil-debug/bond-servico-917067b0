@@ -9,6 +9,9 @@ const corsHeaders = {
 const escapeHtml = (str: string): string =>
   str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+const isValidEmail = (email: string | null | undefined): email is string =>
+  !!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -17,6 +20,7 @@ serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('[send-budget-approved] ❌ Missing Authorization header');
       return new Response(JSON.stringify({ error: 'Missing authorization' }), {
         status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
@@ -31,20 +35,44 @@ serve(async (req: Request) => {
     const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
 
     if (authError || !user) {
+      console.error('[send-budget-approved] ❌ Auth failed:', authError?.message);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
     const { serviceOrderId } = await req.json();
-    console.log(`[orcamento_aprovado] Processing email for SO: ${serviceOrderId}`);
+    console.log(`[send-budget-approved] 📨 Processing for SO: ${serviceOrderId}, user: ${user.id}`);
 
     if (!serviceOrderId) {
+      console.error('[send-budget-approved] ❌ Missing serviceOrderId');
       return new Response(JSON.stringify({ error: 'Missing serviceOrderId' }), {
         status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
+    // ── Check required secrets ──
+    const resendKey = Deno.env.get('RESEND_API_KEY');
+    if (!resendKey) {
+      console.warn('[send-budget-approved] ⚠️ RESEND_API_KEY não configurada');
+      return new Response(JSON.stringify({
+        success: true, emailSent: false,
+        message: 'RESEND_API_KEY não configurada. Configure nas secrets do Supabase.',
+      }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
+
+    const fromEmail = Deno.env.get('RESEND_FROM_EMAIL');
+    if (!fromEmail) {
+      console.warn('[send-budget-approved] ⚠️ RESEND_FROM_EMAIL não configurada. Configure com: Faz-Tudo <noreply@seudominio.com.br>');
+      return new Response(JSON.stringify({
+        success: true, emailSent: false,
+        message: 'RESEND_FROM_EMAIL não configurada. Configure nas secrets do Supabase.',
+      }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
+
+    console.log(`[send-budget-approved] ✅ Secrets OK. Remetente: ${fromEmail}`);
+
+    // ── Fetch order ──
     const { data: order, error: orderError } = await supabase
       .from('service_orders')
       .select(`
@@ -57,27 +85,27 @@ serve(async (req: Request) => {
       .single();
 
     if (orderError || !order) {
+      console.error('[send-budget-approved] ❌ Order not found:', orderError?.message);
       return new Response(JSON.stringify({ error: 'Service order not found' }), {
         status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
+    const imobiliariaEmail = order.imobiliaria?.email;
+    if (!isValidEmail(imobiliariaEmail)) {
+      console.warn(`[send-budget-approved] ⚠️ Imobiliária sem email válido: "${imobiliariaEmail}" para OS ${order.os_number}`);
+      return new Response(JSON.stringify({
+        success: true, emailSent: false,
+        message: 'Imobiliária não possui email válido cadastrado.',
+      }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
+
     const os_number = escapeHtml(order.os_number || '');
     const property_name = escapeHtml(order.property?.address || 'Endereço não informado');
     const service_description = escapeHtml(order.technician_description || order.problem || 'Serviço não descrito');
-    const imobiliariaEmail = order.imobiliaria?.email;
     const imobiliariaName = escapeHtml(order.imobiliaria?.company || order.imobiliaria?.name || 'Cliente');
     const finalPrice = Number(order.final_price || 0).toFixed(2);
     const estimatedDeadline = order.estimated_deadline || '—';
-
-    const resendKey = Deno.env.get('RESEND_API_KEY');
-
-    if (!resendKey) {
-      return new Response(JSON.stringify({
-        success: true, emailSent: false,
-        message: 'Orçamento aprovado. E-mail não enviado (RESEND_API_KEY não configurada).',
-      }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
-    }
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -131,6 +159,8 @@ serve(async (req: Request) => {
 
     const subject = `Orçamento Aprovado - ${os_number}`;
 
+    console.log(`[send-budget-approved] 📤 Enviando para: ${imobiliariaEmail} | Assunto: ${subject}`);
+
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -138,7 +168,7 @@ serve(async (req: Request) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Faz-Tudo <onboarding@resend.dev>',
+        from: fromEmail,
         to: [imobiliariaEmail],
         subject,
         html: emailHtml,
@@ -146,9 +176,9 @@ serve(async (req: Request) => {
     });
 
     const resendData = await resendResponse.json();
-    console.log('[orcamento_aprovado] Resend response:', resendData);
 
     if (!resendResponse.ok) {
+      console.error(`[send-budget-approved] ❌ Resend rejeitou: ${JSON.stringify(resendData)}`);
       return new Response(JSON.stringify({
         success: true, emailSent: false,
         message: 'Orçamento aprovado, mas houve erro ao enviar o e-mail.',
@@ -156,7 +186,7 @@ serve(async (req: Request) => {
       }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
-    console.log(`[orcamento_aprovado] Email sent to ${imobiliariaEmail} for ${os_number}`);
+    console.log(`[send-budget-approved] ✅ Email enviado para ${imobiliariaEmail} | ID: ${resendData.id} | OS: ${os_number}`);
 
     return new Response(JSON.stringify({
       success: true, emailSent: true,
@@ -164,7 +194,7 @@ serve(async (req: Request) => {
     }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
 
   } catch (error: any) {
-    console.error('[orcamento_aprovado] Error:', error);
+    console.error('[send-budget-approved] ❌ Erro fatal:', error.message, error.stack);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });

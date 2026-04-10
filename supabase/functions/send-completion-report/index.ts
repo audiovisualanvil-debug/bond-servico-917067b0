@@ -9,6 +9,12 @@ const corsHeaders = {
 const escapeHtml = (str: string): string =>
   str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+const escapeAttr = (str: string): string =>
+  str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+const isValidEmail = (email: string | null | undefined): email is string =>
+  !!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
 interface RequestBody {
   serviceOrderId: string;
   reportUrl: string;
@@ -23,6 +29,7 @@ serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('[send-completion-report] ❌ Missing Authorization header');
       return new Response(JSON.stringify({ error: 'Missing authorization' }), {
         status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
@@ -35,22 +42,46 @@ serve(async (req: Request) => {
     const anonClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!);
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
-    
+
     if (authError || !user) {
+      console.error('[send-completion-report] ❌ Auth failed:', authError?.message);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
     const { serviceOrderId, reportUrl, sendTo }: RequestBody = await req.json();
-    console.log(`Processing completion report email for SO: ${serviceOrderId}, sendTo: ${JSON.stringify(sendTo)}`);
+    console.log(`[send-completion-report] 📨 SO: ${serviceOrderId}, sendTo: ${JSON.stringify(sendTo)}, user: ${user.id}`);
 
     if (!serviceOrderId) {
+      console.error('[send-completion-report] ❌ Missing serviceOrderId');
       return new Response(JSON.stringify({ error: 'Missing serviceOrderId' }), {
         status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
+    // ── Check required secrets ──
+    const resendKey = Deno.env.get('RESEND_API_KEY');
+    if (!resendKey) {
+      console.warn('[send-completion-report] ⚠️ RESEND_API_KEY não configurada');
+      return new Response(JSON.stringify({
+        success: true, emailSent: false,
+        message: 'RESEND_API_KEY não configurada. Configure nas secrets do Supabase.',
+      }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
+
+    const fromEmail = Deno.env.get('RESEND_FROM_EMAIL');
+    if (!fromEmail) {
+      console.warn('[send-completion-report] ⚠️ RESEND_FROM_EMAIL não configurada. Configure com: Faz-Tudo <noreply@seudominio.com.br>');
+      return new Response(JSON.stringify({
+        success: true, emailSent: false,
+        message: 'RESEND_FROM_EMAIL não configurada. Configure nas secrets do Supabase.',
+      }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
+    }
+
+    console.log(`[send-completion-report] ✅ Secrets OK. Remetente: ${fromEmail}`);
+
+    // ── Fetch order + report ──
     const { data: order, error: orderError } = await supabase
       .from('service_orders')
       .select(`
@@ -64,6 +95,7 @@ serve(async (req: Request) => {
       .single();
 
     if (orderError || !order) {
+      console.error('[send-completion-report] ❌ Order not found:', orderError?.message);
       return new Response(JSON.stringify({ error: 'Service order not found' }), {
         status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
@@ -73,41 +105,43 @@ serve(async (req: Request) => {
       ? order.completion_report[0] : null;
 
     if (!report) {
+      console.error(`[send-completion-report] ❌ Relatório de conclusão não encontrado para OS ${order.os_number}`);
       return new Response(JSON.stringify({ error: 'Completion report not found' }), {
         status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
-    const resendKey = Deno.env.get('RESEND_API_KEY');
-    if (!resendKey) {
-      return new Response(JSON.stringify({ 
-        success: true, emailSent: false,
-        message: 'Relatório salvo. E-mail não enviado (RESEND_API_KEY não configurada).',
-      }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
-    }
-
+    // ── Build recipients ──
     const recipients = sendTo || ['imobiliaria'];
     const emailTargets: { email: string; name: string; type: string }[] = [];
 
     for (const target of recipients) {
-      if (target === 'imobiliaria' && order.imobiliaria?.email) {
+      if (target === 'imobiliaria' && isValidEmail(order.imobiliaria?.email)) {
         emailTargets.push({ email: order.imobiliaria.email, name: order.imobiliaria.company || order.imobiliaria.name || 'Imobiliária', type: 'imobiliaria' });
+      } else if (target === 'imobiliaria') {
+        console.warn(`[send-completion-report] ⚠️ Imobiliária sem email válido: "${order.imobiliaria?.email}"`);
       }
-      if (target === 'tecnico' && order.tecnico?.email) {
+      if (target === 'tecnico' && isValidEmail(order.tecnico?.email)) {
         emailTargets.push({ email: order.tecnico.email, name: order.tecnico.name || 'Técnico', type: 'tecnico' });
+      } else if (target === 'tecnico') {
+        console.warn(`[send-completion-report] ⚠️ Técnico sem email válido: "${order.tecnico?.email}"`);
       }
-      if (target === 'proprietario' && order.property?.owner_email) {
+      if (target === 'proprietario' && isValidEmail(order.property?.owner_email)) {
         emailTargets.push({ email: order.property.owner_email, name: order.property.owner_name || 'Proprietário', type: 'proprietario' });
+      } else if (target === 'proprietario') {
+        console.warn(`[send-completion-report] ⚠️ Proprietário sem email válido: "${order.property?.owner_email}"`);
       }
     }
 
     if (emailTargets.length === 0) {
-      return new Response(JSON.stringify({ 
+      console.warn(`[send-completion-report] ⚠️ Nenhum destinatário válido encontrado para OS ${order.os_number}`);
+      return new Response(JSON.stringify({
         success: true, emailSent: false,
         message: 'Nenhum destinatário com e-mail válido encontrado.',
       }), { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
     }
 
+    // ── Build email HTML ──
     const propertyAddress = escapeHtml(order.property?.address || 'Endereço não informado');
     const tecnicoName = escapeHtml(order.tecnico?.name || 'Técnico');
     const completedDate = new Date(report.completed_at).toLocaleDateString('pt-BR');
@@ -120,10 +154,6 @@ serve(async (req: Request) => {
       .map((item: any) => `<li style="padding:4px 0;">${item.completed ? '✅' : '⬜'} ${escapeHtml(String(item.item || ''))}</li>`)
       .join('');
 
-    // Photos use signed URLs from storage — escape the URL to prevent attribute injection
-    const escapeAttr = (str: string): string =>
-      str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
     const photosBeforeHtml = (report.photos_before || [])
       .map((url: string) => `<img src="${escapeAttr(url)}" alt="Antes" style="width:180px;height:135px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;" />`)
       .join('');
@@ -132,7 +162,6 @@ serve(async (req: Request) => {
       .map((url: string) => `<img src="${escapeAttr(url)}" alt="Depois" style="width:180px;height:135px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;" />`)
       .join('');
 
-    // Sanitize reportUrl for href attribute
     const safeReportUrl = reportUrl ? escapeAttr(reportUrl) : '';
 
     const buildEmailHtml = (recipientName: string) => `
@@ -192,10 +221,12 @@ serve(async (req: Request) => {
 </body>
 </html>`;
 
-    const results: { target: string; sent: boolean; error?: any }[] = [];
+    // ── Send emails ──
+    const results: { target: string; email: string; sent: boolean; error?: string }[] = [];
 
     for (const target of emailTargets) {
       try {
+        console.log(`[send-completion-report] 📤 Enviando relatório para ${target.type} (${target.email}) | OS: ${osNumber}`);
         const resendResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
@@ -203,7 +234,7 @@ serve(async (req: Request) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            from: 'Faz-Tudo <noreply@resend.dev>',
+            from: fromEmail,
             to: [target.email],
             subject: `Relatório de Serviço - ${order.os_number} - Concluído`,
             html: buildEmailHtml(target.name),
@@ -212,37 +243,38 @@ serve(async (req: Request) => {
 
         const resendData = await resendResponse.json();
         if (resendResponse.ok) {
-          console.log(`Email sent to ${target.type} (${target.email})`);
-          results.push({ target: target.type, sent: true });
+          console.log(`[send-completion-report] ✅ Email enviado para ${target.type} (${target.email}) | ID: ${resendData.id}`);
+          results.push({ target: target.type, email: target.email, sent: true });
         } else {
-          console.error(`Resend error for ${target.type}:`, resendData);
-          results.push({ target: target.type, sent: false, error: resendData });
+          console.error(`[send-completion-report] ❌ Resend rejeitou envio para ${target.type} (${target.email}):`, JSON.stringify(resendData));
+          results.push({ target: target.type, email: target.email, sent: false, error: resendData.message || JSON.stringify(resendData) });
         }
       } catch (e: any) {
-        console.error(`Error sending to ${target.type}:`, e.message);
-        results.push({ target: target.type, sent: false, error: e.message });
+        console.error(`[send-completion-report] ❌ Erro de rede ao enviar para ${target.type} (${target.email}):`, e.message);
+        results.push({ target: target.type, email: target.email, sent: false, error: e.message });
       }
     }
 
     const allSent = results.every(r => r.sent);
     const someSent = results.some(r => r.sent);
+    console.log(`[send-completion-report] 📊 Resultado: ${results.filter(r => r.sent).length}/${results.length} emails enviados para OS ${osNumber}`);
 
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       emailSent: someSent,
       results,
-      message: allSent 
-        ? 'Relatório enviado com sucesso para todos os destinatários!' 
-        : someSent 
+      message: allSent
+        ? 'Relatório enviado com sucesso para todos os destinatários!'
+        : someSent
           ? 'Relatório enviado parcialmente. Verifique os detalhes.'
-          : 'Erro ao enviar e-mails. Verifique os destinatários.',
+          : 'Erro ao enviar e-mails. Verifique os logs e configuração.',
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
 
   } catch (error: any) {
-    console.error('Error in send-completion-report:', error);
+    console.error('[send-completion-report] ❌ Erro fatal:', error.message, error.stack);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
