@@ -1,14 +1,17 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatPhone } from '@/components/ui/phone-input';
-import { MapPin, Building2, User, Wrench, Calendar, Phone } from 'lucide-react';
+import { MapPin, Building2, User, Wrench, Calendar, Phone, Mail } from 'lucide-react';
 import { ServiceOrder } from '@/types/serviceOrder';
 
 interface Props {
   order: ServiceOrder;
+  role: string;
 }
 
-export function OSDetailSidebar({ order }: Props) {
+export function OSDetailSidebar({ order, role }: Props) {
+  const showContacts = role === 'admin' || role === 'tecnico';
+
   return (
     <div className="space-y-6">
       <div className="os-card">
@@ -18,17 +21,46 @@ export function OSDetailSidebar({ order }: Props) {
         </div>
         <p className="text-sm text-foreground">{order.property.address}</p>
         <p className="text-sm text-muted-foreground">{order.property.neighborhood}, {order.property.city}</p>
-        {order.property.tenantName && (
-          <div className="mt-3 pt-3 border-t border-border">
-            <p className="text-xs font-medium text-muted-foreground mb-1">Inquilino</p>
-            <p className="text-sm text-foreground">{order.property.tenantName}</p>
-            {order.property.tenantPhone && (
-              <a href={`tel:${order.property.tenantPhone}`} className="flex items-center gap-1.5 text-sm text-primary hover:underline mt-1">
-                <Phone className="h-3.5 w-3.5" />
-                {formatPhone(order.property.tenantPhone)}
-              </a>
+
+        {/* Contatos do imóvel - visíveis para Admin e Técnico */}
+        {showContacts && (
+          <>
+            {order.property.tenantName && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Inquilino</p>
+                <p className="text-sm text-foreground">{order.property.tenantName}</p>
+                {order.property.tenantPhone && (
+                  <a href={`tel:${order.property.tenantPhone}`} className="flex items-center gap-1.5 text-sm text-primary hover:underline mt-1">
+                    <Phone className="h-3.5 w-3.5" />
+                    {formatPhone(order.property.tenantPhone)}
+                  </a>
+                )}
+              </div>
             )}
-          </div>
+            {order.property.ownerName && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Proprietário</p>
+                <p className="text-sm text-foreground">{order.property.ownerName}</p>
+                {order.property.ownerPhone && (
+                  <a href={`tel:${order.property.ownerPhone}`} className="flex items-center gap-1.5 text-sm text-primary hover:underline mt-1">
+                    <Phone className="h-3.5 w-3.5" />
+                    {formatPhone(order.property.ownerPhone)}
+                  </a>
+                )}
+                {order.property.ownerEmail && (
+                  <a href={`mailto:${order.property.ownerEmail}`} className="flex items-center gap-1.5 text-sm text-primary hover:underline mt-1">
+                    <Mail className="h-3.5 w-3.5" />
+                    {order.property.ownerEmail}
+                  </a>
+                )}
+              </div>
+            )}
+            {!order.property.tenantName && !order.property.ownerName && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <p className="text-xs text-muted-foreground italic">Nenhum contato cadastrado para este imóvel.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
