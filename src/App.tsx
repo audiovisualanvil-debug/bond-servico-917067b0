@@ -26,6 +26,7 @@ import RelatoriosFinais from "./pages/RelatoriosFinais";
 import Configuracoes from "./pages/Configuracoes";
 import LogAuditoria from "./pages/LogAuditoria";
 import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
@@ -78,6 +79,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<PublicRoute><AuthPage /></PublicRoute>} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/ordens" element={<ProtectedRoute><OrdensServico /></ProtectedRoute>} />
       <Route path="/ordens/:id" element={<ProtectedRoute><OSDetail /></ProtectedRoute>} />
