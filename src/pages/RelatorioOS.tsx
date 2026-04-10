@@ -22,7 +22,6 @@ interface ServiceOrderItem {
   id: string;
   description: string;
   real_cost: number;
-  item_type: string;
 }
 
 const WARRANTY_OPTIONS = [
@@ -356,7 +355,6 @@ const RelatorioOS = () => {
                     <thead>
                       <tr className="bg-secondary/50">
                         <th className="text-left p-2 font-medium text-muted-foreground">Descrição</th>
-                        <th className="text-left p-2 font-medium text-muted-foreground w-20">Tipo</th>
                         <th className="text-right p-2 font-medium text-muted-foreground w-28">Valor</th>
                       </tr>
                     </thead>
@@ -364,7 +362,6 @@ const RelatorioOS = () => {
                       {items.map((item) => (
                         <tr key={item.id} className="border-t border-border">
                           <td className="p-2 text-foreground">{item.description}</td>
-                          <td className="p-2 text-muted-foreground capitalize">{item.item_type === 'material' ? 'Material' : 'Serviço'}</td>
                           <td className="p-2 text-foreground text-right">R$ {item.real_cost.toFixed(2)}</td>
                         </tr>
                       ))}
