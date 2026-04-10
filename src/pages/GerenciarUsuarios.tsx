@@ -200,6 +200,33 @@ const GerenciarUsuarios = () => {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!resetUser || !newPassword) return;
+    if (newPassword.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const response = await supabase.functions.invoke('manage-user', {
+        body: { action: 'reset_password', user_id: resetUser.id, password: newPassword },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+      if (response.data?.error) throw new Error(response.data.error);
+
+      toast.success(`Senha de ${resetUser.name} resetada com sucesso!`);
+      setResetUser(null);
+      setNewPassword('');
+      setShowNewPassword(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao resetar senha');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   if (role !== 'admin') {
     return (
       <DashboardLayout>
@@ -454,6 +481,23 @@ const GerenciarUsuarios = () => {
                                 <Pencil className="h-4 w-4" />
                               </Button>
                               <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-amber-600 hover:text-amber-700"
+                                onClick={() => { setResetUser(u); setNewPassword(''); setShowNewPassword(false); }}
+                                title="Resetar Senha"
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8 ${u.is_banned ? 'text-green-600 hover:text-green-700' : 'text-destructive hover:text-destructive'}`}
+                                onClick={() => setToggleUser(u)}
+                                title={u.is_banned ? 'Reativar' : 'Desativar'}
+                              >
+                                {u.is_banned ? <CheckCircle2 className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                              </Button>
                                 variant="ghost"
                                 size="icon"
                                 className={`h-8 w-8 ${u.is_banned ? 'text-green-600 hover:text-green-700' : 'text-destructive hover:text-destructive'}`}
