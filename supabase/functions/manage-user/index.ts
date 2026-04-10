@@ -8,12 +8,13 @@ const corsHeaders = {
 };
 
 interface ManageUserRequest {
-  action: "update" | "ban" | "unban";
+  action: "update" | "ban" | "unban" | "reset_password";
   user_id: string;
   name?: string;
   phone?: string;
   company?: string;
   cnpj?: string;
+  password?: string;
 }
 
 serve(async (req) => {
