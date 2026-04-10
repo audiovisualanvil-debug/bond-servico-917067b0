@@ -289,7 +289,88 @@ const Configuracoes = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {/* MFA / Two-Factor Authentication */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" />
+              Autenticação de Dois Fatores (MFA)
+            </CardTitle>
+            <CardDescription>
+              Adicione uma camada extra de segurança à sua conta usando um app autenticador
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {mfaLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Verificando status...</span>
+              </div>
+            ) : showMFAEnroll ? (
+              <MFAEnroll
+                onSuccess={() => {
+                  setShowMFAEnroll(false);
+                  setMfaEnabled(true);
+                }}
+                onCancel={() => setShowMFAEnroll(false)}
+              />
+            ) : mfaEnabled ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-emerald-600">
+                  <ShieldCheck className="h-5 w-5" />
+                  <span className="font-medium text-sm">MFA ativado</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Sua conta está protegida com autenticação de dois fatores via app autenticador.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDisableConfirm(true)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <ShieldOff className="h-4 w-4 mr-2" />
+                  Desativar MFA
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  O MFA protege sua conta exigindo um código do app autenticador além da senha.
+                </p>
+                <Button onClick={() => setShowMFAEnroll(true)}>
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  Ativar MFA
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Disable MFA Confirmation Dialog */}
+      <AlertDialog open={showDisableConfirm} onOpenChange={setShowDisableConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desativar autenticação de dois fatores?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso removerá a proteção extra da sua conta. Você poderá reativá-la a qualquer momento.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDisableMFA}
+              disabled={isDisablingMFA}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDisablingMFA ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Desativar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
