@@ -79,6 +79,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<PublicRoute><AuthPage /></PublicRoute>} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/ordens" element={<ProtectedRoute><OrdensServico /></ProtectedRoute>} />
       <Route path="/ordens/:id" element={<ProtectedRoute><OSDetail /></ProtectedRoute>} />
