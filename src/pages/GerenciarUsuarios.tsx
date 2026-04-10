@@ -498,14 +498,6 @@ const GerenciarUsuarios = () => {
                               >
                                 {u.is_banned ? <CheckCircle2 className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
                               </Button>
-                                variant="ghost"
-                                size="icon"
-                                className={`h-8 w-8 ${u.is_banned ? 'text-green-600 hover:text-green-700' : 'text-destructive hover:text-destructive'}`}
-                                onClick={() => setToggleUser(u)}
-                                title={u.is_banned ? 'Reativar' : 'Desativar'}
-                              >
-                                {u.is_banned ? <CheckCircle2 className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
-                              </Button>
                             </div>
                           )}
                         </div>
