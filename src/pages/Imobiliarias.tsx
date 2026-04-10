@@ -30,12 +30,23 @@ const Imobiliarias = () => {
 
       if (roles && roles.length > 0) {
         const userIds = roles.map(r => r.user_id);
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', userIds);
+        
+        // Filter out banned users
+        const activeIds: string[] = [];
+        for (const id of userIds) {
+          const { data: isBanned } = await supabase.rpc('is_user_banned', { _user_id: id });
+          if (!isBanned) activeIds.push(id);
+        }
 
-        setImobiliarias((profiles as Imobiliaria[]) || []);
+        if (activeIds.length === 0) {
+          setImobiliarias([]);
+        } else {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', activeIds);
+          setImobiliarias((profiles as Imobiliaria[]) || []);
+        }
       } else {
         setImobiliarias([]);
       }
