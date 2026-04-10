@@ -252,6 +252,57 @@ const AuthPage = () => {
               </Button>
             </form>
 
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => { setShowForgotPassword(true); setForgotEmail(loginEmail); }}
+                className="text-sm text-primary hover:underline"
+              >
+                Esqueci minha senha
+              </button>
+            </div>
+
+            {showForgotPassword && (
+              <div className="mt-4 p-4 border border-border rounded-xl bg-muted/50">
+                {forgotSent ? (
+                  <div className="text-center space-y-2">
+                    <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
+                    <p className="text-sm font-medium text-foreground">Email enviado!</p>
+                    <p className="text-xs text-muted-foreground">
+                      Verifique sua caixa de entrada (e spam) para o link de redefinição.
+                    </p>
+                    <Button variant="ghost" size="sm" onClick={() => { setShowForgotPassword(false); setForgotSent(false); }}>
+                      Voltar ao login
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Digite seu email para receber o link de redefinição de senha.
+                    </p>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setShowForgotPassword(false)} className="flex-1">
+                        Cancelar
+                      </Button>
+                      <Button type="submit" size="sm" disabled={forgotLoading} className="flex-1">
+                        {forgotLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enviar link'}
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            )}
+
             <p className="mt-6 text-center text-sm text-muted-foreground">
               Contas são criadas pela administração do sistema.
             </p>
