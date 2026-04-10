@@ -56,8 +56,8 @@ serve(async (req: Request) => {
       .select(`
         *,
         property:properties!service_orders_property_id_fkey(*),
-        imobiliaria:profiles!fk_so_imobiliaria_profile(*),
-        tecnico:profiles!fk_so_tecnico_profile(*),
+        imobiliaria:profiles!service_orders_imobiliaria_id_fkey(*),
+        tecnico:profiles!service_orders_tecnico_id_fkey(*),
         completion_report:completion_reports(*)
       `)
       .eq('id', serviceOrderId)
