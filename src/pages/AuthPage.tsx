@@ -143,11 +143,11 @@ const AuthPage = () => {
                   <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${card.gradient}`}>
                     <card.icon className={`h-6 w-6 ${card.iconColor}`} />
                   </div>
-                  <div className="text-left">
-                    <h3 className="font-display font-semibold text-lg text-foreground">{card.title}</h3>
-                    <p className="text-sm text-muted-foreground">{card.description}</p>
+                  <div className="text-left min-w-0">
+                    <h3 className="font-display font-semibold text-base text-foreground leading-tight">{card.title}</h3>
+                    <p className="text-sm text-muted-foreground/80 mt-0.5">{card.description}</p>
                   </div>
-                  <ArrowLeft className="ml-auto h-5 w-5 text-muted-foreground rotate-180 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ArrowLeft className="ml-auto h-5 w-5 text-muted-foreground rotate-180 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                 </button>
               ))}
             </div>
