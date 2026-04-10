@@ -224,7 +224,7 @@ const OSDetail = () => {
             {renderActionSection()}
             <ServiceOrderComments serviceOrderId={order.id} />
           </div>
-          <OSDetailSidebar order={order} />
+          <OSDetailSidebar order={order} role={role || 'imobiliaria'} />
         </div>
       </div>
     </DashboardLayout>
