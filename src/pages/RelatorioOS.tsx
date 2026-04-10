@@ -474,7 +474,7 @@ const RelatorioOS = () => {
                               {format(new Date(comment.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                             </span>
                           </div>
-                          <p className="text-foreground whitespace-pre-wrap text-xs leading-relaxed">{comment.message}</p>
+                          <p className="text-foreground whitespace-pre-wrap text-xs leading-relaxed">{comment.content}</p>
                         </div>
                       </div>
                     ))}
