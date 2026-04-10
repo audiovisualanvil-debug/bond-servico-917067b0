@@ -26,6 +26,7 @@ import RelatoriosFinais from "./pages/RelatoriosFinais";
 import Configuracoes from "./pages/Configuracoes";
 import LogAuditoria from "./pages/LogAuditoria";
 import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient({
