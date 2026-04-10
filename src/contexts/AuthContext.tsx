@@ -44,11 +44,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       setProfile(profileData as Profile);
 
-      // Fetch role
-      const { data: roleData, error: roleError } = await typedFrom('user_roles')
+      // Fetch roles (user may have multiple)
+      const { data: rolesData, error: roleError } = await typedFrom('user_roles')
         .select('role')
-        .eq('user_id', userId)
-        .single();
+        .eq('user_id', userId);
 
       if (roleError) {
         if (retries > 0) {
@@ -59,7 +58,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return;
       }
 
-      setRole(roleData?.role as AppRole || null);
+      // Prioritize admin role when user has multiple roles
+      const roles = (rolesData || []).map((r: any) => r.role as AppRole);
+      const primaryRole = roles.includes('admin') ? 'admin' : (roles[0] || null);
+      setRole(primaryRole);
     } catch (error) {
       console.error('Error in fetchUserData:', error);
     }
