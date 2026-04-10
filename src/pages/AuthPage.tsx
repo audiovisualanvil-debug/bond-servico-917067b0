@@ -107,6 +107,26 @@ const AuthPage = () => {
   const handleBack = () => {
     setSelectedProfile(null);
     setErrors({});
+    setShowForgotPassword(false);
+    setForgotSent(false);
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail)) {
+      toast({ variant: 'destructive', title: 'Email inválido', description: 'Digite um email válido.' });
+      return;
+    }
+    setForgotLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotLoading(false);
+    if (error) {
+      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+      return;
+    }
+    setForgotSent(true);
   };
 
   const currentProfile = profileCards.find(p => p.key === selectedProfile);
