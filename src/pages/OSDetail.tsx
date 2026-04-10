@@ -100,6 +100,7 @@ const OSDetail = () => {
         labor_cost: techQuote.laborCost, material_cost: techQuote.materialCost,
         tax_cost: techQuote.taxCost, technician_cost: totalCost,
         estimated_deadline: techQuote.deadline, status: 'aguardando_aprovacao_admin',
+        quote_sent_at: new Date().toISOString(),
       });
       supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'aguardando_aprovacao_admin' } }).catch(console.error);
       toast.success('Orçamento enviado!');
@@ -118,7 +119,7 @@ const OSDetail = () => {
 
   const handleAdminApprove = async () => {
     try {
-      await updateOrder.mutateAsync({ id: order.id, final_price: finalPrice, payment_method: order.paymentMethod || undefined, status: 'enviado_imobiliaria' });
+      await updateOrder.mutateAsync({ id: order.id, final_price: finalPrice, payment_method: order.paymentMethod || undefined, status: 'enviado_imobiliaria', admin_approved_at: new Date().toISOString() });
       auditLog({ action: 'approve_budget', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber, final_price: finalPrice } });
       supabase.functions.invoke('send-budget-approved', { body: { serviceOrderId: order.id } }).catch(console.error);
       supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'enviado_imobiliaria' } }).catch(console.error);
@@ -140,12 +141,12 @@ const OSDetail = () => {
   };
 
   const handleClientApprove = async () => {
-    try { await updateOrder.mutateAsync({ id: order.id, status: 'aprovado_aguardando' }); auditLog({ action: 'client_approve', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'aprovado_aguardando' } }).catch(console.error); toast.success('Serviço aprovado!'); }
+    try { await updateOrder.mutateAsync({ id: order.id, status: 'aprovado_aguardando', client_approved_at: new Date().toISOString() }); auditLog({ action: 'client_approve', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'aprovado_aguardando' } }).catch(console.error); toast.success('Serviço aprovado!'); }
     catch (e: any) { toast.error('Erro', { description: e.message }); }
   };
 
   const handleStartExecution = async () => {
-    try { await updateOrder.mutateAsync({ id: order.id, status: 'em_execucao' }); auditLog({ action: 'start_execution', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'em_execucao' } }).catch(console.error); toast.success('Execução iniciada!'); }
+    try { await updateOrder.mutateAsync({ id: order.id, status: 'em_execucao', execution_started_at: new Date().toISOString() }); auditLog({ action: 'start_execution', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } }); supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'em_execucao' } }).catch(console.error); toast.success('Execução iniciada!'); }
     catch (e: any) { toast.error('Erro', { description: e.message }); }
   };
 
@@ -157,7 +158,7 @@ const OSDetail = () => {
         photos_after: reportData.photosAfter, observations: reportData.observations || undefined,
         technician_signature: reportData.technicianSignature,
       });
-      await updateOrder.mutateAsync({ id: order.id, status: 'concluido' });
+      await updateOrder.mutateAsync({ id: order.id, status: 'concluido', completed_at: new Date().toISOString() });
       auditLog({ action: 'complete_service', entity_type: 'service_order', entity_id: order.id, details: { os_number: order.osNumber } });
       const reportUrl = `${window.location.origin}/ordens/${order.id}/relatorio`;
       supabase.functions.invoke('send-completion-report', { body: { serviceOrderId: order.id, reportUrl } }).catch(console.error);

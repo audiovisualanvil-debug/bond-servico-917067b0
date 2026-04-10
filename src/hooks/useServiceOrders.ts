@@ -326,7 +326,8 @@ export function useDeleteServiceOrder() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Delete related items and reports first
+      // Delete related records first to avoid FK constraint violations
+      await typedFrom('service_order_comments').delete().eq('service_order_id', id);
       await typedFrom('service_order_items').delete().eq('service_order_id', id);
       await typedFrom('completion_reports').delete().eq('service_order_id', id);
       const { error } = await typedFrom('service_orders').delete().eq('id', id);
