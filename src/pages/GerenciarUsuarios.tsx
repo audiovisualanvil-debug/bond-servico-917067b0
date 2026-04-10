@@ -51,6 +51,12 @@ const GerenciarUsuarios = () => {
   const [toggleUser, setToggleUser] = useState<UserWithRole | null>(null);
   const [isToggling, setIsToggling] = useState(false);
 
+  // Reset password dialog state
+  const [resetUser, setResetUser] = useState<UserWithRole | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+
   // Fetch all users with roles (admin only)
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['admin-users'],
