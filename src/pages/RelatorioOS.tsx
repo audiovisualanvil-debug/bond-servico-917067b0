@@ -13,8 +13,7 @@ import logoFazTudo from '@/assets/logo-faztudo.png';
 
 interface ReportComment {
   id: string;
-  message: string;
-  visible_to_imobiliaria: boolean;
+  content: string;
   created_at: string;
   profile?: { name: string; company: string | null } | null;
 }
