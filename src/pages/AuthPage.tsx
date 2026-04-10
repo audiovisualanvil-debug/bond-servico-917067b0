@@ -132,6 +132,39 @@ const AuthPage = () => {
 
   const currentProfile = profileCards.find(p => p.key === selectedProfile);
 
+  // ─── MFA VERIFICATION SCREEN ───
+  if (needsMFA) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex flex-col">
+        <header className="container py-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
+              <Wrench className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="font-display font-bold text-xl text-primary-foreground">Vita FAZ TUDO</h1>
+              <p className="text-xs text-primary-foreground/60">Gestão de Manutenção</p>
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 container flex flex-col items-center justify-center py-12">
+          <MFAVerify
+            onSuccess={() => {
+              completeMFA();
+              navigate('/dashboard');
+            }}
+            onCancel={() => signOut()}
+          />
+        </main>
+        <footer className="container py-6">
+          <p className="text-center text-sm text-primary-foreground/40">
+            © 2025 Vita FAZ TUDO. Sistema de Gestão de Manutenção Imobiliária.
+          </p>
+        </footer>
+      </div>
+    );
+  }
+
   // ─── PROFILE SELECTION SCREEN ───
   if (!selectedProfile) {
     return (
