@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Users, Building2, Wrench, Mail, Phone, Building, Eye, EyeOff, Pencil, Ban, CheckCircle2 } from 'lucide-react';
+import { Loader2, UserPlus, Users, Building2, Wrench, Mail, Phone, Building, Eye, EyeOff, Pencil, Ban, CheckCircle2, KeyRound } from 'lucide-react';
 
 interface UserWithRole {
   id: string;
@@ -50,6 +50,12 @@ const GerenciarUsuarios = () => {
   // Ban/unban confirm dialog
   const [toggleUser, setToggleUser] = useState<UserWithRole | null>(null);
   const [isToggling, setIsToggling] = useState(false);
+
+  // Reset password dialog state
+  const [resetUser, setResetUser] = useState<UserWithRole | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   // Fetch all users with roles (admin only)
   const { data: users = [], isLoading } = useQuery({
@@ -191,6 +197,33 @@ const GerenciarUsuarios = () => {
       toast.error(err.message || 'Erro ao alterar status');
     } finally {
       setIsToggling(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetUser || !newPassword) return;
+    if (newPassword.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const response = await supabase.functions.invoke('manage-user', {
+        body: { action: 'reset_password', user_id: resetUser.id, password: newPassword },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+      if (response.data?.error) throw new Error(response.data.error);
+
+      toast.success(`Senha de ${resetUser.name} resetada com sucesso!`);
+      setResetUser(null);
+      setNewPassword('');
+      setShowNewPassword(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao resetar senha');
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -450,6 +483,15 @@ const GerenciarUsuarios = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-8 w-8 text-amber-600 hover:text-amber-700"
+                                onClick={() => { setResetUser(u); setNewPassword(''); setShowNewPassword(false); }}
+                                title="Resetar Senha"
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 className={`h-8 w-8 ${u.is_banned ? 'text-green-600 hover:text-green-700' : 'text-destructive hover:text-destructive'}`}
                                 onClick={() => setToggleUser(u)}
                                 title={u.is_banned ? 'Reativar' : 'Desativar'}
@@ -553,6 +595,52 @@ const GerenciarUsuarios = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetUser} onOpenChange={(open) => { if (!open) { setResetUser(null); setNewPassword(''); setShowNewPassword(false); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-amber-600" />
+              Resetar Senha
+            </DialogTitle>
+            <DialogDescription>
+              Defina uma nova senha para <strong>{resetUser?.name}</strong> ({resetUser?.email})
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Nova Senha *</Label>
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className={newPassword.length > 0 && newPassword.length < 6 ? 'border-destructive' : ''}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {newPassword.length > 0 && newPassword.length < 6 && (
+                <p className="text-xs text-destructive">A senha deve ter pelo menos 6 caracteres</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setResetUser(null); setNewPassword(''); }}>Cancelar</Button>
+            <Button onClick={handleResetPassword} disabled={isResetting || newPassword.length < 6}>
+              {isResetting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Resetar Senha
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
