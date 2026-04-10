@@ -35,6 +35,50 @@ const Configuracoes = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // MFA state
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [mfaLoading, setMfaLoading] = useState(true);
+  const [showMFAEnroll, setShowMFAEnroll] = useState(false);
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  const [isDisablingMFA, setIsDisablingMFA] = useState(false);
+
+  useEffect(() => {
+    checkMFAStatus();
+  }, []);
+
+  const checkMFAStatus = async () => {
+    try {
+      const { data } = await supabase.auth.mfa.listFactors();
+      const hasVerifiedTOTP = data?.totp?.some(f => f.status === 'verified') || false;
+      setMfaEnabled(hasVerifiedTOTP);
+    } catch {
+      // ignore
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const handleDisableMFA = async () => {
+    setIsDisablingMFA(true);
+    try {
+      const { data } = await supabase.auth.mfa.listFactors();
+      const verifiedFactors = data?.totp?.filter(f => f.status === 'verified') || [];
+      
+      for (const factor of verifiedFactors) {
+        const { error } = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+        if (error) throw error;
+      }
+
+      setMfaEnabled(false);
+      setShowDisableConfirm(false);
+      toast({ title: 'MFA desativado', description: 'A autenticação de dois fatores foi removida da sua conta.' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao desativar MFA', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsDisablingMFA(false);
+    }
+  };
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
