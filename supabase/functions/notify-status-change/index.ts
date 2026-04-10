@@ -9,6 +9,10 @@ const corsHeaders = {
 const escapeHtml = (str: string): string =>
   str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+/** Validates that an email address has a basic valid format */
+const isValidEmail = (email: string | null | undefined): email is string =>
+  !!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
 interface RequestBody {
   serviceOrderId: string;
   newStatus: string;
@@ -32,6 +36,7 @@ serve(async (req: Request) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('[notify-status-change] ❌ Missing Authorization header');
       return new Response(JSON.stringify({ error: 'Missing authorization' }), {
         status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
@@ -45,29 +50,42 @@ serve(async (req: Request) => {
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
     if (authError || !user) {
+      console.error('[notify-status-change] ❌ Auth failed:', authError?.message);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
     const { serviceOrderId, newStatus }: RequestBody = await req.json();
-    console.log(`[notify-status-change] SO: ${serviceOrderId}, status: ${newStatus}`);
+    console.log(`[notify-status-change] 📨 SO: ${serviceOrderId}, status: ${newStatus}, user: ${user.id}`);
 
     if (!serviceOrderId || !newStatus) {
+      console.error('[notify-status-change] ❌ Missing params: serviceOrderId or newStatus');
       return new Response(JSON.stringify({ error: 'Missing params' }), {
         status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
+    // ── Check required secrets ──
     const resendKey = Deno.env.get('RESEND_API_KEY');
     if (!resendKey) {
-      console.log('[notify-status-change] RESEND_API_KEY not configured — skipping');
-      return new Response(JSON.stringify({ success: true, emailSent: false, message: 'No RESEND_API_KEY' }), {
+      console.warn('[notify-status-change] ⚠️ RESEND_API_KEY não configurada — email não será enviado');
+      return new Response(JSON.stringify({ success: true, emailSent: false, message: 'RESEND_API_KEY não configurada. Configure nas secrets do Supabase.' }), {
         status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
-    // Use correct FK constraint names
+    const fromEmail = Deno.env.get('RESEND_FROM_EMAIL');
+    if (!fromEmail) {
+      console.warn('[notify-status-change] ⚠️ RESEND_FROM_EMAIL não configurada — email não será enviado. Configure com valor tipo: Faz-Tudo <noreply@seudominio.com.br>');
+      return new Response(JSON.stringify({ success: true, emailSent: false, message: 'RESEND_FROM_EMAIL não configurada. Configure nas secrets do Supabase com o remetente verificado (ex: Faz-Tudo <noreply@seudominio.com.br>).' }), {
+        status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    console.log(`[notify-status-change] ✅ Secrets OK. Remetente: ${fromEmail}`);
+
+    // ── Fetch order data ──
     const { data: order, error: orderError } = await supabase
       .from('service_orders')
       .select(`
@@ -80,13 +98,13 @@ serve(async (req: Request) => {
       .single();
 
     if (orderError || !order) {
-      console.error('[notify-status-change] Order not found:', orderError);
+      console.error('[notify-status-change] ❌ Order not found:', orderError?.message);
       return new Response(JSON.stringify({ error: 'Order not found' }), {
         status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
-    // Fetch admin emails
+    // ── Fetch admin emails ──
     const { data: adminRoles } = await supabase
       .from('user_roles')
       .select('user_id')
@@ -99,7 +117,7 @@ serve(async (req: Request) => {
         .from('profiles')
         .select('email')
         .in('id', adminIds);
-      adminEmails = (adminProfiles || []).map((p: any) => p.email).filter(Boolean);
+      adminEmails = (adminProfiles || []).map((p: any) => p.email).filter(isValidEmail);
     }
 
     const osNumber = escapeHtml(order.os_number || '');
@@ -116,8 +134,7 @@ serve(async (req: Request) => {
 
     switch (newStatus) {
       case 'aguardando_orcamento_prestador': {
-        // Notify technician: new OS assigned
-        if (order.tecnico?.email) {
+        if (isValidEmail(order.tecnico?.email)) {
           const tecnicoName = escapeHtml(order.tecnico.name || '');
           const problem = escapeHtml(order.problem || '');
           emails.push({
@@ -125,12 +142,13 @@ serve(async (req: Request) => {
             subject: `Nova OS atribuída - ${osNumber}`,
             body: `Olá ${tecnicoName},<br><br>Uma nova ordem de serviço (<strong>${osNumber}</strong>) foi atribuída a você.<br>Imóvel: ${propertyAddr}<br>Problema: ${problem}<br><br>Acesse a plataforma para enviar seu orçamento.`,
           });
+        } else {
+          console.warn(`[notify-status-change] ⚠️ Técnico sem email válido para OS ${osNumber}`);
         }
         break;
       }
 
       case 'aguardando_aprovacao_admin': {
-        // Notify admin: quote received from technician
         if (adminEmails.length > 0) {
           const tecnicoName = escapeHtml(order.tecnico?.name || 'N/A');
           const cost = Number(order.technician_cost || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -139,13 +157,14 @@ serve(async (req: Request) => {
             subject: `Orçamento recebido - ${osNumber}`,
             body: `Um orçamento foi enviado para a OS <strong>${osNumber}</strong>.<br>Técnico: ${tecnicoName}<br>Valor do técnico: ${escapeHtml(cost)}<br>Imóvel: ${propertyAddr}<br><br>Acesse a plataforma para revisar e aprovar.`,
           });
+        } else {
+          console.warn(`[notify-status-change] ⚠️ Nenhum admin com email válido para notificação`);
         }
         break;
       }
 
       case 'enviado_imobiliaria': {
-        // Notify imobiliaria: quote ready for approval
-        if (order.imobiliaria?.email) {
+        if (isValidEmail(order.imobiliaria?.email)) {
           const imobName = escapeHtml(order.imobiliaria.company || order.imobiliaria.name || '');
           const price = Number(order.final_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
           emails.push({
@@ -153,13 +172,14 @@ serve(async (req: Request) => {
             subject: `Orçamento disponível para aprovação - ${osNumber}`,
             body: `Olá ${imobName},<br><br>O orçamento da OS <strong>${osNumber}</strong> está pronto para sua aprovação.<br>Imóvel: ${propertyAddr}<br>Valor: <strong>${escapeHtml(price)}</strong><br><br>Acesse a plataforma para aprovar ou solicitar revisão.`,
           });
+        } else {
+          console.warn(`[notify-status-change] ⚠️ Imobiliária sem email válido para OS ${osNumber}`);
         }
         break;
       }
 
       case 'aprovado_aguardando': {
-        // Notify technician + admin: client approved, ready for execution
-        if (order.tecnico?.email) {
+        if (isValidEmail(order.tecnico?.email)) {
           const tecnicoName = escapeHtml(order.tecnico.name || '');
           emails.push({
             to: [order.tecnico.email],
@@ -178,8 +198,7 @@ serve(async (req: Request) => {
       }
 
       case 'em_execucao': {
-        // Notify imobiliaria + admin: execution started
-        if (order.imobiliaria?.email) {
+        if (isValidEmail(order.imobiliaria?.email)) {
           const imobName = escapeHtml(order.imobiliaria.company || order.imobiliaria.name || '');
           const tecnicoName = escapeHtml(order.tecnico?.name || 'N/A');
           emails.push({
@@ -199,8 +218,7 @@ serve(async (req: Request) => {
       }
 
       case 'concluido': {
-        // Notify imobiliaria: service completed
-        if (order.imobiliaria?.email) {
+        if (isValidEmail(order.imobiliaria?.email)) {
           const imobName = escapeHtml(order.imobiliaria.company || order.imobiliaria.name || '');
           emails.push({
             to: [order.imobiliaria.email],
@@ -212,16 +230,18 @@ serve(async (req: Request) => {
       }
 
       default:
+        console.log(`[notify-status-change] ℹ️ Status '${newStatus}' não gera notificação por email`);
         break;
     }
 
     if (emails.length === 0) {
-      return new Response(JSON.stringify({ success: true, emailSent: false, message: 'No recipients for this status' }), {
+      console.log(`[notify-status-change] ℹ️ Nenhum destinatário válido para status '${newStatus}' na OS ${osNumber}`);
+      return new Response(JSON.stringify({ success: true, emailSent: false, message: 'Nenhum destinatário válido para este status' }), {
         status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
-    const results: { to: string[]; sent: boolean; error?: any }[] = [];
+    const results: { to: string[]; sent: boolean; error?: string }[] = [];
 
     for (const email of emails) {
       const emailHtml = `
@@ -248,31 +268,47 @@ serve(async (req: Request) => {
 </body></html>`;
 
       try {
+        console.log(`[notify-status-change] 📤 Enviando email para: ${email.to.join(', ')} | Assunto: ${email.subject}`);
         const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            from: 'Faz-Tudo <noreply@resend.dev>',
+            from: fromEmail,
             to: email.to,
             subject: email.subject,
             html: emailHtml,
           }),
         });
         const resData = await res.json();
-        console.log(`[notify-status-change] Email to ${email.to.join(',')} result:`, resData);
-        results.push({ to: email.to, sent: res.ok });
+
+        if (res.ok) {
+          console.log(`[notify-status-change] ✅ Email enviado com sucesso para ${email.to.join(', ')} | ID: ${resData.id}`);
+          results.push({ to: email.to, sent: true });
+        } else {
+          console.error(`[notify-status-change] ❌ Resend rejeitou o envio para ${email.to.join(', ')}:`, JSON.stringify(resData));
+          results.push({ to: email.to, sent: false, error: resData.message || JSON.stringify(resData) });
+        }
       } catch (emailErr: any) {
-        console.error('[notify-status-change] Email send error:', emailErr.message);
+        console.error(`[notify-status-change] ❌ Erro de rede ao enviar email para ${email.to.join(', ')}:`, emailErr.message);
         results.push({ to: email.to, sent: false, error: emailErr.message });
       }
     }
 
-    return new Response(JSON.stringify({ success: true, emailSent: results.some(r => r.sent), results }), {
+    const someSent = results.some(r => r.sent);
+    const allSent = results.every(r => r.sent);
+    console.log(`[notify-status-change] 📊 Resultado: ${results.filter(r => r.sent).length}/${results.length} emails enviados para OS ${osNumber}`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      emailSent: someSent,
+      results,
+      message: allSent ? 'Todos os emails enviados com sucesso' : someSent ? 'Alguns emails falharam — verifique os detalhes' : 'Nenhum email foi enviado — verifique os logs',
+    }), {
       status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
 
   } catch (error: any) {
-    console.error('[notify-status-change] Error:', error);
+    console.error('[notify-status-change] ❌ Erro fatal:', error.message, error.stack);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
