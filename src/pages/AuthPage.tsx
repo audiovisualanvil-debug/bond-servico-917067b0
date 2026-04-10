@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Wrench, Building2, Mail, Lock, Loader2, ShieldCheck, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
+import MFAVerify from '@/components/MFAVerify';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -50,7 +51,7 @@ const profileCards = [
 ];
 
 const AuthPage = () => {
-  const { signIn } = useAuth();
+  const { signIn, needsMFA, completeMFA, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
