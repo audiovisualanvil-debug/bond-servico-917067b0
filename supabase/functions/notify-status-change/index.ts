@@ -9,15 +9,8 @@ const corsHeaders = {
 const escapeHtml = (str: string): string =>
   str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-/** Validates that an email address has a basic valid format */
 const isValidEmail = (email: string | null | undefined): email is string =>
   !!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-interface RequestBody {
-  serviceOrderId: string;
-  newStatus: string;
-  previousStatus?: string;
-}
 
 const STATUS_LABELS: Record<string, string> = {
   aguardando_orcamento_prestador: 'Aguardando Orçamento do Prestador',
@@ -28,62 +21,90 @@ const STATUS_LABELS: Record<string, string> = {
   concluido: 'Concluído',
 };
 
+/**
+ * Parses the request body, supporting two formats:
+ * 1. Manual invocation: { serviceOrderId, newStatus }
+ * 2. Database webhook (pg_net): { type: "INSERT", record: { id, status, ... } }
+ */
+function parsePayload(body: any): { serviceOrderId: string; newStatus: string } | null {
+  // Format 1: manual invocation from frontend
+  if (body.serviceOrderId && body.newStatus) {
+    return { serviceOrderId: body.serviceOrderId, newStatus: body.newStatus };
+  }
+  // Format 2: database webhook trigger via pg_net
+  if (body.type === 'INSERT' && body.record?.id) {
+    return {
+      serviceOrderId: body.record.id,
+      newStatus: body.record.status || 'aguardando_orcamento_prestador',
+    };
+  }
+  return null;
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('[notify-status-change] ❌ Missing Authorization header');
-      return new Response(JSON.stringify({ error: 'Missing authorization' }), {
-        status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      });
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    const anonClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!);
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
-    if (authError || !user) {
-      console.error('[notify-status-change] ❌ Auth failed:', authError?.message);
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      });
+    // ── Auth: accept either user JWT or service_role key (for webhook calls) ──
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '') || '';
+
+    // If the token is the service_role key, it's a webhook call — skip user auth
+    const isWebhookCall = token === supabaseServiceKey;
+
+    if (!isWebhookCall) {
+      if (!authHeader) {
+        console.error('[notify-status-change] ❌ Missing Authorization header');
+        return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+          status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+      const anonClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!);
+      const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
+      if (authError || !user) {
+        console.error('[notify-status-change] ❌ Auth failed:', authError?.message);
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
     }
 
-    const { serviceOrderId, newStatus }: RequestBody = await req.json();
-    console.log(`[notify-status-change] 📨 SO: ${serviceOrderId}, status: ${newStatus}, user: ${user.id}`);
+    const rawBody = await req.json();
+    const parsed = parsePayload(rawBody);
 
-    if (!serviceOrderId || !newStatus) {
-      console.error('[notify-status-change] ❌ Missing params: serviceOrderId or newStatus');
-      return new Response(JSON.stringify({ error: 'Missing params' }), {
+    if (!parsed) {
+      console.error('[notify-status-change] ❌ Invalid payload:', JSON.stringify(rawBody).substring(0, 200));
+      return new Response(JSON.stringify({ error: 'Invalid payload format' }), {
         status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
+
+    const { serviceOrderId, newStatus } = parsed;
+    console.log(`[notify-status-change] 📨 SO: ${serviceOrderId}, status: ${newStatus}, source: ${isWebhookCall ? 'webhook' : 'manual'}`);
 
     // ── Check required secrets ──
     const resendKey = Deno.env.get('RESEND_API_KEY');
     if (!resendKey) {
       console.warn('[notify-status-change] ⚠️ RESEND_API_KEY não configurada — email não será enviado');
-      return new Response(JSON.stringify({ success: true, emailSent: false, message: 'RESEND_API_KEY não configurada. Configure nas secrets do Supabase.' }), {
+      return new Response(JSON.stringify({ success: true, emailSent: false, message: 'RESEND_API_KEY não configurada.' }), {
         status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
     const fromEmail = Deno.env.get('RESEND_FROM_EMAIL');
     if (!fromEmail) {
-      console.warn('[notify-status-change] ⚠️ RESEND_FROM_EMAIL não configurada — email não será enviado. Configure com valor tipo: Faz-Tudo <noreply@seudominio.com.br>');
-      return new Response(JSON.stringify({ success: true, emailSent: false, message: 'RESEND_FROM_EMAIL não configurada. Configure nas secrets do Supabase com o remetente verificado (ex: Faz-Tudo <noreply@seudominio.com.br>).' }), {
+      console.warn('[notify-status-change] ⚠️ RESEND_FROM_EMAIL não configurada');
+      return new Response(JSON.stringify({ success: true, emailSent: false, message: 'RESEND_FROM_EMAIL não configurada.' }), {
         status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
-    console.log(`[notify-status-change] ✅ Secrets OK. Remetente: ${fromEmail}`);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // ── Fetch order data ──
     const { data: order, error: orderError } = await supabase
@@ -137,7 +158,6 @@ serve(async (req: Request) => {
         const problem = escapeHtml(order.problem || '');
         const imobName = escapeHtml(order.imobiliaria?.company || order.imobiliaria?.name || 'N/A');
 
-        // Notify technician if assigned
         if (isValidEmail(order.tecnico?.email)) {
           const tecnicoName = escapeHtml(order.tecnico.name || '');
           emails.push({
@@ -145,11 +165,8 @@ serve(async (req: Request) => {
             subject: `Nova OS atribuída - ${osNumber}`,
             body: `Olá ${tecnicoName},<br><br>Uma nova ordem de serviço (<strong>${osNumber}</strong>) foi atribuída a você.<br>Imóvel: ${propertyAddr}<br>Problema: ${problem}<br><br>Acesse a plataforma para enviar seu orçamento.`,
           });
-        } else {
-          console.warn(`[notify-status-change] ⚠️ Técnico sem email válido para OS ${osNumber}`);
         }
 
-        // Notify admins about new OS creation
         if (adminEmails.length > 0) {
           const urgencyLabel = order.urgency === 'critica' ? '🔴 CRÍTICA' : order.urgency === 'alta' ? '🟠 ALTA' : order.urgency === 'media' ? '🟡 MÉDIA' : '🟢 BAIXA';
           emails.push({
@@ -170,8 +187,6 @@ serve(async (req: Request) => {
             subject: `Orçamento recebido - ${osNumber}`,
             body: `Um orçamento foi enviado para a OS <strong>${osNumber}</strong>.<br>Técnico: ${tecnicoName}<br>Valor do técnico: ${escapeHtml(cost)}<br>Imóvel: ${propertyAddr}<br><br>Acesse a plataforma para revisar e aprovar.`,
           });
-        } else {
-          console.warn(`[notify-status-change] ⚠️ Nenhum admin com email válido para notificação`);
         }
         break;
       }
@@ -185,8 +200,6 @@ serve(async (req: Request) => {
             subject: `Orçamento disponível para aprovação - ${osNumber}`,
             body: `Olá ${imobName},<br><br>O orçamento da OS <strong>${osNumber}</strong> está pronto para sua aprovação.<br>Imóvel: ${propertyAddr}<br>Valor: <strong>${escapeHtml(price)}</strong><br><br>Acesse a plataforma para aprovar ou solicitar revisão.`,
           });
-        } else {
-          console.warn(`[notify-status-change] ⚠️ Imobiliária sem email válido para OS ${osNumber}`);
         }
         break;
       }
@@ -243,13 +256,13 @@ serve(async (req: Request) => {
       }
 
       default:
-        console.log(`[notify-status-change] ℹ️ Status '${newStatus}' não gera notificação por email`);
+        console.log(`[notify-status-change] ℹ️ Status '${newStatus}' não gera notificação`);
         break;
     }
 
     if (emails.length === 0) {
-      console.log(`[notify-status-change] ℹ️ Nenhum destinatário válido para status '${newStatus}' na OS ${osNumber}`);
-      return new Response(JSON.stringify({ success: true, emailSent: false, message: 'Nenhum destinatário válido para este status' }), {
+      console.log(`[notify-status-change] ℹ️ Nenhum destinatário para status '${newStatus}' na OS ${osNumber}`);
+      return new Response(JSON.stringify({ success: true, emailSent: false, message: 'Nenhum destinatário válido' }), {
         status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
@@ -281,42 +294,31 @@ serve(async (req: Request) => {
 </body></html>`;
 
       try {
-        console.log(`[notify-status-change] 📤 Enviando email para: ${email.to.join(', ')} | Assunto: ${email.subject}`);
+        console.log(`[notify-status-change] 📤 Enviando para: ${email.to.join(', ')}`);
         const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            from: fromEmail,
-            to: email.to,
-            subject: email.subject,
-            html: emailHtml,
-          }),
+          body: JSON.stringify({ from: fromEmail, to: email.to, subject: email.subject, html: emailHtml }),
         });
         const resData = await res.json();
 
         if (res.ok) {
-          console.log(`[notify-status-change] ✅ Email enviado com sucesso para ${email.to.join(', ')} | ID: ${resData.id}`);
+          console.log(`[notify-status-change] ✅ Enviado para ${email.to.join(', ')} | ID: ${resData.id}`);
           results.push({ to: email.to, sent: true });
         } else {
-          console.error(`[notify-status-change] ❌ Resend rejeitou o envio para ${email.to.join(', ')}:`, JSON.stringify(resData));
+          console.error(`[notify-status-change] ❌ Resend rejeitou:`, JSON.stringify(resData));
           results.push({ to: email.to, sent: false, error: resData.message || JSON.stringify(resData) });
         }
       } catch (emailErr: any) {
-        console.error(`[notify-status-change] ❌ Erro de rede ao enviar email para ${email.to.join(', ')}:`, emailErr.message);
+        console.error(`[notify-status-change] ❌ Erro de rede:`, emailErr.message);
         results.push({ to: email.to, sent: false, error: emailErr.message });
       }
     }
 
     const someSent = results.some(r => r.sent);
-    const allSent = results.every(r => r.sent);
-    console.log(`[notify-status-change] 📊 Resultado: ${results.filter(r => r.sent).length}/${results.length} emails enviados para OS ${osNumber}`);
+    console.log(`[notify-status-change] 📊 ${results.filter(r => r.sent).length}/${results.length} emails enviados para OS ${osNumber}`);
 
-    return new Response(JSON.stringify({
-      success: true,
-      emailSent: someSent,
-      results,
-      message: allSent ? 'Todos os emails enviados com sucesso' : someSent ? 'Alguns emails falharam — verifique os detalhes' : 'Nenhum email foi enviado — verifique os logs',
-    }), {
+    return new Response(JSON.stringify({ success: true, emailSent: someSent, results }), {
       status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
 
