@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PhoneInput } from '@/components/ui/phone-input';
@@ -238,6 +239,11 @@ const NovoChamado = () => {
         requester_name: formData.requesterName,
         photos: photoUrls.length > 0 ? photoUrls : undefined,
       });
+
+      // Notify admins about new OS
+      supabase.functions.invoke('notify-status-change', {
+        body: { serviceOrderId: newOrder.id, newStatus: 'aguardando_orcamento_prestador' },
+      }).catch(console.error);
 
       toast.success('Ordem de Serviço criada com sucesso!', {
         description: `Número: ${newOrder.os_number || 'Gerado automaticamente'}`,
