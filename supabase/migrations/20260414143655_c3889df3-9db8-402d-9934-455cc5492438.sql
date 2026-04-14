@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS trg_generate_os_number ON public.service_orders;
