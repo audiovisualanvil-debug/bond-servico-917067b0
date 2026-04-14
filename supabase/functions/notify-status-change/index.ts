@@ -134,9 +134,12 @@ serve(async (req: Request) => {
 
     switch (newStatus) {
       case 'aguardando_orcamento_prestador': {
+        const problem = escapeHtml(order.problem || '');
+        const imobName = escapeHtml(order.imobiliaria?.company || order.imobiliaria?.name || 'N/A');
+
+        // Notify technician if assigned
         if (isValidEmail(order.tecnico?.email)) {
           const tecnicoName = escapeHtml(order.tecnico.name || '');
-          const problem = escapeHtml(order.problem || '');
           emails.push({
             to: [order.tecnico.email],
             subject: `Nova OS atribuída - ${osNumber}`,
@@ -144,6 +147,16 @@ serve(async (req: Request) => {
           });
         } else {
           console.warn(`[notify-status-change] ⚠️ Técnico sem email válido para OS ${osNumber}`);
+        }
+
+        // Notify admins about new OS creation
+        if (adminEmails.length > 0) {
+          const urgencyLabel = order.urgency === 'critica' ? '🔴 CRÍTICA' : order.urgency === 'alta' ? '🟠 ALTA' : order.urgency === 'media' ? '🟡 MÉDIA' : '🟢 BAIXA';
+          emails.push({
+            to: adminEmails,
+            subject: `Nova OS criada - ${osNumber}`,
+            body: `Uma nova ordem de serviço foi aberta.<br><br><strong>OS:</strong> ${osNumber}<br><strong>Imobiliária:</strong> ${imobName}<br><strong>Imóvel:</strong> ${propertyAddr}<br><strong>Problema:</strong> ${problem}<br><strong>Urgência:</strong> ${urgencyLabel}<br><br>Acesse a plataforma para designar um profissional.`,
+          });
         }
         break;
       }
