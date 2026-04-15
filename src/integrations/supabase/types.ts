@@ -391,6 +391,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "service_orders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_limited"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "service_orders_tecnico_id_fkey"
             columns: ["tecnico_id"]
             isOneToOne: false
@@ -422,7 +429,68 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      properties_limited: {
+        Row: {
+          address: string | null
+          city: string | null
+          code: string | null
+          created_at: string | null
+          id: string | null
+          imobiliaria_id: string | null
+          neighborhood: string | null
+          owner_email: string | null
+          owner_name: string | null
+          owner_phone: string | null
+          state: string | null
+          tenant_name: string | null
+          tenant_phone: string | null
+          updated_at: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          code?: string | null
+          created_at?: string | null
+          id?: string | null
+          imobiliaria_id?: string | null
+          neighborhood?: string | null
+          owner_email?: never
+          owner_name?: never
+          owner_phone?: never
+          state?: string | null
+          tenant_name?: never
+          tenant_phone?: never
+          updated_at?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          code?: string | null
+          created_at?: string | null
+          id?: string | null
+          imobiliaria_id?: string | null
+          neighborhood?: string | null
+          owner_email?: never
+          owner_name?: never
+          owner_phone?: never
+          state?: string | null
+          tenant_name?: never
+          tenant_phone?: never
+          updated_at?: string | null
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "properties_imobiliaria_id_fkey"
+            columns: ["imobiliaria_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
