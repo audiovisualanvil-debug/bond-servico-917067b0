@@ -438,12 +438,7 @@ export type Database = {
           id: string | null
           imobiliaria_id: string | null
           neighborhood: string | null
-          owner_email: string | null
-          owner_name: string | null
-          owner_phone: string | null
           state: string | null
-          tenant_name: string | null
-          tenant_phone: string | null
           updated_at: string | null
           zip_code: string | null
         }
@@ -455,12 +450,7 @@ export type Database = {
           id?: string | null
           imobiliaria_id?: string | null
           neighborhood?: string | null
-          owner_email?: never
-          owner_name?: never
-          owner_phone?: never
           state?: string | null
-          tenant_name?: never
-          tenant_phone?: never
           updated_at?: string | null
           zip_code?: string | null
         }
@@ -472,12 +462,7 @@ export type Database = {
           id?: string | null
           imobiliaria_id?: string | null
           neighborhood?: string | null
-          owner_email?: never
-          owner_name?: never
-          owner_phone?: never
           state?: string | null
-          tenant_name?: never
-          tenant_phone?: never
           updated_at?: string | null
           zip_code?: string | null
         }
