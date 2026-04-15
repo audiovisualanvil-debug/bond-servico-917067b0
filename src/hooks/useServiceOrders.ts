@@ -211,12 +211,14 @@ export function useServiceOrder(id: string | undefined) {
       const { data, error } = await typedFrom('service_orders')
         .select(SERVICE_ORDER_SELECT)
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) return null;
       return mapServiceOrder(data as DbServiceOrder);
     },
     enabled: !!id,
+    retry: 1,
   });
 }
 

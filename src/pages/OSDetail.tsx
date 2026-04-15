@@ -73,13 +73,27 @@ const OSDetail = () => {
     );
   }
 
-  if (error || !order) {
+  if (error) {
+    console.error('Erro ao carregar OS:', error);
     return (
       <DashboardLayout>
         <div className="text-center py-12">
-          <p className="text-muted-foreground">
-            {error ? 'Erro ao carregar ordem de serviço' : 'Ordem de serviço não encontrada'}
-          </p>
+          <p className="text-destructive font-medium">Erro ao carregar ordem de serviço</p>
+          <p className="text-sm text-muted-foreground mt-1">{(error as Error).message}</p>
+          <div className="flex gap-2 justify-center mt-4">
+            <Button variant="outline" onClick={() => navigate('/ordens')}>Voltar para lista</Button>
+            <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!order) {
+    return (
+      <DashboardLayout>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Ordem de serviço não encontrada</p>
           <Button className="mt-4" onClick={() => navigate('/ordens')}>Voltar para lista</Button>
         </div>
       </DashboardLayout>
