@@ -224,35 +224,24 @@ export function useServiceOrder(id: string | undefined) {
     queryFn: async () => {
       if (!id) return null;
 
-      console.log('[useServiceOrder] Iniciando query para ID:', id);
-      const startTime = performance.now();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Carregamento demorou muito. Tente novamente.')), 10000)
-      );
-
-      const queryPromise = (async () => {
+      try {
         const { data, error } = await typedFrom('service_orders')
           .select(SERVICE_ORDER_SELECT)
           .eq('id', id)
           .maybeSingle();
 
-        const duration = performance.now() - startTime;
-        console.log(`[useServiceOrder] Query concluída em ${duration.toFixed(2)}ms`);
+        clearTimeout(timeoutId);
 
-        if (error) {
-          console.error('[useServiceOrder] Erro:', error);
-          throw error;
-        }
-        if (!data) {
-          console.warn('[useServiceOrder] Nenhum dado encontrado');
-          return null;
-        }
-        console.log('[useServiceOrder] Dados recebidos com sucesso');
+        if (error) throw error;
+        if (!data) return null;
         return mapServiceOrder(data as DbServiceOrder);
-      })();
-
-      return Promise.race([queryPromise, timeoutPromise]);
+      } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
+      }
     },
     enabled: !!id,
     retry: 1,
