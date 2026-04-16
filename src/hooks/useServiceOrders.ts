@@ -160,7 +160,14 @@ function mapServiceOrder(db: DbServiceOrder): ServiceOrder {
 
 // ---------- SELECT QUERY ----------
 
-const SERVICE_ORDER_SELECT = `
+const SERVICE_ORDER_LIST_SELECT = `
+  *,
+  property:properties!service_orders_property_id_fkey(*),
+  imobiliaria:profiles!service_orders_imobiliaria_id_fkey(*),
+  tecnico:profiles!service_orders_tecnico_id_fkey(*)
+`;
+
+const SERVICE_ORDER_DETAIL_SELECT = `
   *,
   property:properties!service_orders_property_id_fkey(*),
   imobiliaria:profiles!service_orders_imobiliaria_id_fkey(*),
@@ -178,33 +185,23 @@ export function useServiceOrders(statusFilter?: string) {
     queryFn: async () => {
       if (!user || !role) return [];
 
+      let query = typedFrom('service_orders').select(SERVICE_ORDER_LIST_SELECT);
 
+      if (role === 'imobiliaria') {
+        query = query.eq('imobiliaria_id', user.id);
+      } else if (role === 'tecnico') {
+        query = query.eq('tecnico_id', user.id);
+      }
 
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Carregamento da lista demorou muito. Tente novamente.')), 20000)
-      );
+      if (statusFilter && statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
 
-      const queryPromise = (async () => {
-        let query = typedFrom('service_orders').select(SERVICE_ORDER_SELECT);
+      query = query.order('created_at', { ascending: false });
 
-        if (role === 'imobiliaria') {
-          query = query.eq('imobiliaria_id', user.id);
-        } else if (role === 'tecnico') {
-          query = query.eq('tecnico_id', user.id);
-        }
-
-        if (statusFilter && statusFilter !== 'all') {
-          query = query.eq('status', statusFilter);
-        }
-
-        query = query.order('created_at', { ascending: false });
-
-        const { data, error } = await query;
-        if (error) throw error;
-        return (data as DbServiceOrder[]).map(mapServiceOrder);
-      })();
-
-      return Promise.race([queryPromise, timeoutPromise]);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data as DbServiceOrder[]).map(mapServiceOrder);
     },
     enabled: !!user && !!role,
   });
@@ -216,22 +213,14 @@ export function useServiceOrder(id: string | undefined) {
     queryFn: async () => {
       if (!id) return null;
 
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('O carregamento da OS demorou demais. Verifique sua conexão e tente novamente.')), 20000)
-      );
+      const { data, error } = await typedFrom('service_orders')
+        .select(SERVICE_ORDER_DETAIL_SELECT)
+        .eq('id', id)
+        .maybeSingle();
 
-      const queryPromise = (async () => {
-        const { data, error } = await typedFrom('service_orders')
-          .select(SERVICE_ORDER_SELECT)
-          .eq('id', id)
-          .maybeSingle();
-
-        if (error) throw error;
-        if (!data) return null;
-        return mapServiceOrder(data as DbServiceOrder);
-      })();
-
-      return Promise.race([queryPromise, timeoutPromise]);
+      if (error) throw error;
+      if (!data) return null;
+      return mapServiceOrder(data as DbServiceOrder);
     },
     enabled: !!id,
     retry: 1,
@@ -246,50 +235,41 @@ export function useDashboardStats() {
     queryFn: async (): Promise<DashboardStats> => {
       if (!user || !role) return { total: 0, pending: 0, inProgress: 0, completed: 0, thisMonth: 0 };
 
+      let query = typedFrom('service_orders').select('status, final_price, created_at');
 
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Carregamento do dashboard demorou muito. Tente novamente.')), 20000)
-      );
+      if (role === 'imobiliaria') {
+        query = query.eq('imobiliaria_id', user.id);
+      } else if (role === 'tecnico') {
+        query = query.eq('tecnico_id', user.id);
+      }
 
-      const queryPromise = (async (): Promise<DashboardStats> => {
-        let query = typedFrom('service_orders').select('status, final_price, created_at');
+      const { data, error } = await query;
+      if (error) throw error;
 
-        if (role === 'imobiliaria') {
-          query = query.eq('imobiliaria_id', user.id);
-        } else if (role === 'tecnico') {
-          query = query.eq('tecnico_id', user.id);
-        }
+      const orders = data as { status: string; final_price: number | null; created_at: string }[];
 
-        const { data, error } = await query;
-        if (error) throw error;
+      const now = new Date();
+      const thisMonth = orders.filter(o => {
+        const d = new Date(o.created_at);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
 
-        const orders = data as { status: string; final_price: number | null; created_at: string }[];
+      const pendingStatuses = ['aguardando_orcamento_prestador', 'aguardando_aprovacao_admin', 'enviado_imobiliaria'];
+      const inProgressStatuses = ['aprovado_aguardando', 'em_execucao'];
+      const completedOrders = orders.filter(o => o.status === 'concluido');
 
-        const now = new Date();
-        const thisMonth = orders.filter(o => {
-          const d = new Date(o.created_at);
-          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-        });
-
-        const pendingStatuses = ['aguardando_orcamento_prestador', 'aguardando_aprovacao_admin', 'enviado_imobiliaria'];
-        const inProgressStatuses = ['aprovado_aguardando', 'em_execucao'];
-        const completedOrders = orders.filter(o => o.status === 'concluido');
-
-        return {
-          total: orders.length,
-          pending: role === 'admin'
-            ? orders.filter(o => o.status === 'aguardando_aprovacao_admin').length
-            : role === 'tecnico'
-              ? orders.filter(o => o.status === 'aguardando_orcamento_prestador').length
-              : orders.filter(o => pendingStatuses.includes(o.status)).length,
-          inProgress: orders.filter(o => inProgressStatuses.includes(o.status)).length,
-          completed: completedOrders.length,
-          thisMonth: thisMonth.length,
-          revenue: role === 'admin' ? completedOrders.reduce((sum, o) => sum + (o.final_price || 0), 0) : undefined,
-        };
-      })();
-
-      return Promise.race([queryPromise, timeoutPromise]);
+      return {
+        total: orders.length,
+        pending: role === 'admin'
+          ? orders.filter(o => o.status === 'aguardando_aprovacao_admin').length
+          : role === 'tecnico'
+            ? orders.filter(o => o.status === 'aguardando_orcamento_prestador').length
+            : orders.filter(o => pendingStatuses.includes(o.status)).length,
+        inProgress: orders.filter(o => inProgressStatuses.includes(o.status)).length,
+        completed: completedOrders.length,
+        thisMonth: thisMonth.length,
+        revenue: role === 'admin' ? completedOrders.reduce((sum, o) => sum + (o.final_price || 0), 0) : undefined,
+      };
     },
     enabled: !!user && !!role,
   });
