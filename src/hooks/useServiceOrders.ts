@@ -4,6 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceOrder, Property, User, CompletionReport, DashboardStats } from '@/types/serviceOrder';
+import { withTimeout } from '@/lib/withTimeout';
+
+const MUTATION_TIMEOUT_MS = 15000;
 
 // ---------- MAPPERS ----------
 
@@ -309,24 +312,24 @@ export function useCreateServiceOrder() {
       requester_name: string;
       photos?: string[];
     }) => {
-      const insertPromise = (async () => {
-        const { data: result, error } = await typedFrom('service_orders')
+      const response = await withTimeout<{
+        data: { id: string; os_number: string } | null;
+        error: Error | null;
+      }>(
+        typedFrom('service_orders')
           .insert({
             ...data,
             photos: data.photos || [],
           })
           .select('id, os_number')
-          .single();
-
-        if (error) throw error;
-        return result as { id: string; os_number: string };
-      })();
-
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('A criação da OS demorou demais. Tente novamente.')), 15000)
+          .single(),
+        MUTATION_TIMEOUT_MS,
+        'A criação da OS demorou demais. Tente novamente.'
       );
+      const { data: result, error } = response;
 
-      return Promise.race([insertPromise, timeoutPromise]);
+      if (error) throw error;
+      return result as { id: string; os_number: string };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
