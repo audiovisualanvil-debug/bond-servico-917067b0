@@ -312,7 +312,10 @@ export function useCreateServiceOrder() {
       requester_name: string;
       photos?: string[];
     }) => {
-      const { data: result, error } = await withTimeout(
+      const response = await withTimeout<{
+        data: { id: string; os_number: string } | null;
+        error: Error | null;
+      }>(
         typedFrom('service_orders')
           .insert({
             ...data,
@@ -323,6 +326,7 @@ export function useCreateServiceOrder() {
         MUTATION_TIMEOUT_MS,
         'A criação da OS demorou demais. Tente novamente.'
       );
+      const { data: result, error } = response;
 
       if (error) throw error;
       return result as { id: string; os_number: string };

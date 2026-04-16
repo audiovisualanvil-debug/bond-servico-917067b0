@@ -83,7 +83,10 @@ export function useCreateProperty() {
       owner_phone?: string;
       owner_email?: string;
     }) => {
-      const { data: result, error } = await withTimeout(
+      const response = await withTimeout<{
+        data: DbProperty | null;
+        error: Error | null;
+      }>(
         typedFrom('properties')
           .insert(data)
           .select()
@@ -91,6 +94,7 @@ export function useCreateProperty() {
         MUTATION_TIMEOUT_MS,
         'O cadastro do imóvel demorou demais. Tente novamente.'
       );
+      const { data: result, error } = response;
 
       if (error) throw error;
       return result as DbProperty;
