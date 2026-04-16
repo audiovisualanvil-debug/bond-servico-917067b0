@@ -178,25 +178,41 @@ export function useServiceOrders(statusFilter?: string) {
     queryFn: async () => {
       if (!user || !role) return [];
 
-      let query = typedFrom('service_orders').select(SERVICE_ORDER_SELECT);
+      console.log('[useServiceOrders] Iniciando query. Role:', role, 'Filter:', statusFilter);
+      const startTime = performance.now();
 
-      // Role-based filtering
-      if (role === 'imobiliaria') {
-        query = query.eq('imobiliaria_id', user.id);
-      } else if (role === 'tecnico') {
-        query = query.eq('tecnico_id', user.id);
-      }
-      // Admin sees all
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Carregamento da lista demorou muito. Tente novamente.')), 10000)
+      );
 
-      if (statusFilter && statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
-      }
+      const queryPromise = (async () => {
+        let query = typedFrom('service_orders').select(SERVICE_ORDER_SELECT);
 
-      query = query.order('created_at', { ascending: false });
+        if (role === 'imobiliaria') {
+          query = query.eq('imobiliaria_id', user.id);
+        } else if (role === 'tecnico') {
+          query = query.eq('tecnico_id', user.id);
+        }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data as DbServiceOrder[]).map(mapServiceOrder);
+        if (statusFilter && statusFilter !== 'all') {
+          query = query.eq('status', statusFilter);
+        }
+
+        query = query.order('created_at', { ascending: false });
+
+        const { data, error } = await query;
+        const duration = performance.now() - startTime;
+        console.log(`[useServiceOrders] Query concluída em ${duration.toFixed(2)}ms`);
+
+        if (error) {
+          console.error('[useServiceOrders] Erro:', error);
+          throw error;
+        }
+        console.log(`[useServiceOrders] ${(data as any[]).length} registros recebidos`);
+        return (data as DbServiceOrder[]).map(mapServiceOrder);
+      })();
+
+      return Promise.race([queryPromise, timeoutPromise]);
     },
     enabled: !!user && !!role,
   });
