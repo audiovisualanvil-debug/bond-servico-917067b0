@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { withTimeout } from '@/lib/withTimeout';
 
 const BUCKET = 'os-photos';
-const STORAGE_TIMEOUT_MS = 15000;
+const SIGNED_URL_EXPIRES_IN = 60 * 60 * 24 * 365;
 
 export function useFileUpload() {
   const { user } = useAuth();
@@ -17,61 +16,64 @@ export function useFileUpload() {
       return [];
     }
 
+    if (files.length === 0) {
+      return [];
+    }
+
     setIsUploading(true);
-    const urls: string[] = [];
 
     try {
-      for (const file of files) {
-        const ext = file.name.split('.').pop();
-        // Path starts with user.id to satisfy storage RLS ownership policy
-        const fileName = `${user.id}/${folder}/${crypto.randomUUID()}.${ext}`;
+      const uploadResults = await Promise.allSettled(
+        files.map(async (file) => {
+          const ext = file.name.split('.').pop();
+          const fileName = `${user.id}/${folder}/${crypto.randomUUID()}.${ext}`;
 
-        const { error } = await withTimeout(
-          supabase.storage
+          const { error } = await supabase.storage
             .from(BUCKET)
             .upload(fileName, file, {
               cacheControl: '3600',
               upsert: false,
-            }),
-          STORAGE_TIMEOUT_MS,
-          `O envio de ${file.name} demorou demais.`
-        );
+            });
 
-        if (error) {
-          console.error('Upload error:', error);
-          toast.error(`Erro ao enviar ${file.name}`);
-          continue;
-        }
+          if (error) {
+            throw new Error(`Erro ao enviar ${file.name}`);
+          }
 
-        // Bucket is private — use signed URLs instead of public URLs
-        const { data: signedData, error: signError } = await withTimeout(
-          supabase.storage
-            .from(BUCKET)
-            .createSignedUrl(fileName, 60 * 60 * 24 * 365),
-          STORAGE_TIMEOUT_MS,
-          `A geração do link da foto ${file.name} demorou demais.`
-        );
+          return fileName;
+        })
+      );
 
-        if (signError || !signedData?.signedUrl) {
-          console.error('Signed URL error:', signError);
-          // Fallback: store the path for later resolution
-          urls.push(fileName);
-        } else {
-          urls.push(signedData.signedUrl);
-        }
+      const uploadedPaths = uploadResults
+        .filter((result): result is PromiseFulfilledResult<string> => result.status === 'fulfilled')
+        .map((result) => result.value);
+
+      const failedUploads = uploadResults.filter((result) => result.status === 'rejected').length;
+
+      if (uploadedPaths.length === 0) {
+        throw new Error('Nenhuma foto conseguiu ser enviada. Tente novamente.');
       }
 
-      if (urls.length > 0) {
-        toast.success(`${urls.length} foto(s) enviada(s)`);
+      const { data: signedUrls, error: signedUrlsError } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrls(uploadedPaths, SIGNED_URL_EXPIRES_IN);
+
+      const urls = signedUrlsError
+        ? uploadedPaths
+        : uploadedPaths.map((path, index) => signedUrls?.[index]?.signedUrl || path);
+
+      if (failedUploads > 0) {
+        toast.error(`${failedUploads} foto(s) falharam no envio.`);
       }
+
+      toast.success(`${uploadedPaths.length} foto(s) enviada(s)`);
+      return urls;
     } catch (error) {
       console.error('Upload error:', error);
       toast.error(error instanceof Error ? error.message : 'Erro ao enviar fotos');
+      return [];
     } finally {
       setIsUploading(false);
     }
-
-    return urls;
   };
 
   return { uploadFiles, isUploading };
