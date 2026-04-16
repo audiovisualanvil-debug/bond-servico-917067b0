@@ -23,11 +23,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { typedFrom } from '@/integrations/supabase/helpers';
-import { withTimeout } from '@/lib/withTimeout';
-
-const PROPERTY_CREATION_TIMEOUT_MS = 20000;
-const PHOTO_UPLOAD_TIMEOUT_MS = 15000;
-const ORDER_CREATION_TIMEOUT_MS = 20000;
 
 const NovoChamado = () => {
   const navigate = useNavigate();
@@ -94,7 +89,8 @@ const NovoChamado = () => {
 
   const [isFetchingCep, setIsFetchingCep] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const formRef = useRef<HTMLFormElement>(null);
+  const [submitStep, setSubmitStep] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
   if (authLoading || !user || !role) {
     return (
@@ -106,7 +102,7 @@ const NovoChamado = () => {
     );
   }
 
-  const isSubmitting = createOrder.isPending || createProperty.isPending || isUploading;
+  const isSubmitting = submittingRef.current || createOrder.isPending || createProperty.isPending || isUploading;
   const effectiveImobiliariaId = role === 'admin' ? selectedImobiliariaId : user.id;
 
   const handleCepLookup = async (cep: string) => {
@@ -193,14 +189,17 @@ const NovoChamado = () => {
     e.preventDefault();
 
     if (!validateForm()) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
 
     try {
       let propertyId = formData.propertyId;
 
+      // Step 1: Create property if needed
       if (propertyId === 'new') {
-        if (!formData.street || !formData.neighborhood) {
-          return; // Already caught by validateForm
-        }
+        if (!formData.street || !formData.neighborhood) return;
+
+        setSubmitStep('Cadastrando imóvel...');
 
         const fullAddress = [
           formData.street,
@@ -208,61 +207,51 @@ const NovoChamado = () => {
           formData.complement,
         ].filter(Boolean).join(', ');
 
-        const newProperty = await withTimeout(
-          createProperty.mutateAsync({
-            imobiliaria_id: effectiveImobiliariaId,
-            address: fullAddress,
-            neighborhood: formData.neighborhood,
-            city: formData.city,
-            state: formData.state,
-            zip_code: formData.zipCode || undefined,
-            code: formData.code || undefined,
-            tenant_name: formData.tenantName || undefined,
-            tenant_phone: formData.tenantPhone || undefined,
-            owner_name: formData.ownerName || undefined,
-            owner_phone: formData.ownerPhone || undefined,
-            owner_email: formData.ownerEmail || undefined,
-          }),
-          PROPERTY_CREATION_TIMEOUT_MS,
-          'O cadastro do imóvel demorou demais. Tente novamente.'
-        );
+        const newProperty = await createProperty.mutateAsync({
+          imobiliaria_id: effectiveImobiliariaId,
+          address: fullAddress,
+          neighborhood: formData.neighborhood,
+          city: formData.city,
+          state: formData.state,
+          zip_code: formData.zipCode || undefined,
+          code: formData.code || undefined,
+          tenant_name: formData.tenantName || undefined,
+          tenant_phone: formData.tenantPhone || undefined,
+          owner_name: formData.ownerName || undefined,
+          owner_phone: formData.ownerPhone || undefined,
+          owner_email: formData.ownerEmail || undefined,
+        });
 
         propertyId = newProperty.id;
       }
 
-      if (!propertyId || propertyId === 'new') {
-        return; // Already caught by validateForm
-      }
+      if (!propertyId || propertyId === 'new') return;
 
-      // Upload photos to storage if any
+      // Step 2: Upload photos (tolerant — won't block order creation)
       let photoUrls: string[] = [];
       if (formData.photos.length > 0) {
+        setSubmitStep('Enviando fotos...');
         try {
-          photoUrls = await withTimeout(
-            uploadFiles(formData.photos, `os-creation/${crypto.randomUUID()}`),
-            PHOTO_UPLOAD_TIMEOUT_MS,
-            'O upload das fotos demorou demais.'
-          );
+          photoUrls = await uploadFiles(formData.photos, `os-creation/${crypto.randomUUID()}`);
         } catch (uploadError) {
-          console.error('Photo upload timeout:', uploadError);
-          toast.warning('As fotos demoraram demais e o chamado será aberto sem elas.');
+          console.error('Photo upload failed:', uploadError);
+          toast.warning('Falha no envio das fotos. O chamado será aberto sem elas.');
         }
       }
 
-      const newOrder = await withTimeout(
-        createOrder.mutateAsync({
-          property_id: propertyId,
-          imobiliaria_id: effectiveImobiliariaId,
-          problem: formData.problem,
-          urgency: formData.urgency,
-          requester_name: formData.requesterName,
-          photos: photoUrls.length > 0 ? photoUrls : undefined,
-        }),
-        ORDER_CREATION_TIMEOUT_MS,
-        'A criação do chamado demorou demais. Tente novamente.'
-      );
+      // Step 3: Create the service order
+      setSubmitStep('Abrindo chamado...');
 
-      // Notify admins about new OS
+      const newOrder = await createOrder.mutateAsync({
+        property_id: propertyId,
+        imobiliaria_id: effectiveImobiliariaId,
+        problem: formData.problem,
+        urgency: formData.urgency,
+        requester_name: formData.requesterName,
+        photos: photoUrls.length > 0 ? photoUrls : undefined,
+      });
+
+      // Notify admins (fire-and-forget)
       supabase.functions.invoke('notify-status-change', {
         body: { serviceOrderId: newOrder.id, newStatus: 'aguardando_orcamento_prestador' },
       }).catch(console.error);
@@ -274,9 +263,11 @@ const NovoChamado = () => {
 
       navigate(`/ordens/${newOrder.id}`);
     } catch (error: any) {
-      toast.error('Erro ao abrir chamado', {
-        description: error.message || 'Tente novamente.',
-      });
+      const msg = error?.message || 'Erro desconhecido';
+      toast.error('Erro ao abrir chamado', { description: msg });
+    } finally {
+      submittingRef.current = false;
+      setSubmitStep(null);
     }
   };
 
@@ -328,7 +319,7 @@ const NovoChamado = () => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} ref={formRef} className="space-y-8" noValidate>
+        <form onSubmit={handleSubmit} className="space-y-8" noValidate>
           {/* Admin: Select Imobiliária */}
           {role === 'admin' && (
             <div className="os-card">
@@ -574,7 +565,7 @@ const NovoChamado = () => {
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Enviando...
+                  {submitStep || 'Enviando...'}
                 </>
               ) : (
                 <>

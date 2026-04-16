@@ -2,9 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { useAuth } from '@/contexts/AuthContext';
 import { Property } from '@/types/serviceOrder';
-import { withTimeout } from '@/lib/withTimeout';
-
-const MUTATION_TIMEOUT_MS = 30000;
 
 interface DbProperty {
   id: string;
@@ -92,8 +89,7 @@ export function useCreateProperty() {
       if (!result) throw new Error('Falha ao cadastrar imóvel. Tente novamente.');
       return result as DbProperty;
     },
-    retry: 2,
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
+    retry: false,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['properties'] });
     },

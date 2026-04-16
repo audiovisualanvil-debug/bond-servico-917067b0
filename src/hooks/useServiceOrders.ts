@@ -4,9 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { useAuth } from '@/contexts/AuthContext';
 import { ServiceOrder, Property, User, CompletionReport, DashboardStats } from '@/types/serviceOrder';
-import { withTimeout } from '@/lib/withTimeout';
-
-const MUTATION_TIMEOUT_MS = 30000;
 
 // ---------- MAPPERS ----------
 
@@ -324,8 +321,7 @@ export function useCreateServiceOrder() {
       if (!result) throw new Error('Falha ao criar OS. Tente novamente.');
       return result as { id: string; os_number: string };
     },
-    retry: 2,
-    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
+    retry: false,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
