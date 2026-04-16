@@ -43,37 +43,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   // Fetch profile and role with retry (profile may not exist yet during signup)
-  const fetchUserData = async (userId: string, retries = 3) => {
+  const fetchUserData = async (userId: string, retries = 2) => {
     try {
-      const { data: profileData, error: profileError } = await typedFrom('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      // Fetch profile and roles in parallel for faster loading
+      const [profileResult, rolesResult] = await Promise.all([
+        typedFrom('profiles').select('*').eq('id', userId).single(),
+        typedFrom('user_roles').select('role').eq('user_id', userId),
+      ]);
 
-      if (profileError) {
+      if (profileResult.error) {
         if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 300));
           return fetchUserData(userId, retries - 1);
         }
-        console.error('Error fetching profile:', profileError);
+        console.error('Error fetching profile:', profileResult.error);
         return;
       }
-      setProfile(profileData as Profile);
+      setProfile(profileResult.data as Profile);
 
-      const { data: rolesData, error: roleError } = await typedFrom('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-
-      if (roleError) {
-        if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-          return fetchUserData(userId, retries - 1);
-        }
-        console.error('Error fetching role:', roleError);
-        return;
-      }
-
-      const roles = (rolesData || []).map((r: any) => r.role as AppRole);
+      const roles = (rolesResult.data || []).map((r: any) => r.role as AppRole);
       const primaryRole = roles.includes('admin') ? 'admin' : (roles[0] || null);
       setRole(primaryRole);
     } catch (error) {
@@ -82,8 +70,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   useEffect(() => {
+    let initialized = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Skip if getSession already handled the initial load
+        if (!initialized) return;
+
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -116,11 +109,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setNeedsMFA(mfaRequired);
         
         if (!mfaRequired) {
-          fetchUserData(session.user.id);
+          await fetchUserData(session.user.id);
         }
       }
       
       setIsLoading(false);
+      initialized = true;
     });
 
     return () => subscription.unsubscribe();
