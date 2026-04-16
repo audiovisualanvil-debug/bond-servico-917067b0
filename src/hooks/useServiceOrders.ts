@@ -178,7 +178,7 @@ export function useServiceOrders(statusFilter?: string) {
     queryFn: async () => {
       if (!user || !role) return [];
 
-      console.log('[useServiceOrders] Iniciando query. Role:', role, 'Filter:', statusFilter);
+      
       const startTime = performance.now();
 
       const timeoutPromise = new Promise<never>((_, reject) =>
@@ -201,14 +201,7 @@ export function useServiceOrders(statusFilter?: string) {
         query = query.order('created_at', { ascending: false });
 
         const { data, error } = await query;
-        const duration = performance.now() - startTime;
-        console.log(`[useServiceOrders] Query concluída em ${duration.toFixed(2)}ms`);
-
-        if (error) {
-          console.error('[useServiceOrders] Erro:', error);
-          throw error;
-        }
-        console.log(`[useServiceOrders] ${(data as any[]).length} registros recebidos`);
+        if (error) throw error;
         return (data as DbServiceOrder[]).map(mapServiceOrder);
       })();
 
@@ -254,8 +247,6 @@ export function useDashboardStats() {
     queryFn: async (): Promise<DashboardStats> => {
       if (!user || !role) return { total: 0, pending: 0, inProgress: 0, completed: 0, thisMonth: 0 };
 
-      console.log('[useDashboardStats] Iniciando query. Role:', role);
-      const startTime = performance.now();
 
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Carregamento do dashboard demorou muito. Tente novamente.')), 10000)
@@ -271,16 +262,9 @@ export function useDashboardStats() {
         }
 
         const { data, error } = await query;
-        const duration = performance.now() - startTime;
-        console.log(`[useDashboardStats] Query concluída em ${duration.toFixed(2)}ms`);
-
-        if (error) {
-          console.error('[useDashboardStats] Erro:', error);
-          throw error;
-        }
+        if (error) throw error;
 
         const orders = data as { status: string; final_price: number | null; created_at: string }[];
-        console.log(`[useDashboardStats] ${orders.length} registros para cálculo`);
 
         const now = new Date();
         const thisMonth = orders.filter(o => {
