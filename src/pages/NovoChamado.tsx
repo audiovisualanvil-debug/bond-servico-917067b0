@@ -23,6 +23,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { typedFrom } from '@/integrations/supabase/helpers';
+import { withTimeout } from '@/lib/withTimeout';
+
+const PROPERTY_CREATION_TIMEOUT_MS = 20000;
+const PHOTO_UPLOAD_TIMEOUT_MS = 15000;
+const ORDER_CREATION_TIMEOUT_MS = 20000;
 
 const NovoChamado = () => {
   const navigate = useNavigate();
@@ -203,20 +208,24 @@ const NovoChamado = () => {
           formData.complement,
         ].filter(Boolean).join(', ');
 
-        const newProperty = await createProperty.mutateAsync({
-          imobiliaria_id: effectiveImobiliariaId,
-          address: fullAddress,
-          neighborhood: formData.neighborhood,
-          city: formData.city,
-          state: formData.state,
-          zip_code: formData.zipCode || undefined,
-          code: formData.code || undefined,
-          tenant_name: formData.tenantName || undefined,
-          tenant_phone: formData.tenantPhone || undefined,
-          owner_name: formData.ownerName || undefined,
-          owner_phone: formData.ownerPhone || undefined,
-          owner_email: formData.ownerEmail || undefined,
-        });
+        const newProperty = await withTimeout(
+          createProperty.mutateAsync({
+            imobiliaria_id: effectiveImobiliariaId,
+            address: fullAddress,
+            neighborhood: formData.neighborhood,
+            city: formData.city,
+            state: formData.state,
+            zip_code: formData.zipCode || undefined,
+            code: formData.code || undefined,
+            tenant_name: formData.tenantName || undefined,
+            tenant_phone: formData.tenantPhone || undefined,
+            owner_name: formData.ownerName || undefined,
+            owner_phone: formData.ownerPhone || undefined,
+            owner_email: formData.ownerEmail || undefined,
+          }),
+          PROPERTY_CREATION_TIMEOUT_MS,
+          'O cadastro do imóvel demorou demais. Tente novamente.'
+        );
 
         propertyId = newProperty.id;
       }
@@ -228,17 +237,30 @@ const NovoChamado = () => {
       // Upload photos to storage if any
       let photoUrls: string[] = [];
       if (formData.photos.length > 0) {
-        photoUrls = await uploadFiles(formData.photos, `os-creation/${crypto.randomUUID()}`);
+        try {
+          photoUrls = await withTimeout(
+            uploadFiles(formData.photos, `os-creation/${crypto.randomUUID()}`),
+            PHOTO_UPLOAD_TIMEOUT_MS,
+            'O upload das fotos demorou demais.'
+          );
+        } catch (uploadError) {
+          console.error('Photo upload timeout:', uploadError);
+          toast.warning('As fotos demoraram demais e o chamado será aberto sem elas.');
+        }
       }
 
-      const newOrder = await createOrder.mutateAsync({
-        property_id: propertyId,
-        imobiliaria_id: effectiveImobiliariaId,
-        problem: formData.problem,
-        urgency: formData.urgency,
-        requester_name: formData.requesterName,
-        photos: photoUrls.length > 0 ? photoUrls : undefined,
-      });
+      const newOrder = await withTimeout(
+        createOrder.mutateAsync({
+          property_id: propertyId,
+          imobiliaria_id: effectiveImobiliariaId,
+          problem: formData.problem,
+          urgency: formData.urgency,
+          requester_name: formData.requesterName,
+          photos: photoUrls.length > 0 ? photoUrls : undefined,
+        }),
+        ORDER_CREATION_TIMEOUT_MS,
+        'A criação do chamado demorou demais. Tente novamente.'
+      );
 
       // Notify admins about new OS
       supabase.functions.invoke('notify-status-change', {
@@ -317,7 +339,7 @@ const NovoChamado = () => {
               <div id="field-imobiliaria">
                 <Label>Selecionar imobiliária *</Label>
                 <Select
-                  value={selectedImobiliariaId || undefined}
+                  value={selectedImobiliariaId}
                   onValueChange={(value) => {
                     setSelectedImobiliariaId(value);
                     setFormData(prev => ({ ...prev, propertyId: '' }));
@@ -351,7 +373,7 @@ const NovoChamado = () => {
               <div id="field-property">
                 <Label htmlFor="property">Selecionar imóvel cadastrado *</Label>
                 <Select
-                  value={formData.propertyId || undefined}
+                  value={formData.propertyId}
                   onValueChange={(value) => {
                     setFormData(prev => ({ ...prev, propertyId: value }));
                     clearFieldError('property');
@@ -482,7 +504,7 @@ const NovoChamado = () => {
 
               <div id="field-urgency">
                 <Label htmlFor="urgency">Grau de urgência *</Label>
-                <Select value={formData.urgency || undefined} onValueChange={(value) => { setFormData(prev => ({ ...prev, urgency: value as UrgencyLevel })); clearFieldError('urgency'); }}>
+                <Select value={formData.urgency} onValueChange={(value) => { setFormData(prev => ({ ...prev, urgency: value as UrgencyLevel })); clearFieldError('urgency'); }}>
                   <SelectTrigger className={fieldErrors.urgency ? 'border-destructive ring-destructive' : ''}>
                     <SelectValue placeholder="Selecione a urgência" />
                   </SelectTrigger>
