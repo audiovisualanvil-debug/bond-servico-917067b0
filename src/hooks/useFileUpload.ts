@@ -2,18 +2,10 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { withTimeout } from '@/lib/withTimeout';
 
 const BUCKET = 'os-photos';
 const STORAGE_TIMEOUT_MS = 15000;
-
-async function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      setTimeout(() => reject(new Error(message)), STORAGE_TIMEOUT_MS);
-    }),
-  ]);
-}
 
 export function useFileUpload() {
   const { user } = useAuth();
@@ -41,6 +33,7 @@ export function useFileUpload() {
               cacheControl: '3600',
               upsert: false,
             }),
+          STORAGE_TIMEOUT_MS,
           `O envio de ${file.name} demorou demais.`
         );
 
@@ -55,6 +48,7 @@ export function useFileUpload() {
           supabase.storage
             .from(BUCKET)
             .createSignedUrl(fileName, 60 * 60 * 24 * 365),
+          STORAGE_TIMEOUT_MS,
           `A geração do link da foto ${file.name} demorou demais.`
         );
 

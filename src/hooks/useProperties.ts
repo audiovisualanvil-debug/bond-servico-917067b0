@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { useAuth } from '@/contexts/AuthContext';
 import { Property } from '@/types/serviceOrder';
+import { withTimeout } from '@/lib/withTimeout';
+
+const MUTATION_TIMEOUT_MS = 15000;
 
 interface DbProperty {
   id: string;
@@ -80,10 +83,14 @@ export function useCreateProperty() {
       owner_phone?: string;
       owner_email?: string;
     }) => {
-      const { data: result, error } = await typedFrom('properties')
-        .insert(data)
-        .select()
-        .single();
+      const { data: result, error } = await withTimeout(
+        typedFrom('properties')
+          .insert(data)
+          .select()
+          .single(),
+        MUTATION_TIMEOUT_MS,
+        'O cadastro do imóvel demorou demais. Tente novamente.'
+      );
 
       if (error) throw error;
       return result as DbProperty;
