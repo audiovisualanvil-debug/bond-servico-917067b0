@@ -4,6 +4,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 const BUCKET = 'os-photos';
+const STORAGE_TIMEOUT_MS = 15000;
+
+async function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), STORAGE_TIMEOUT_MS);
+    }),
+  ]);
+}
 
 export function useFileUpload() {
   const { user } = useAuth();
@@ -24,12 +34,15 @@ export function useFileUpload() {
         // Path starts with user.id to satisfy storage RLS ownership policy
         const fileName = `${user.id}/${folder}/${crypto.randomUUID()}.${ext}`;
 
-        const { error } = await supabase.storage
-          .from(BUCKET)
-          .upload(fileName, file, {
-            cacheControl: '3600',
-            upsert: false,
-          });
+        const { error } = await withTimeout(
+          supabase.storage
+            .from(BUCKET)
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false,
+            }),
+          `O envio de ${file.name} demorou demais.`
+        );
 
         if (error) {
           console.error('Upload error:', error);
@@ -38,9 +51,12 @@ export function useFileUpload() {
         }
 
         // Bucket is private — use signed URLs instead of public URLs
-        const { data: signedData, error: signError } = await supabase.storage
-          .from(BUCKET)
-          .createSignedUrl(fileName, 60 * 60 * 24 * 365); // 1 year
+        const { data: signedData, error: signError } = await withTimeout(
+          supabase.storage
+            .from(BUCKET)
+            .createSignedUrl(fileName, 60 * 60 * 24 * 365),
+          `A geração do link da foto ${file.name} demorou demais.`
+        );
 
         if (signError || !signedData?.signedUrl) {
           console.error('Signed URL error:', signError);
@@ -56,7 +72,7 @@ export function useFileUpload() {
       }
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('Erro ao enviar fotos');
+      toast.error(error instanceof Error ? error.message : 'Erro ao enviar fotos');
     } finally {
       setIsUploading(false);
     }
