@@ -267,40 +267,59 @@ export function useDashboardStats() {
     queryFn: async (): Promise<DashboardStats> => {
       if (!user || !role) return { total: 0, pending: 0, inProgress: 0, completed: 0, thisMonth: 0 };
 
-      let query = typedFrom('service_orders').select('status, final_price, created_at');
+      console.log('[useDashboardStats] Iniciando query. Role:', role);
+      const startTime = performance.now();
 
-      if (role === 'imobiliaria') {
-        query = query.eq('imobiliaria_id', user.id);
-      } else if (role === 'tecnico') {
-        query = query.eq('tecnico_id', user.id);
-      }
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Carregamento do dashboard demorou muito. Tente novamente.')), 10000)
+      );
 
-      const { data, error } = await query;
-      if (error) throw error;
+      const queryPromise = (async (): Promise<DashboardStats> => {
+        let query = typedFrom('service_orders').select('status, final_price, created_at');
 
-      const orders = data as { status: string; final_price: number | null; created_at: string }[];
-      const now = new Date();
-      const thisMonth = orders.filter(o => {
-        const d = new Date(o.created_at);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      });
+        if (role === 'imobiliaria') {
+          query = query.eq('imobiliaria_id', user.id);
+        } else if (role === 'tecnico') {
+          query = query.eq('tecnico_id', user.id);
+        }
 
-      const pendingStatuses = ['aguardando_orcamento_prestador', 'aguardando_aprovacao_admin', 'enviado_imobiliaria'];
-      const inProgressStatuses = ['aprovado_aguardando', 'em_execucao'];
-      const completedOrders = orders.filter(o => o.status === 'concluido');
+        const { data, error } = await query;
+        const duration = performance.now() - startTime;
+        console.log(`[useDashboardStats] Query concluída em ${duration.toFixed(2)}ms`);
 
-      return {
-        total: orders.length,
-        pending: role === 'admin'
-          ? orders.filter(o => o.status === 'aguardando_aprovacao_admin').length
-          : role === 'tecnico'
-            ? orders.filter(o => o.status === 'aguardando_orcamento_prestador').length
-            : orders.filter(o => pendingStatuses.includes(o.status)).length,
-        inProgress: orders.filter(o => inProgressStatuses.includes(o.status)).length,
-        completed: completedOrders.length,
-        thisMonth: thisMonth.length,
-        revenue: role === 'admin' ? completedOrders.reduce((sum, o) => sum + (o.final_price || 0), 0) : undefined,
-      };
+        if (error) {
+          console.error('[useDashboardStats] Erro:', error);
+          throw error;
+        }
+
+        const orders = data as { status: string; final_price: number | null; created_at: string }[];
+        console.log(`[useDashboardStats] ${orders.length} registros para cálculo`);
+
+        const now = new Date();
+        const thisMonth = orders.filter(o => {
+          const d = new Date(o.created_at);
+          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        });
+
+        const pendingStatuses = ['aguardando_orcamento_prestador', 'aguardando_aprovacao_admin', 'enviado_imobiliaria'];
+        const inProgressStatuses = ['aprovado_aguardando', 'em_execucao'];
+        const completedOrders = orders.filter(o => o.status === 'concluido');
+
+        return {
+          total: orders.length,
+          pending: role === 'admin'
+            ? orders.filter(o => o.status === 'aguardando_aprovacao_admin').length
+            : role === 'tecnico'
+              ? orders.filter(o => o.status === 'aguardando_orcamento_prestador').length
+              : orders.filter(o => pendingStatuses.includes(o.status)).length,
+          inProgress: orders.filter(o => inProgressStatuses.includes(o.status)).length,
+          completed: completedOrders.length,
+          thisMonth: thisMonth.length,
+          revenue: role === 'admin' ? completedOrders.reduce((sum, o) => sum + (o.final_price || 0), 0) : undefined,
+        };
+      })();
+
+      return Promise.race([queryPromise, timeoutPromise]);
     },
     enabled: !!user && !!role,
   });
