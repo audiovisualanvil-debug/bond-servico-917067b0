@@ -1,60 +1,83 @@
 
-Objetivo: destravar o fluxo em que o botão “Update/Atualizar” entra em loading infinito após o clique.
+Objetivo: parar o falso erro “demorou demais” ao abrir chamado e fazer o envio concluir de forma confiável.
 
-O que já está confirmado:
-- O app já está publicado em `https://bond-servico.lovable.app`.
-- A publicação está pública.
-- O problema agora não é mais “botão desabilitado”; é “clique aceito, mas fica em loop”.
-- As findings de segurança atuais estão ignoradas e não parecem ser o bloqueio real.
+O que eu já identifiquei:
+- O problema principal não é “falta de ideia”; é um bug de fluxo.
+- Em `src/pages/NovoChamado.tsx`, o envio ainda usa `withTimeout(...)` em 3 pontos críticos:
+  1. cadastro do imóvel
+  2. upload das fotos
+  3. criação da OS
+- Esse timeout só rejeita no frontend; ele não cancela a operação real no Supabase.
+- Resultado: o usuário recebe erro (“cadastro do imóvel demorou demais” / “erro ao abrir chamado”), mas a operação pode continuar no backend. Isso explica o comportamento de “funcionou e depois parou”, sensação de lentidão e risco de duplicidade.
+- Em `useCreateProperty` e `useCreateServiceOrder` também há `retry`, o que é ruim para INSERT crítico porque pode repetir a operação quando a rede oscila.
+- O console mostra warnings de `ref` em `NovoChamado`, que não parecem ser a causa do erro principal, mas eu também vou limpar para reduzir ruído.
 
-Leitura atual do problema:
-- Como o app já está no ar, o loop do botão indica mais provavelmente falha de estado do editor/modal de publish do que erro do código do app.
-- Como não apareceu erro útil nos snapshots de console/network disponíveis, a hipótese principal continua sendo travamento do fluxo de publicação do editor.
+Do I know what the issue is?
+- Sim. O erro mais provável e mais impactante é timeout falso no cliente durante operações de escrita.
 
-Plano de ação:
-1. Isolar onde o loop acontece
-   - Confirmar se o loading infinito ocorre:
-     - logo após clicar “Update”,
-     - ao abrir o modal de publish,
-     - ou depois da tela de Segurança/“Analyzing...”.
-   - Isso separa problema de modal, scanner ou criação do deploy.
+Plano de correção:
+1. Corrigir o fluxo de envio do chamado
+- Remover `withTimeout` do cadastro de imóvel e da criação da OS em `NovoChamado.tsx`.
+- Manter a operação aguardando a resposta real do Supabase.
+- Transformar o envio em etapas explícitas: “cadastrando imóvel”, “enviando fotos”, “abrindo chamado”.
 
-2. Validar o estado real da publicação
-   - Usar o estado atual publicado como referência.
-   - Ver se houve alguma atualização de timestamp/versionamento do deploy ou se o editor só ficou preso visualmente.
+2. Evitar erro falso e duplicidade
+- Remover `retry` automático de mutations de INSERT em:
+  - `src/hooks/useProperties.ts`
+  - `src/hooks/useServiceOrders.ts`
+- Travar duplo clique com guarda local mais rígida no submit.
+- Garantir que o botão fique realmente bloqueado durante todo o processo.
 
-3. Tratar como problema de sessão/UI do editor
-   - Recarregar o editor por completo.
-   - Fechar e reabrir o projeto.
-   - Tentar o publish em janela anônima/outro navegador.
-   - Testar novamente com sessão limpa.
+3. Ajustar o tratamento das fotos sem quebrar a abertura
+- Manter fotos como etapa tolerante: se falhar upload, mostrar aviso claro e ainda permitir abrir a OS sem fotos.
+- Mas sem usar timeout artificial que mata a UX.
+- Se houver upload parcial, informar exatamente o que aconteceu.
 
-4. Confirmar se o scanner de segurança está interferindo visualmente
-   - Como o painel de segurança já ficou em “Analyzing...” antes, verificar se o publish está aguardando um estado que nunca conclui na interface.
-   - Se for isso, o problema é do editor e não do app.
+4. Melhorar feedback para o usuário
+- Substituir toast genérico por mensagens de etapa:
+  - “Cadastrando imóvel...”
+  - “Enviando fotos...”
+  - “Abrindo chamado...”
+- Mostrar erro real do Supabase quando existir, em vez de “demorou demais” genérico.
+- Só navegar para a tela da OS depois da confirmação real de criação.
 
-5. Se o loop persistir com sessão limpa
-   - Fazer uma nova alteração mínima controlada no frontend para gerar um diff inequívoco.
-   - Tentar publicar imediatamente após isso, sem depender do estado anterior do modal.
+5. Limpar código que hoje atrapalha o diagnóstico
+- Remover imports/constantes de timeout não usados ou perigosos.
+- Revisar warning de `ref` no formulário de `NovoChamado` para evitar ruído no console.
+- Validar se `formRef` é mesmo necessário; se não for, remover.
 
-6. Se continuar em loading infinito mesmo com novo diff
-   - Concluir que é bug da plataforma/editor.
-   - Reunir evidências objetivas:
-     - screenshot do modal durante o loading,
-     - se existe texto “Analyzing...”, “Publishing...” ou similar,
-     - se aparece tooltip, toast ou erro escondido,
-     - horário exato da tentativa.
-   - Com isso, escalar como falha do fluxo de publish e não do projeto.
-
-Resultado esperado:
-- Identificar se o loop vem de:
-  - estado travado do modal de publish,
-  - scanner de segurança preso visualmente,
-  - sessão corrompida do editor,
-  - ou bug real da plataforma.
+6. Verificação final depois da implementação
+- Testar o cenário principal da imobiliária:
+  - imóvel novo sem foto
+  - imóvel novo com 1-3 fotos
+  - imóvel já cadastrado
+- Confirmar que:
+  - não aparece mais “demorou demais” falso
+  - não cria OS duplicada
+  - a navegação vai para a OS criada
+  - o botão não permite reenvio acidental
 
 Detalhes técnicos:
-- Frontend só vai ao ar via “Update”.
-- Backend/Supabase não depende desse botão; mudanças de backend entram automaticamente.
-- O fato de o site já estar publicado reduz muito a chance de ser erro estrutural do projeto.
-- Sem erro explícito do app e com publicação já ativa, o sintoma aponta mais para o pipeline visual do editor do Lovable do que para React/Vite/Supabase.
+- Arquivos principais:
+  - `src/pages/NovoChamado.tsx`
+  - `src/hooks/useProperties.ts`
+  - `src/hooks/useServiceOrders.ts`
+  - possivelmente `src/hooks/useFileUpload.ts`
+- Mudança principal:
+```text
+ANTES:
+frontend corre contra Promise.race / withTimeout
+-> UI acusa erro
+-> Supabase pode continuar processando
+
+DEPOIS:
+frontend aguarda resposta real
+-> mostra etapa atual
+-> só erra quando houver erro real
+-> sem retry em insert crítico
+```
+
+Resultado esperado:
+- A imobiliária consegue emitir chamado sem ficar presa nesse erro intermitente.
+- O sistema para de “parecer lento” por timeout artificial.
+- O fluxo fica confiável e previsível, sem você precisar voltar aqui por esse mesmo problema.
