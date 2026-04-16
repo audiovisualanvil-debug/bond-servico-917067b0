@@ -178,8 +178,7 @@ export function useServiceOrders(statusFilter?: string) {
     queryFn: async () => {
       if (!user || !role) return [];
 
-      
-      const startTime = performance.now();
+
 
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Carregamento da lista demorou muito. Tente novamente.')), 10000)
