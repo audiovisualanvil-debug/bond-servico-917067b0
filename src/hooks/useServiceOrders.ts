@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ServiceOrder, Property, User, CompletionReport, DashboardStats } from '@/types/serviceOrder';
 import { withTimeout } from '@/lib/withTimeout';
 
-const MUTATION_TIMEOUT_MS = 15000;
+const MUTATION_TIMEOUT_MS = 30000;
 
 // ---------- MAPPERS ----------
 
@@ -184,7 +184,7 @@ export function useServiceOrders(statusFilter?: string) {
 
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Carregamento da lista demorou muito. Tente novamente.')), 10000)
+        setTimeout(() => reject(new Error('Carregamento da lista demorou muito. Tente novamente.')), 20000)
       );
 
       const queryPromise = (async () => {
@@ -220,7 +220,7 @@ export function useServiceOrder(id: string | undefined) {
       if (!id) return null;
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('O carregamento da OS demorou demais. Verifique sua conexão e tente novamente.')), 8000)
+        setTimeout(() => reject(new Error('O carregamento da OS demorou demais. Verifique sua conexão e tente novamente.')), 20000)
       );
 
       const queryPromise = (async () => {
@@ -251,7 +251,7 @@ export function useDashboardStats() {
 
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Carregamento do dashboard demorou muito. Tente novamente.')), 10000)
+        setTimeout(() => reject(new Error('Carregamento do dashboard demorou muito. Tente novamente.')), 20000)
       );
 
       const queryPromise = (async (): Promise<DashboardStats> => {
@@ -312,25 +312,20 @@ export function useCreateServiceOrder() {
       requester_name: string;
       photos?: string[];
     }) => {
-      const response = await withTimeout<{
-        data: { id: string; os_number: string } | null;
-        error: Error | null;
-      }>(
-        typedFrom('service_orders')
-          .insert({
-            ...data,
-            photos: data.photos || [],
-          })
-          .select('id, os_number')
-          .single(),
-        MUTATION_TIMEOUT_MS,
-        'A criação da OS demorou demais. Tente novamente.'
-      );
-      const { data: result, error } = response;
+      const { data: result, error } = await typedFrom('service_orders')
+        .insert({
+          ...data,
+          photos: data.photos || [],
+        })
+        .select('id, os_number')
+        .single();
 
       if (error) throw error;
+      if (!result) throw new Error('Falha ao criar OS. Tente novamente.');
       return result as { id: string; os_number: string };
     },
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
