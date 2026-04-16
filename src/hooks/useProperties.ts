@@ -83,22 +83,17 @@ export function useCreateProperty() {
       owner_phone?: string;
       owner_email?: string;
     }) => {
-      const response = await withTimeout<{
-        data: DbProperty | null;
-        error: Error | null;
-      }>(
-        typedFrom('properties')
-          .insert(data)
-          .select()
-          .single(),
-        MUTATION_TIMEOUT_MS,
-        'O cadastro do imóvel demorou demais. Tente novamente.'
-      );
-      const { data: result, error } = response;
+      const { data: result, error } = await typedFrom('properties')
+        .insert(data)
+        .select()
+        .single();
 
       if (error) throw error;
+      if (!result) throw new Error('Falha ao cadastrar imóvel. Tente novamente.');
       return result as DbProperty;
     },
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['properties'] });
     },

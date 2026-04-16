@@ -312,25 +312,20 @@ export function useCreateServiceOrder() {
       requester_name: string;
       photos?: string[];
     }) => {
-      const response = await withTimeout<{
-        data: { id: string; os_number: string } | null;
-        error: Error | null;
-      }>(
-        typedFrom('service_orders')
-          .insert({
-            ...data,
-            photos: data.photos || [],
-          })
-          .select('id, os_number')
-          .single(),
-        MUTATION_TIMEOUT_MS,
-        'A criação da OS demorou demais. Tente novamente.'
-      );
-      const { data: result, error } = response;
+      const { data: result, error } = await typedFrom('service_orders')
+        .insert({
+          ...data,
+          photos: data.photos || [],
+        })
+        .select('id, os_number')
+        .single();
 
       if (error) throw error;
+      if (!result) throw new Error('Falha ao criar OS. Tente novamente.');
       return result as { id: string; os_number: string };
     },
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
