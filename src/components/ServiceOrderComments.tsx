@@ -4,8 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { MessageSquare, Send, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -14,9 +12,8 @@ import { ptBR } from 'date-fns/locale';
 interface Comment {
   id: string;
   service_order_id: string;
-  user_id: string;
-  message: string;
-  visible_to_imobiliaria: boolean;
+  author_id: string;
+  content: string;
   created_at: string;
   profile?: { name: string; company: string | null } | null;
 }
@@ -30,7 +27,6 @@ export function ServiceOrderComments({ serviceOrderId }: ServiceOrderCommentsPro
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState('');
-  const [visibleToImobiliaria, setVisibleToImobiliaria] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
   const fetchComments = async () => {
@@ -85,14 +81,12 @@ export function ServiceOrderComments({ serviceOrderId }: ServiceOrderCommentsPro
       const { error } = await typedFrom('service_order_comments')
         .insert({
           service_order_id: serviceOrderId,
-          user_id: user.id,
-          message: message.trim(),
-          visible_to_imobiliaria: role === 'admin' ? visibleToImobiliaria : false,
+          author_id: user.id,
+          content: message.trim(),
         });
 
       if (error) throw error;
       setMessage('');
-      setVisibleToImobiliaria(false);
       toast.success('Comentário adicionado');
       fetchComments();
     } catch (err: any) {
@@ -124,24 +118,17 @@ export function ServiceOrderComments({ serviceOrderId }: ServiceOrderCommentsPro
         <div className="space-y-3 mb-4 max-h-[400px] overflow-y-auto">
           {comments.map((comment) => (
             <div key={comment.id} className={`p-3 rounded-lg text-sm ${
-              comment.user_id === user?.id ? 'bg-primary/5 border border-primary/10' : 'bg-secondary/50'
+              comment.author_id === user?.id ? 'bg-primary/5 border border-primary/10' : 'bg-secondary/50'
             }`}>
               <div className="flex items-center justify-between mb-1">
                 <span className="font-medium text-foreground">
                   {comment.profile?.name || 'Usuário'}
                 </span>
-                <div className="flex items-center gap-2">
-                  {comment.visible_to_imobiliaria && role !== 'imobiliaria' && (
-                    <span className="text-[10px] bg-status-approved-bg text-status-approved px-1.5 py-0.5 rounded-full">
-                      Visível p/ imob.
-                    </span>
-                  )}
-                  <span className="text-xs text-muted-foreground">
-                    {format(new Date(comment.created_at), "dd/MM HH:mm", { locale: ptBR })}
-                  </span>
-                </div>
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(comment.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                </span>
               </div>
-              <p className="text-foreground whitespace-pre-wrap">{comment.message}</p>
+              <p className="text-foreground whitespace-pre-wrap">{comment.content}</p>
             </div>
           ))}
         </div>
@@ -157,18 +144,6 @@ export function ServiceOrderComments({ serviceOrderId }: ServiceOrderCommentsPro
             className="text-sm"
           />
           <div className="flex items-center justify-between">
-            {role === 'admin' && (
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="visible-imob"
-                  checked={visibleToImobiliaria}
-                  onCheckedChange={(checked) => setVisibleToImobiliaria(!!checked)}
-                />
-                <Label htmlFor="visible-imob" className="text-xs text-muted-foreground cursor-pointer">
-                  Visível para imobiliária
-                </Label>
-              </div>
-            )}
             <Button
               size="sm"
               onClick={handleSend}
