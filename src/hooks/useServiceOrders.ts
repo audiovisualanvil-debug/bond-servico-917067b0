@@ -224,24 +224,22 @@ export function useServiceOrder(id: string | undefined) {
     queryFn: async () => {
       if (!id) return null;
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('O carregamento da OS demorou demais. Verifique sua conexão e tente novamente.')), 8000)
+      );
 
-      try {
+      const queryPromise = (async () => {
         const { data, error } = await typedFrom('service_orders')
           .select(SERVICE_ORDER_SELECT)
           .eq('id', id)
           .maybeSingle();
 
-        clearTimeout(timeoutId);
-
         if (error) throw error;
         if (!data) return null;
         return mapServiceOrder(data as DbServiceOrder);
-      } catch (err) {
-        clearTimeout(timeoutId);
-        throw err;
-      }
+      })();
+
+      return Promise.race([queryPromise, timeoutPromise]);
     },
     enabled: !!id,
     retry: 1,
