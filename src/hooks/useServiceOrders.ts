@@ -309,16 +309,24 @@ export function useCreateServiceOrder() {
       requester_name: string;
       photos?: string[];
     }) => {
-      const { data: result, error } = await typedFrom('service_orders')
-        .insert({
-          ...data,
-          photos: data.photos || [],
-        })
-        .select('id, os_number')
-        .single();
+      const insertPromise = (async () => {
+        const { data: result, error } = await typedFrom('service_orders')
+          .insert({
+            ...data,
+            photos: data.photos || [],
+          })
+          .select('id, os_number')
+          .single();
 
-      if (error) throw error;
-      return result as { id: string; os_number: string };
+        if (error) throw error;
+        return result as { id: string; os_number: string };
+      })();
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('A criação da OS demorou demais. Tente novamente.')), 15000)
+      );
+
+      return Promise.race([insertPromise, timeoutPromise]);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-orders'] });
