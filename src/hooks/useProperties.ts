@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Property } from '@/types/serviceOrder';
 import { withTimeout } from '@/lib/withTimeout';
 
-const MUTATION_TIMEOUT_MS = 15000;
+const MUTATION_TIMEOUT_MS = 30000;
 
 interface DbProperty {
   id: string;
