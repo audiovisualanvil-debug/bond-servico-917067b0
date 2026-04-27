@@ -25,7 +25,62 @@ const REQUIRED_PROFILE_KEYS: Array<Exclude<SelectedProfile, null>> = [
   'pessoa_fisica',
 ];
 
-const profileCards = [
+type ProfileCard = {
+  key: Exclude<SelectedProfile, null>;
+  title: string;
+  icon: typeof ShieldCheck;
+  description: string;
+  gradient: string;
+  borderColor: string;
+  iconColor: string;
+  selectedBorder: string;
+};
+
+// Fallbacks usados se alguma configuração externa remover um cartão obrigatório.
+const PROFILE_FALLBACKS: Record<Exclude<SelectedProfile, null>, ProfileCard> = {
+  admin: {
+    key: 'admin',
+    title: 'Entrar como Administrador',
+    icon: ShieldCheck,
+    description: 'Aprova, controla e acompanha as OS.',
+    gradient: 'from-amber-500/20 to-orange-500/20',
+    borderColor: 'border-amber-500/40 hover:border-amber-400',
+    iconColor: 'text-amber-500',
+    selectedBorder: 'border-amber-400 bg-amber-500/10',
+  },
+  tecnico: {
+    key: 'tecnico',
+    title: 'Entrar como Técnico',
+    icon: Wrench,
+    description: 'Orça, executa e finaliza o serviço.',
+    gradient: 'from-blue-500/20 to-cyan-500/20',
+    borderColor: 'border-blue-500/40 hover:border-blue-400',
+    iconColor: 'text-blue-500',
+    selectedBorder: 'border-blue-400 bg-blue-500/10',
+  },
+  imobiliaria: {
+    key: 'imobiliaria',
+    title: 'Entrar como Imobiliária',
+    icon: Building2,
+    description: 'Abre chamados e acompanha tudo.',
+    gradient: 'from-emerald-500/20 to-teal-500/20',
+    borderColor: 'border-emerald-500/40 hover:border-emerald-400',
+    iconColor: 'text-emerald-500',
+    selectedBorder: 'border-emerald-400 bg-emerald-500/10',
+  },
+  pessoa_fisica: {
+    key: 'pessoa_fisica',
+    title: 'Entrar como Pessoa Física',
+    icon: User,
+    description: 'Solicita serviços para meus imóveis.',
+    gradient: 'from-purple-500/20 to-fuchsia-500/20',
+    borderColor: 'border-purple-500/40 hover:border-purple-400',
+    iconColor: 'text-purple-500',
+    selectedBorder: 'border-purple-400 bg-purple-500/10',
+  },
+};
+
+const baseProfileCards: ProfileCard[] = [
   {
     key: 'admin' as const,
     title: 'Entrar como Administrador',
@@ -68,16 +123,40 @@ const profileCards = [
   },
 ];
 
-// Guard em tempo de carregamento do módulo: garante que todos os cartões obrigatórios
-// estejam presentes. Se algum for removido por engano, falha alto no console.
-const missingRequiredKeys = REQUIRED_PROFILE_KEYS.filter(
-  (key) => !profileCards.some((card) => card.key === key),
-);
-if (missingRequiredKeys.length > 0) {
+// Fallback automático: garante que todo papel obrigatório esteja na lista final,
+// mesmo se baseProfileCards vier incompleto/manipulado. Preserva a ordem oficial.
+function ensureRequiredProfileCards(cards: ProfileCard[]): {
+  cards: ProfileCard[];
+  injected: Array<Exclude<SelectedProfile, null>>;
+} {
+  const byKey = new Map(cards.map((c) => [c.key, c]));
+  const injected: Array<Exclude<SelectedProfile, null>> = [];
+  for (const key of REQUIRED_PROFILE_KEYS) {
+    if (!byKey.has(key)) {
+      byKey.set(key, PROFILE_FALLBACKS[key]);
+      injected.push(key);
+    }
+  }
+  // Reordena seguindo REQUIRED_PROFILE_KEYS, depois extras (caso existam).
+  const ordered: ProfileCard[] = [];
+  for (const key of REQUIRED_PROFILE_KEYS) {
+    const c = byKey.get(key);
+    if (c) ordered.push(c);
+  }
+  for (const c of cards) {
+    if (!REQUIRED_PROFILE_KEYS.includes(c.key)) ordered.push(c);
+  }
+  return { cards: ordered, injected };
+}
+
+const { cards: profileCards, injected: injectedProfileKeys } =
+  ensureRequiredProfileCards(baseProfileCards);
+
+if (injectedProfileKeys.length > 0) {
   // eslint-disable-next-line no-console
-  console.error(
-    '[AuthPage] Cartões de perfil obrigatórios ausentes:',
-    missingRequiredKeys.join(', '),
+  console.warn(
+    '[AuthPage] Fallback aplicado para cartões ausentes:',
+    injectedProfileKeys.join(', '),
   );
 }
 
@@ -89,11 +168,11 @@ const AuthPage = () => {
   // Verificação automática em runtime: se algum cartão obrigatório estiver faltando,
   // notifica o admin via toast (visível em produção) além do erro no console.
   useEffect(() => {
-    if (missingRequiredKeys.length > 0) {
+    if (injectedProfileKeys.length > 0) {
       toast({
-        variant: 'destructive',
-        title: 'Erro de configuração',
-        description: `Cartões de login ausentes: ${missingRequiredKeys.join(', ')}. Avise o suporte.`,
+        variant: 'default',
+        title: 'Configuração restaurada',
+        description: `Cartões restaurados via fallback: ${injectedProfileKeys.join(', ')}.`,
       });
     }
   }, [toast]);
