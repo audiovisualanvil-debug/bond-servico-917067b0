@@ -153,11 +153,24 @@ const { cards: profileCards, injected: injectedProfileKeys } =
   ensureRequiredProfileCards(baseProfileCards);
 
 if (injectedProfileKeys.length > 0) {
+  // Log estruturado em JSON para facilitar parsing por ferramentas de
+  // observabilidade (Sentry, LogRocket, Datadog, etc.) e suporte.
+  const event = {
+    event: 'auth_page.profile_fallback_applied',
+    severity: 'warning',
+    timestamp: new Date().toISOString(),
+    injected_keys: injectedProfileKeys,
+    expected_keys: REQUIRED_PROFILE_KEYS,
+    rendered_keys: profileCards.map((c) => c.key),
+    context: {
+      url: typeof window !== 'undefined' ? window.location.href : null,
+      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      app: 'vita-faz-tudo',
+      page: 'AuthPage',
+    },
+  };
   // eslint-disable-next-line no-console
-  console.warn(
-    '[AuthPage] Fallback aplicado para cartões ausentes:',
-    injectedProfileKeys.join(', '),
-  );
+  console.warn('[audit]', JSON.stringify(event));
 }
 
 const AuthPage = () => {
