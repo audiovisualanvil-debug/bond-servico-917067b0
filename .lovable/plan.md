@@ -1,83 +1,88 @@
+## Objetivo
 
-Objetivo: parar o falso erro “demorou demais” ao abrir chamado e fazer o envio concluir de forma confiável.
+Hoje o sistema só aceita chamados de **imobiliárias**. Vamos liberar para **pessoa física (PF)** também — admin cadastra a PF (igual cadastra imobiliária), a PF entra no app, gerencia seus próprios imóveis e abre/aprova chamados no mesmo fluxo já existente.
 
-O que eu já identifiquei:
-- O problema principal não é “falta de ideia”; é um bug de fluxo.
-- Em `src/pages/NovoChamado.tsx`, o envio ainda usa `withTimeout(...)` em 3 pontos críticos:
-  1. cadastro do imóvel
-  2. upload das fotos
-  3. criação da OS
-- Esse timeout só rejeita no frontend; ele não cancela a operação real no Supabase.
-- Resultado: o usuário recebe erro (“cadastro do imóvel demorou demais” / “erro ao abrir chamado”), mas a operação pode continuar no backend. Isso explica o comportamento de “funcionou e depois parou”, sensação de lentidão e risco de duplicidade.
-- Em `useCreateProperty` e `useCreateServiceOrder` também há `retry`, o que é ruim para INSERT crítico porque pode repetir a operação quando a rede oscila.
-- O console mostra warnings de `ref` em `NovoChamado`, que não parecem ser a causa do erro principal, mas eu também vou limpar para reduzir ruído.
+A diferença será apenas visual: cada OS mostra um **badge** indicando se foi solicitada por Imobiliária (azul) ou Pessoa Física (verde).
 
-Do I know what the issue is?
-- Sim. O erro mais provável e mais impactante é timeout falso no cliente durante operações de escrita.
+---
 
-Plano de correção:
-1. Corrigir o fluxo de envio do chamado
-- Remover `withTimeout` do cadastro de imóvel e da criação da OS em `NovoChamado.tsx`.
-- Manter a operação aguardando a resposta real do Supabase.
-- Transformar o envio em etapas explícitas: “cadastrando imóvel”, “enviando fotos”, “abrindo chamado”.
+## O que muda para o usuário
 
-2. Evitar erro falso e duplicidade
-- Remover `retry` automático de mutations de INSERT em:
-  - `src/hooks/useProperties.ts`
-  - `src/hooks/useServiceOrders.ts`
-- Travar duplo clique com guarda local mais rígida no submit.
-- Garantir que o botão fique realmente bloqueado durante todo o processo.
+**Admin**
+- Na tela "Gerenciar Usuários", ao criar usuário, aparece nova opção de tipo: **Pessoa Física** (além de Imobiliária e Profissional).
+- Em todas as listas de OS (Dashboard, Ordens, Aprovar Orçamentos, Relatórios), cada card ganha um badge: 🟦 Imobiliária ou 🟩 Pessoa Física.
+- Filtro opcional na lista para ver só Imobiliárias ou só PF.
 
-3. Ajustar o tratamento das fotos sem quebrar a abertura
-- Manter fotos como etapa tolerante: se falhar upload, mostrar aviso claro e ainda permitir abrir a OS sem fotos.
-- Mas sem usar timeout artificial que mata a UX.
-- Se houver upload parcial, informar exatamente o que aconteceu.
+**Pessoa Física (novo perfil)**
+- Faz login normalmente.
+- Vê o mesmo menu que a imobiliária vê hoje (Dashboard, Ordens, Novo Chamado, Histórico de Imóveis), só que adaptado para PF — termo "Imóveis" em vez de "Imóveis das Imobiliárias", sem campo CNPJ, sem campo "Empresa".
+- Cadastra **vários endereços** (casa, sítio, apto dos pais...) e escolhe um ao abrir chamado.
+- Aprova orçamento exatamente como a imobiliária aprova hoje.
 
-4. Melhorar feedback para o usuário
-- Substituir toast genérico por mensagens de etapa:
-  - “Cadastrando imóvel...”
-  - “Enviando fotos...”
-  - “Abrindo chamado...”
-- Mostrar erro real do Supabase quando existir, em vez de “demorou demais” genérico.
-- Só navegar para a tela da OS depois da confirmação real de criação.
+**Profissional**
+- Sem mudança de fluxo. Só passa a ver o badge no card identificando se o solicitante é Imobiliária ou PF.
 
-5. Limpar código que hoje atrapalha o diagnóstico
-- Remover imports/constantes de timeout não usados ou perigosos.
-- Revisar warning de `ref` no formulário de `NovoChamado` para evitar ruído no console.
-- Validar se `formRef` é mesmo necessário; se não for, remover.
+---
 
-6. Verificação final depois da implementação
-- Testar o cenário principal da imobiliária:
-  - imóvel novo sem foto
-  - imóvel novo com 1-3 fotos
-  - imóvel já cadastrado
-- Confirmar que:
-  - não aparece mais “demorou demais” falso
-  - não cria OS duplicada
-  - a navegação vai para a OS criada
-  - o botão não permite reenvio acidental
+## Detalhes técnicos
 
-Detalhes técnicos:
-- Arquivos principais:
-  - `src/pages/NovoChamado.tsx`
-  - `src/hooks/useProperties.ts`
-  - `src/hooks/useServiceOrders.ts`
-  - possivelmente `src/hooks/useFileUpload.ts`
-- Mudança principal:
+### 1. Banco de dados (migração)
+
+- Adicionar valor `'pessoa_fisica'` ao enum `app_role`.
+- A tabela `properties` já tem `imobiliaria_id` — vamos **renomear conceitualmente** mantendo a coluna (sem renomear no SQL para não quebrar código), passando a representar "dono do imóvel" (imobiliária OU pessoa física). Ambos os tipos de usuário usam o mesmo campo.
+- Atualizar todas as RLS policies que hoje mencionam apenas `imobiliaria` para também aceitar `pessoa_fisica`:
+  - `properties`: policies de insert/update/select passam a permitir tanto `imobiliaria` quanto `pessoa_fisica` desde que `imobiliaria_id = auth.uid()`.
+  - `service_orders`: mesma lógica nas policies de insert/update/select de "imobiliaria".
+  - `service_order_comments`, `completion_reports`, `service_order_items`: idem.
+- Atualizar trigger `restrict_imobiliaria_update` para também restringir `pessoa_fisica` (mesmas regras — PF não pode mexer em custos/preço).
+
+### 2. Tipos TypeScript
+
+- `src/types/database.ts` e `src/types/serviceOrder.ts`: adicionar `'pessoa_fisica'` em `AppRole` / `UserRole`.
+
+### 3. Edge Function `create-user`
+
+- Aceitar `role: 'imobiliaria' | 'tecnico' | 'pessoa_fisica'`.
+- Para PF, ignorar campos `company` e `cnpj` (não obrigatórios).
+
+### 4. Frontend — telas a ajustar
+
+- **`GerenciarUsuarios.tsx`**: adicionar opção "Pessoa Física" no select de tipo. Esconder campos Empresa/CNPJ quando tipo = PF. Mostrar PFs na listagem com badge próprio.
+- **`Sidebar.tsx`**: adicionar `'pessoa_fisica'` aos arrays `roles` dos itens Dashboard, Ordens de Serviço, Novo Chamado, Histórico Imóveis. Adicionar label "Pessoa Física" no `getRoleLabel`.
+- **`AuthContext.tsx`** / lógica de roles: garantir que PF é tratada com as mesmas permissões de leitura/escrita que imobiliária no client-side.
+- **`NovoChamado.tsx`**: já funciona — usa `auth.uid()` como `imobiliaria_id`. Só ajustar textos genéricos ("Solicitar serviço" em vez de "Imobiliária solicita").
+- **`HistoricoImoveis.tsx`** / cadastro de imóvel: liberar para PF também, esconder campos específicos de imobiliária se houver.
+- **`OSCard.tsx`** e listas (Dashboard, OrdensServico, AprovarOrcamentos): novo componente `<RequesterBadge />` que lê a role do `imobiliaria_id` (via join no profile + user_roles) e renderiza:
+  - Azul "Imobiliária" se role = imobiliaria
+  - Verde "Pessoa Física" se role = pessoa_fisica
+- **Filtro na lista de OS** (admin): dropdown "Tipo de solicitante: Todos / Imobiliária / Pessoa Física".
+
+### 5. E-mails e notificações
+
+- Edge functions `notify-status-change`, `send-budget-approved`, `send-completion-report`: já enviam para `imobiliaria_id` — funcionará para PF sem alteração, só ajustar texto de saudação para usar nome do `profile.name` em vez de `profile.company`.
+
+### 6. Terminologia
+
+- Onde a UI hoje fala "Imobiliária" no contexto de "quem solicitou", trocar por **"Solicitante"** (termo neutro que serve para os dois). Onde fala especificamente da imobiliária como entidade (ex: tela "Imobiliárias" no menu admin), manter.
+
+---
+
+## Fluxo final
+
 ```text
-ANTES:
-frontend corre contra Promise.race / withTimeout
--> UI acusa erro
--> Supabase pode continuar processando
-
-DEPOIS:
-frontend aguarda resposta real
--> mostra etapa atual
--> só erra quando houver erro real
--> sem retry em insert crítico
+Admin cria usuário PF
+  → PF faz login
+  → PF cadastra endereço(s) em "Meus Imóveis"
+  → PF abre chamado escolhendo um endereço
+  → Fluxo idêntico ao da imobiliária:
+     Profissional orça → Admin aplica margem → PF aprova → Execução → Conclusão
+  → Admin/Profissional veem badge verde "Pessoa Física" no card
 ```
 
-Resultado esperado:
-- A imobiliária consegue emitir chamado sem ficar presa nesse erro intermitente.
-- O sistema para de “parecer lento” por timeout artificial.
-- O fluxo fica confiável e previsível, sem você precisar voltar aqui por esse mesmo problema.
+---
+
+## Não está incluído (fica pra depois se quiser)
+
+- Auto-cadastro público de PF (você escolheu admin cadastrar manualmente).
+- Pagamento online direto pela PF.
+- App separado / branding diferente para PF.
