@@ -14,6 +14,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { toast } from 'sonner';
 import { Loader2, UserPlus, Users, Building2, Wrench, Mail, Phone, Building, Eye, EyeOff, Pencil, Ban, CheckCircle2, KeyRound, User } from 'lucide-react';
+import { Sparkles, Copy } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface UserWithRole {
   id: string;
@@ -56,6 +58,7 @@ const GerenciarUsuarios = () => {
   const [newPassword, setNewPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [sendResetEmail, setSendResetEmail] = useState(true);
 
   // Fetch all users with roles (admin only)
   const { data: users = [], isLoading } = useQuery({
@@ -214,20 +217,61 @@ const GerenciarUsuarios = () => {
     setIsResetting(true);
     try {
       const response = await supabase.functions.invoke('manage-user', {
-        body: { action: 'reset_password', user_id: resetUser.id, password: newPassword },
+        body: {
+          action: 'reset_password',
+          user_id: resetUser.id,
+          password: newPassword,
+          send_email: sendResetEmail,
+        },
       });
 
       if (response.error) throw new Error(response.error.message);
       if (response.data?.error) throw new Error(response.data.error);
 
-      toast.success(`Senha de ${resetUser.name} resetada com sucesso!`);
+      const { emailSent, emailError } = response.data || {};
+      if (sendResetEmail) {
+        if (emailSent) {
+          toast.success(`Senha resetada e enviada por e-mail para ${resetUser.email}`);
+        } else {
+          toast.warning(`Senha resetada, mas o e-mail não foi enviado${emailError ? `: ${emailError}` : ''}`);
+        }
+      } else {
+        toast.success(`Senha de ${resetUser.name} resetada com sucesso!`);
+      }
       setResetUser(null);
       setNewPassword('');
       setShowNewPassword(false);
+      setSendResetEmail(true);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao resetar senha');
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  // Gera senha temporária forte (10 caracteres) fácil de digitar
+  const generateTempPassword = () => {
+    const lower = 'abcdefghijkmnpqrstuvwxyz';
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const digits = '23456789';
+    const special = '@#!$%';
+    const all = lower + upper + digits + special;
+    const pick = (set: string) => set[Math.floor(Math.random() * set.length)];
+    let pwd = pick(upper) + pick(lower) + pick(digits) + pick(special);
+    for (let i = 0; i < 6; i++) pwd += pick(all);
+    // embaralha
+    pwd = pwd.split('').sort(() => Math.random() - 0.5).join('');
+    setNewPassword(pwd);
+    setShowNewPassword(true);
+  };
+
+  const copyPasswordToClipboard = async () => {
+    if (!newPassword) return;
+    try {
+      await navigator.clipboard.writeText(newPassword);
+      toast.success('Senha copiada!');
+    } catch {
+      toast.error('Não foi possível copiar');
     }
   };
 
@@ -613,7 +657,7 @@ const GerenciarUsuarios = () => {
       </AlertDialog>
 
       {/* Reset Password Dialog */}
-      <Dialog open={!!resetUser} onOpenChange={(open) => { if (!open) { setResetUser(null); setNewPassword(''); setShowNewPassword(false); } }}>
+      <Dialog open={!!resetUser} onOpenChange={(open) => { if (!open) { setResetUser(null); setNewPassword(''); setShowNewPassword(false); setSendResetEmail(true); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -626,33 +670,76 @@ const GerenciarUsuarios = () => {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Nova Senha *</Label>
+              <div className="flex items-center justify-between">
+                <Label>Nova Senha *</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs gap-1 text-primary"
+                  onClick={generateTempPassword}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Gerar senha temporária
+                </Button>
+              </div>
               <div className="relative">
                 <Input
                   type={showNewPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
-                  className={newPassword.length > 0 && newPassword.length < 6 ? 'border-destructive' : ''}
+                  className={`pr-20 ${newPassword.length > 0 && newPassword.length < 6 ? 'border-destructive' : ''}`}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  {newPassword && (
+                    <button
+                      type="button"
+                      onClick={copyPasswordToClipboard}
+                      className="text-muted-foreground hover:text-foreground p-1"
+                      title="Copiar"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="text-muted-foreground hover:text-foreground p-1"
+                    title={showNewPassword ? 'Ocultar' : 'Mostrar'}
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               {newPassword.length > 0 && newPassword.length < 6 && (
                 <p className="text-xs text-destructive">A senha deve ter pelo menos 6 caracteres</p>
               )}
+            </div>
+
+            <div className="flex items-start gap-2 p-3 rounded-md border border-border bg-muted/30">
+              <Checkbox
+                id="send-reset-email"
+                checked={sendResetEmail}
+                onCheckedChange={(c) => setSendResetEmail(!!c)}
+                className="mt-0.5"
+              />
+              <div className="space-y-0.5">
+                <label htmlFor="send-reset-email" className="text-sm font-medium cursor-pointer flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5" />
+                  Enviar nova senha por e-mail
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  O usuário receberá a senha em <strong className="break-all">{resetUser?.email}</strong>
+                </p>
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setResetUser(null); setNewPassword(''); }}>Cancelar</Button>
             <Button onClick={handleResetPassword} disabled={isResetting || newPassword.length < 6}>
               {isResetting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Resetar Senha
+              {sendResetEmail ? 'Resetar e Enviar' : 'Resetar Senha'}
             </Button>
           </DialogFooter>
         </DialogContent>
