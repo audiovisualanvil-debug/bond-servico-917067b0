@@ -25,7 +25,7 @@ const REQUIRED_PROFILE_KEYS: Array<Exclude<SelectedProfile, null>> = [
   'pessoa_fisica',
 ];
 
-type ProfileCard = {
+export type ProfileCard = {
   key: Exclude<SelectedProfile, null>;
   title: string;
   icon: typeof ShieldCheck;
@@ -37,7 +37,7 @@ type ProfileCard = {
 };
 
 // Fallbacks usados se alguma configuração externa remover um cartão obrigatório.
-const PROFILE_FALLBACKS: Record<Exclude<SelectedProfile, null>, ProfileCard> = {
+export const PROFILE_FALLBACKS: Record<Exclude<SelectedProfile, null>, ProfileCard> = {
   admin: {
     key: 'admin',
     title: 'Entrar como Administrador',
@@ -125,7 +125,7 @@ const baseProfileCards: ProfileCard[] = [
 
 // Fallback automático: garante que todo papel obrigatório esteja na lista final,
 // mesmo se baseProfileCards vier incompleto/manipulado. Preserva a ordem oficial.
-function ensureRequiredProfileCards(cards: ProfileCard[]): {
+export function ensureRequiredProfileCards(cards: ProfileCard[]): {
   cards: ProfileCard[];
   injected: Array<Exclude<SelectedProfile, null>>;
 } {
