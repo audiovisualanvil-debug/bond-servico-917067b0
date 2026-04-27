@@ -29,6 +29,9 @@ import LogAuditoria from "./pages/LogAuditoria";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import { Loader2 } from "lucide-react";
+import { isKnownRole, logUnknownRole } from "@/lib/roles";
+import { toast } from "sonner";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,8 +45,24 @@ const queryClient = new QueryClient({
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth();
-  
+  const { isAuthenticated, isLoading, role, user, signOut } = useAuth();
+
+  // Verificação de role desconhecido: se o usuário está autenticado, o carregamento
+  // terminou, mas o role recebido não está na lista oficial (KNOWN_ROLES), faz signOut
+  // e redireciona para a tela de seleção de perfil em vez de quebrar a UI.
+  const hasUnknownRole = isAuthenticated && !isLoading && role !== null && !isKnownRole(role);
+
+  useEffect(() => {
+    if (hasUnknownRole) {
+      logUnknownRole(role, { user_id: user?.id ?? null, page: 'ProtectedRoute' });
+      toast.error('Perfil não reconhecido', {
+        description: 'Seu perfil não está configurado corretamente. Entre em contato com o suporte.',
+      });
+      // Encerra a sessão para forçar novo login limpo.
+      void signOut();
+    }
+  }, [hasUnknownRole, role, user?.id, signOut]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -51,10 +70,17 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       </div>
     );
   }
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
   }
+
+  // Role desconhecido: redireciona para a seleção de perfil enquanto o signOut
+  // do useEffect resolve em background.
+  if (hasUnknownRole) {
+    return <Navigate to="/" replace />;
+  }
+
   return <>{children}</>;
 };
 
