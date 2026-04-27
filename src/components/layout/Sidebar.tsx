@@ -16,12 +16,12 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['imobiliaria', 'tecnico', 'admin'] },
-  { label: 'Ordens de Serviço', href: '/ordens', icon: ClipboardList, roles: ['imobiliaria', 'tecnico', 'admin'] },
-  { label: 'Novo Chamado', href: '/novo-chamado', icon: Plus, roles: ['imobiliaria', 'admin'] },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['imobiliaria', 'tecnico', 'admin', 'pessoa_fisica'] },
+  { label: 'Ordens de Serviço', href: '/ordens', icon: ClipboardList, roles: ['imobiliaria', 'tecnico', 'admin', 'pessoa_fisica'] },
+  { label: 'Novo Chamado', href: '/novo-chamado', icon: Plus, roles: ['imobiliaria', 'admin', 'pessoa_fisica'] },
   { label: 'Aprovar Orçamentos', href: '/aprovar', icon: DollarSign, roles: ['admin'] },
   { label: 'Meus Serviços', href: '/meus-servicos', icon: Wrench, roles: ['tecnico'] },
-  { label: 'Histórico Imóveis', href: '/historico', icon: History, roles: ['imobiliaria', 'admin'] },
+  { label: 'Histórico Imóveis', href: '/historico', icon: History, roles: ['imobiliaria', 'admin', 'pessoa_fisica'] },
   { label: 'Imobiliárias', href: '/imobiliarias', icon: Building2, roles: ['admin'] },
   { label: 'Profissionais', href: '/tecnicos', icon: Users, roles: ['admin'] },
   { label: 'Gerenciar Usuários', href: '/usuarios', icon: UserPlus, roles: ['admin'] },
@@ -49,6 +49,7 @@ export const Sidebar = () => {
       case 'imobiliaria': return 'Imobiliária';
       case 'tecnico': return 'Profissional';
       case 'admin': return 'Administrador';
+      case 'pessoa_fisica': return 'Pessoa Física';
     }
   };
 

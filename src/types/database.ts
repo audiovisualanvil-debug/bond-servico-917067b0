@@ -1,6 +1,6 @@
 // Database types for Faz-Tudo Imobiliário
 
-export type AppRole = 'imobiliaria' | 'tecnico' | 'admin';
+export type AppRole = 'imobiliaria' | 'tecnico' | 'admin' | 'pessoa_fisica';
 
 export type OsStatus = 
   | 'aguardando_orcamento_prestador'
