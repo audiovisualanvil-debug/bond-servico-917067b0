@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { Wrench, Building2, Mail, Lock, Loader2, ShieldCheck, ArrowLeft, CheckCircle2, User } from 'lucide-react';
+import { Wrench, Building2, Mail, Lock, Loader2, ShieldCheck, ArrowLeft, CheckCircle2, User, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import MFAVerify from '@/components/MFAVerify';
@@ -351,6 +351,22 @@ const AuthPage = () => {
             </div>
 
             <div className="grid gap-4" ref={profileGridRef}>
+              {injectedProfileKeys.length > 0 && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="flex items-start gap-3 p-3 rounded-xl border border-amber-400/40 bg-amber-500/10 text-amber-100"
+                  data-testid="fallback-banner"
+                >
+                  <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5 text-amber-300" />
+                  <div className="text-sm leading-tight">
+                    <p className="font-semibold">Configuração corrigida automaticamente</p>
+                    <p className="text-amber-100/80 mt-0.5">
+                      Restauramos via fallback: {injectedProfileKeys.join(', ')}.
+                    </p>
+                  </div>
+                </div>
+              )}
               {profileCards.map((card) => (
                 <button
                   key={card.key}
