@@ -128,8 +128,25 @@ const baseProfileCards: ProfileCard[] = [
 export function ensureRequiredProfileCards(cards: ProfileCard[]): {
   cards: ProfileCard[];
   injected: Array<Exclude<SelectedProfile, null>>;
+  duplicates: Array<Exclude<SelectedProfile, null>>;
 } {
-  const byKey = new Map(cards.map((c) => [c.key, c]));
+  // Detecta duplicatas na entrada antes de qualquer normalização.
+  const seen = new Set<Exclude<SelectedProfile, null>>();
+  const duplicates: Array<Exclude<SelectedProfile, null>> = [];
+  for (const c of cards) {
+    if (seen.has(c.key)) {
+      if (!duplicates.includes(c.key)) duplicates.push(c.key);
+    } else {
+      seen.add(c.key);
+    }
+  }
+
+  // Map já garante unicidade — primeira ocorrência vence.
+  const byKey = new Map<Exclude<SelectedProfile, null>, ProfileCard>();
+  for (const c of cards) {
+    if (!byKey.has(c.key)) byKey.set(c.key, c);
+  }
+
   const injected: Array<Exclude<SelectedProfile, null>> = [];
   for (const key of REQUIRED_PROFILE_KEYS) {
     if (!byKey.has(key)) {
@@ -139,18 +156,47 @@ export function ensureRequiredProfileCards(cards: ProfileCard[]): {
   }
   // Reordena seguindo REQUIRED_PROFILE_KEYS, depois extras (caso existam).
   const ordered: ProfileCard[] = [];
+  const usedExtraKeys = new Set<Exclude<SelectedProfile, null>>();
   for (const key of REQUIRED_PROFILE_KEYS) {
     const c = byKey.get(key);
     if (c) ordered.push(c);
   }
   for (const c of cards) {
-    if (!REQUIRED_PROFILE_KEYS.includes(c.key)) ordered.push(c);
+    if (!REQUIRED_PROFILE_KEYS.includes(c.key) && !usedExtraKeys.has(c.key)) {
+      ordered.push(c);
+      usedExtraKeys.add(c.key);
+    }
   }
-  return { cards: ordered, injected };
+  return { cards: ordered, injected, duplicates };
 }
 
-const { cards: profileCards, injected: injectedProfileKeys } =
-  ensureRequiredProfileCards(baseProfileCards);
+const {
+  cards: profileCards,
+  injected: injectedProfileKeys,
+  duplicates: duplicateProfileKeys,
+} = ensureRequiredProfileCards(baseProfileCards);
+
+// Asserção de duplicatas: a configuração oficial não pode ter cartões repetidos
+// (ex.: dois "admin"). Se encontrar duplicatas, registra log estruturado e
+// falha em DEV. Em produção, segue com a primeira ocorrência (já deduplicada
+// dentro de ensureRequiredProfileCards) e mantém a UI funcional.
+(function assertNoDuplicateProfileCards() {
+  if (duplicateProfileKeys.length === 0) return;
+  const message =
+    `[AuthPage] Cartões de perfil duplicados detectados: ` +
+    `${duplicateProfileKeys.join(', ')}. Cada role deve aparecer apenas uma vez.`;
+  // eslint-disable-next-line no-console
+  console.error('[audit]', JSON.stringify({
+    event: 'auth_page.profile_duplicates_detected',
+    severity: 'error',
+    timestamp: new Date().toISOString(),
+    duplicate_keys: duplicateProfileKeys,
+    rendered_keys: profileCards.map((c) => c.key),
+  }));
+  if (import.meta.env.DEV) {
+    throw new Error(message);
+  }
+})();
 
 // Asserção de ordem: trava contra reordenação acidental no futuro. Os cartões
 // DEVEM seguir exatamente REQUIRED_PROFILE_KEYS (admin, tecnico, imobiliaria,
