@@ -52,6 +52,7 @@ const Dashboard = () => {
     const banner = <PWAInstallBanner />;
     switch (role) {
       case 'imobiliaria':
+      case 'pessoa_fisica':
         return (
           <>
             {banner}
@@ -160,7 +161,7 @@ const Dashboard = () => {
               <p className="text-muted-foreground">
                 Nenhuma ordem de serviço encontrada
               </p>
-              {role === 'imobiliaria' && (
+              {(role === 'imobiliaria' || role === 'pessoa_fisica') && (
                 <Button className="mt-4" asChild>
                   <Link to="/novo-chamado">
                     <Plus className="h-4 w-4" />

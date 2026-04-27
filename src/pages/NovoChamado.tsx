@@ -33,19 +33,24 @@ const NovoChamado = () => {
   const { uploadFiles, isUploading } = useFileUpload();
 
   const { data: imobiliarias = [] } = useQuery({
-    queryKey: ['imobiliarias-list'],
+    queryKey: ['requesters-list'],
     queryFn: async () => {
       const { data, error } = await typedFrom('user_roles')
-        .select('user_id')
-        .eq('role', 'imobiliaria');
+        .select('user_id, role')
+        .in('role', ['imobiliaria', 'pessoa_fisica']);
       if (error) throw error;
-      const userIds = (data as { user_id: string }[]).map(r => r.user_id);
+      const rolesById = new Map<string, string>();
+      (data as { user_id: string; role: string }[]).forEach(r => rolesById.set(r.user_id, r.role));
+      const userIds = Array.from(rolesById.keys());
       if (userIds.length === 0) return [];
       const { data: profiles, error: profileError } = await typedFrom('profiles')
         .select('*')
         .in('id', userIds);
       if (profileError) throw profileError;
-      return profiles as { id: string; name: string; company: string | null }[];
+      return (profiles as { id: string; name: string; company: string | null }[]).map(p => ({
+        ...p,
+        role: rolesById.get(p.id) || 'imobiliaria',
+      }));
     },
     enabled: role === 'admin',
   });
@@ -320,15 +325,15 @@ const NovoChamado = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8" noValidate>
-          {/* Admin: Select Imobiliária */}
+          {/* Admin: Select solicitante (Imobiliária ou Pessoa Física) */}
           {role === 'admin' && (
             <div className="os-card">
               <div className="flex items-center gap-2 mb-4">
                 <Building2 className="h-5 w-5 text-primary" />
-                <h2 className="font-display font-semibold text-lg">Imobiliária</h2>
+                <h2 className="font-display font-semibold text-lg">Solicitante</h2>
               </div>
               <div id="field-imobiliaria">
-                <Label>Selecionar imobiliária *</Label>
+                <Label>Selecionar solicitante *</Label>
                 <Select
                   value={selectedImobiliariaId}
                   onValueChange={(value) => {
@@ -338,12 +343,15 @@ const NovoChamado = () => {
                   }}
                 >
                   <SelectTrigger className={fieldErrors.imobiliaria ? 'border-destructive ring-destructive' : ''}>
-                    <SelectValue placeholder="Escolha uma imobiliária..." />
+                    <SelectValue placeholder="Escolha imobiliária ou pessoa física..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {imobiliarias.map((imob) => (
+                    {imobiliarias.map((imob: any) => (
                       <SelectItem key={imob.id} value={imob.id}>
                         {imob.company || imob.name}
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {imob.role === 'pessoa_fisica' ? '(Pessoa Física)' : '(Imobiliária)'}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>

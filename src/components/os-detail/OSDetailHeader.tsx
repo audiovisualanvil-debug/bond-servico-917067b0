@@ -51,7 +51,7 @@ export function OSDetailHeader({ order, role, isDeleting, onDelete }: Props) {
               </Link>
             </Button>
           )}
-          {order.completionReport && (role === 'admin' || role === 'imobiliaria') && (
+          {order.completionReport && (role === 'admin' || role === 'imobiliaria' || role === 'pessoa_fisica') && (
             <Button variant="outline" size="sm" asChild>
               <Link to={`/ordens/${order.id}/relatorio`}>
                 <FileText className="h-3.5 w-3.5" />

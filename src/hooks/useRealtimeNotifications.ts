@@ -60,7 +60,7 @@ export function useRealtimeNotifications() {
           const isRelevant =
             role === 'admin' ||
             (role === 'tecnico' && newRow.tecnico_id === user.id) ||
-            (role === 'imobiliaria' && newRow.imobiliaria_id === user.id);
+            ((role === 'imobiliaria' || role === 'pessoa_fisica') && newRow.imobiliaria_id === user.id);
 
           if (!isRelevant) return;
 
@@ -129,17 +129,17 @@ function getNotificationMessage(status: string, role: string): string {
         ? 'Orçamento recebido. Revise e aprove.'
         : 'Orçamento enviado para aprovação.';
     case 'enviado_imobiliaria':
-      return role === 'imobiliaria'
+      return (role === 'imobiliaria' || role === 'pessoa_fisica')
         ? 'Um orçamento foi enviado para sua aprovação.'
-        : 'Orçamento enviado para a imobiliária.';
+        : 'Orçamento enviado para o solicitante.';
     case 'aprovado_aguardando':
       return role === 'tecnico'
         ? 'Orçamento aprovado! Inicie a execução.'
-        : 'Orçamento aprovado pela imobiliária.';
+        : 'Orçamento aprovado pelo solicitante.';
     case 'em_execucao':
       return 'O serviço está em execução.';
     case 'concluido':
-      return role === 'imobiliaria'
+      return (role === 'imobiliaria' || role === 'pessoa_fisica')
         ? 'O serviço foi concluído. Confira o relatório.'
         : 'Serviço concluído com sucesso!';
     default:

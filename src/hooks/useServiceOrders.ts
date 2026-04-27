@@ -187,7 +187,7 @@ export function useServiceOrders(statusFilter?: string) {
 
       let query = typedFrom('service_orders').select(SERVICE_ORDER_LIST_SELECT);
 
-      if (role === 'imobiliaria') {
+      if (role === 'imobiliaria' || role === 'pessoa_fisica') {
         query = query.eq('imobiliaria_id', user.id);
       } else if (role === 'tecnico') {
         query = query.eq('tecnico_id', user.id);
@@ -237,7 +237,7 @@ export function useDashboardStats() {
 
       let query = typedFrom('service_orders').select('status, final_price, created_at');
 
-      if (role === 'imobiliaria') {
+      if (role === 'imobiliaria' || role === 'pessoa_fisica') {
         query = query.eq('imobiliaria_id', user.id);
       } else if (role === 'tecnico') {
         query = query.eq('tecnico_id', user.id);

@@ -1,6 +1,6 @@
 // Service Order Types for Faz-Tudo Imobiliário
 
-export type UserRole = 'imobiliaria' | 'tecnico' | 'admin';
+export type UserRole = 'imobiliaria' | 'tecnico' | 'admin' | 'pessoa_fisica';
 
 export type OSStatus = 
   | 'aguardando_orcamento_prestador' // Waiting for technician quote

@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Users, Building2, Wrench, Mail, Phone, Building, Eye, EyeOff, Pencil, Ban, CheckCircle2, KeyRound } from 'lucide-react';
+import { Loader2, UserPlus, Users, Building2, Wrench, Mail, Phone, Building, Eye, EyeOff, Pencil, Ban, CheckCircle2, KeyRound, User } from 'lucide-react';
 
 interface UserWithRole {
   id: string;
@@ -105,6 +105,10 @@ const GerenciarUsuarios = () => {
     }
     if (form.role === 'imobiliaria' && (!form.company || !form.phone || !form.cnpj)) {
       toast.error('Para imobiliária, empresa, telefone e CNPJ são obrigatórios');
+      return;
+    }
+    if (form.role === 'pessoa_fisica' && !form.phone) {
+      toast.error('Para pessoa física, o telefone é obrigatório');
       return;
     }
     if (form.password.length < 6) {
@@ -242,6 +246,7 @@ const GerenciarUsuarios = () => {
       case 'admin': return 'Admin';
       case 'tecnico': return 'Profissional';
       case 'imobiliaria': return 'Imobiliária';
+      case 'pessoa_fisica': return 'Pessoa Física';
       default: return r;
     }
   };
@@ -251,12 +256,14 @@ const GerenciarUsuarios = () => {
       case 'admin': return 'destructive';
       case 'tecnico': return 'default';
       case 'imobiliaria': return 'secondary';
+      case 'pessoa_fisica': return 'outline';
       default: return 'outline' as const;
     }
   };
 
   const tecnicos = users.filter(u => u.role === 'tecnico');
   const imobiliarias = users.filter(u => u.role === 'imobiliaria');
+  const pessoasFisicas = users.filter(u => u.role === 'pessoa_fisica');
   const admins = users.filter(u => u.role === 'admin');
 
   return (
@@ -286,9 +293,12 @@ const GerenciarUsuarios = () => {
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
-                    <SelectContent>
+                     <SelectContent>
                       <SelectItem value="imobiliaria">
                         <span className="flex items-center gap-2"><Building2 className="h-4 w-4" /> Imobiliária</span>
+                      </SelectItem>
+                      <SelectItem value="pessoa_fisica">
+                        <span className="flex items-center gap-2"><User className="h-4 w-4" /> Pessoa Física</span>
                       </SelectItem>
                       <SelectItem value="tecnico">
                         <span className="flex items-center gap-2"><Wrench className="h-4 w-4" /> Profissional</span>
@@ -417,10 +427,14 @@ const GerenciarUsuarios = () => {
             ) : (
               <>
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <Card className="p-4 text-center">
                     <p className="text-2xl font-bold text-foreground">{imobiliarias.length}</p>
                     <p className="text-xs text-muted-foreground">Imobiliárias</p>
+                  </Card>
+                  <Card className="p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{pessoasFisicas.length}</p>
+                    <p className="text-xs text-muted-foreground">Pessoas Físicas</p>
                   </Card>
                   <Card className="p-4 text-center">
                     <p className="text-2xl font-bold text-foreground">{tecnicos.length}</p>
@@ -443,6 +457,8 @@ const GerenciarUsuarios = () => {
                               <Wrench className={`h-5 w-5 ${u.is_banned ? 'text-muted-foreground' : 'text-primary'}`} />
                             ) : u.role === 'imobiliaria' ? (
                               <Building2 className={`h-5 w-5 ${u.is_banned ? 'text-muted-foreground' : 'text-primary'}`} />
+                            ) : u.role === 'pessoa_fisica' ? (
+                              <User className={`h-5 w-5 ${u.is_banned ? 'text-muted-foreground' : 'text-primary'}`} />
                             ) : (
                               <Users className={`h-5 w-5 ${u.is_banned ? 'text-muted-foreground' : 'text-primary'}`} />
                             )}

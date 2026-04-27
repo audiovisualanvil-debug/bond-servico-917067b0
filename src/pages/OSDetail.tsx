@@ -221,7 +221,7 @@ const OSDetail = () => {
       return sections.length > 0 ? <>{sections}</> : null;
     }
 
-    if (role === 'imobiliaria' && order.status === 'enviado_imobiliaria')
+    if ((role === 'imobiliaria' || role === 'pessoa_fisica') && order.status === 'enviado_imobiliaria')
       return <ClientApproveSection order={order} onApprove={handleClientApprove} onRevision={handleRequestRevision} isMutating={isMutating} />;
 
     return null;
