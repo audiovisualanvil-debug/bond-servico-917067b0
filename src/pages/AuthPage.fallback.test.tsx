@@ -98,4 +98,35 @@ describe('AuthPage fallback — Pessoa Física', () => {
     ]);
     expect(injected.sort()).toEqual(['imobiliaria', 'pessoa_fisica']);
   });
+
+  it('detecta duplicatas e mantém apenas a primeira ocorrência', () => {
+    const withDup: ProfileCard[] = [
+      PROFILE_FALLBACKS.admin,
+      PROFILE_FALLBACKS.admin, // duplicado
+      PROFILE_FALLBACKS.tecnico,
+      PROFILE_FALLBACKS.imobiliaria,
+      PROFILE_FALLBACKS.pessoa_fisica,
+    ];
+    const { cards, duplicates } = ensureRequiredProfileCards(withDup);
+    expect(duplicates).toEqual(['admin']);
+    // Apenas uma ocorrência de admin no resultado.
+    const adminCount = cards.filter((c) => c.key === 'admin').length;
+    expect(adminCount).toBe(1);
+    expect(cards.map((c) => c.key)).toEqual([
+      'admin',
+      'tecnico',
+      'imobiliaria',
+      'pessoa_fisica',
+    ]);
+  });
+
+  it('não reporta duplicatas quando a entrada é válida', () => {
+    const { duplicates } = ensureRequiredProfileCards([
+      PROFILE_FALLBACKS.admin,
+      PROFILE_FALLBACKS.tecnico,
+      PROFILE_FALLBACKS.imobiliaria,
+      PROFILE_FALLBACKS.pessoa_fisica,
+    ]);
+    expect(duplicates).toEqual([]);
+  });
 });
