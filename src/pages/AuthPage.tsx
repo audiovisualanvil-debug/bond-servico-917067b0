@@ -152,6 +152,32 @@ export function ensureRequiredProfileCards(cards: ProfileCard[]): {
 const { cards: profileCards, injected: injectedProfileKeys } =
   ensureRequiredProfileCards(baseProfileCards);
 
+// Asserção de ordem: trava contra reordenação acidental no futuro. Os cartões
+// DEVEM seguir exatamente REQUIRED_PROFILE_KEYS (admin, tecnico, imobiliaria,
+// pessoa_fisica). Se algum dev mudar a ordem por engano, falhamos alto.
+(function assertProfileCardOrder() {
+  const actualOrder = profileCards.map((c) => c.key);
+  const expectedPrefix = REQUIRED_PROFILE_KEYS;
+  const orderOk = expectedPrefix.every((key, idx) => actualOrder[idx] === key);
+  if (!orderOk) {
+    const message =
+      `[AuthPage] Ordem oficial dos cartões violada. ` +
+      `Esperado: ${expectedPrefix.join(', ')}. Atual: ${actualOrder.join(', ')}.`;
+    // eslint-disable-next-line no-console
+    console.error('[audit]', JSON.stringify({
+      event: 'auth_page.profile_order_violation',
+      severity: 'error',
+      timestamp: new Date().toISOString(),
+      expected_order: expectedPrefix,
+      actual_order: actualOrder,
+    }));
+    // Em desenvolvimento, lança para que o erro apareça imediatamente.
+    if (import.meta.env.DEV) {
+      throw new Error(message);
+    }
+  }
+})();
+
 if (injectedProfileKeys.length > 0) {
   // Log estruturado em JSON para facilitar parsing por ferramentas de
   // observabilidade (Sentry, LogRocket, Datadog, etc.) e suporte.

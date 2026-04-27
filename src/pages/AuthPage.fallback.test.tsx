@@ -66,4 +66,36 @@ describe('AuthPage fallback — Pessoa Física', () => {
       'pessoa_fisica',
     ]);
   });
+
+  it('ordem oficial é mantida mesmo se a entrada vier embaralhada', () => {
+    const shuffled: ProfileCard[] = [
+      PROFILE_FALLBACKS.pessoa_fisica,
+      PROFILE_FALLBACKS.imobiliaria,
+      PROFILE_FALLBACKS.admin,
+      PROFILE_FALLBACKS.tecnico,
+    ];
+    const { cards } = ensureRequiredProfileCards(shuffled);
+    expect(cards.map((c) => c.key)).toEqual([
+      'admin',
+      'tecnico',
+      'imobiliaria',
+      'pessoa_fisica',
+    ]);
+  });
+
+  it('ordem oficial é mantida quando entrada é parcialmente embaralhada e incompleta', () => {
+    const partial: ProfileCard[] = [
+      PROFILE_FALLBACKS.tecnico,
+      PROFILE_FALLBACKS.admin,
+      // imobiliaria e pessoa_fisica vêm via fallback
+    ];
+    const { cards, injected } = ensureRequiredProfileCards(partial);
+    expect(cards.map((c) => c.key)).toEqual([
+      'admin',
+      'tecnico',
+      'imobiliaria',
+      'pessoa_fisica',
+    ]);
+    expect(injected.sort()).toEqual(['imobiliaria', 'pessoa_fisica']);
+  });
 });

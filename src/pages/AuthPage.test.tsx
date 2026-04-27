@@ -59,4 +59,13 @@ describe('AuthPage — cartão Pessoa Física', () => {
     expect(button).not.toBeNull();
     expect(button).toBeEnabled();
   });
+
+  it('renderiza os cartões na ordem oficial: admin, tecnico, imobiliaria, pessoa_fisica', () => {
+    const { container } = renderAuthPage();
+    const buttons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('[data-profile-key]'),
+    );
+    const order = buttons.map((b) => b.getAttribute('data-profile-key'));
+    expect(order).toEqual(['admin', 'tecnico', 'imobiliaria', 'pessoa_fisica']);
+  });
 });
