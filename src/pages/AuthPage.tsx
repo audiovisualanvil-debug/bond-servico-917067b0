@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,14 @@ const loginSchema = z.object({
 });
 
 type SelectedProfile = 'admin' | 'imobiliaria' | 'tecnico' | 'pessoa_fisica' | null;
+
+// Lista de papéis OBRIGATÓRIOS na tela de login. Não remova sem alinhar com o produto.
+const REQUIRED_PROFILE_KEYS: Array<Exclude<SelectedProfile, null>> = [
+  'admin',
+  'tecnico',
+  'imobiliaria',
+  'pessoa_fisica',
+];
 
 const profileCards = [
   {
@@ -60,10 +68,35 @@ const profileCards = [
   },
 ];
 
+// Guard em tempo de carregamento do módulo: garante que todos os cartões obrigatórios
+// estejam presentes. Se algum for removido por engano, falha alto no console.
+const missingRequiredKeys = REQUIRED_PROFILE_KEYS.filter(
+  (key) => !profileCards.some((card) => card.key === key),
+);
+if (missingRequiredKeys.length > 0) {
+  // eslint-disable-next-line no-console
+  console.error(
+    '[AuthPage] Cartões de perfil obrigatórios ausentes:',
+    missingRequiredKeys.join(', '),
+  );
+}
+
 const AuthPage = () => {
   const { signIn, needsMFA, completeMFA, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Verificação automática em runtime: se algum cartão obrigatório estiver faltando,
+  // notifica o admin via toast (visível em produção) além do erro no console.
+  useEffect(() => {
+    if (missingRequiredKeys.length > 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro de configuração',
+        description: `Cartões de login ausentes: ${missingRequiredKeys.join(', ')}. Avise o suporte.`,
+      });
+    }
+  }, [toast]);
 
   const [selectedProfile, setSelectedProfile] = useState<SelectedProfile>(null);
   const [isLoading, setIsLoading] = useState(false);
