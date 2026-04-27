@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -188,9 +188,45 @@ const AuthPage = () => {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
+  // ─── RUNTIME GUARD: garante que o cartão "Pessoa Física" está renderizado no DOM
+  // antes de permitir qualquer fluxo de login. Bloqueia signIn se a checagem falhar.
+  const profileGridRef = useRef<HTMLDivElement | null>(null);
+  const [pessoaFisicaRendered, setPessoaFisicaRendered] = useState(false);
+  const [renderCheckDone, setRenderCheckDone] = useState(false);
+
+  useEffect(() => {
+    // Só roda quando estamos na tela de seleção de perfil (grid montado).
+    if (selectedProfile !== null) return;
+    const grid = profileGridRef.current;
+    if (!grid) return;
+    const node = grid.querySelector('[data-profile-key="pessoa_fisica"]');
+    const ok = !!node;
+    setPessoaFisicaRendered(ok);
+    setRenderCheckDone(true);
+    if (!ok) {
+      // eslint-disable-next-line no-console
+      console.error('[AuthPage] Guard de runtime: cartão "Pessoa Física" NÃO encontrado no DOM.');
+      toast({
+        variant: 'destructive',
+        title: 'Erro crítico de configuração',
+        description: 'O perfil "Pessoa Física" não foi carregado. Recarregue a página ou contate o suporte.',
+      });
+    }
+  }, [selectedProfile, toast]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
+
+    // Guard: bloqueia login se a verificação de runtime do cartão Pessoa Física falhou.
+    if (renderCheckDone && !pessoaFisicaRendered) {
+      toast({
+        variant: 'destructive',
+        title: 'Login bloqueado',
+        description: 'A tela de login está em estado inconsistente (perfil "Pessoa Física" ausente). Recarregue a página.',
+      });
+      return;
+    }
 
     const result = loginSchema.safeParse({ email: loginEmail, password: loginPassword });
 
@@ -314,10 +350,11 @@ const AuthPage = () => {
               </p>
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid gap-4" ref={profileGridRef}>
               {profileCards.map((card) => (
                 <button
                   key={card.key}
+                  data-profile-key={card.key}
                   onClick={() => setSelectedProfile(card.key)}
                   className={`group relative flex items-center gap-4 p-5 rounded-2xl border-2 bg-card/90 backdrop-blur-sm transition-all duration-200 ${card.borderColor}`}
                 >
