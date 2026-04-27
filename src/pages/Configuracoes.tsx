@@ -129,6 +129,7 @@ const Configuracoes = () => {
     switch (role) {
       case 'admin': return 'Administrador';
       case 'imobiliaria': return 'Imobiliária';
+      case 'pessoa_fisica': return 'Pessoa Física';
       case 'tecnico': return 'Técnico';
       default: return '';
     }
