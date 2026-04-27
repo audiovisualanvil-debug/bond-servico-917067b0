@@ -350,10 +350,11 @@ const AuthPage = () => {
               </p>
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid gap-4" ref={profileGridRef}>
               {profileCards.map((card) => (
                 <button
                   key={card.key}
+                  data-profile-key={card.key}
                   onClick={() => setSelectedProfile(card.key)}
                   className={`group relative flex items-center gap-4 p-5 rounded-2xl border-2 bg-card/90 backdrop-blur-sm transition-all duration-200 ${card.borderColor}`}
                 >
