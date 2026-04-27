@@ -14,7 +14,7 @@ interface CreateUserRequest {
   phone?: string;
   company?: string;
   cnpj?: string;
-  role: "imobiliaria" | "tecnico";
+  role: "imobiliaria" | "tecnico" | "pessoa_fisica";
 }
 
 serve(async (req) => {
@@ -55,8 +55,8 @@ serve(async (req) => {
     if (!email || !password || !name || !role) {
       throw new Error("Campos obrigatórios: email, password, name, role");
     }
-    if (!["imobiliaria", "tecnico"].includes(role)) {
-      throw new Error("Role deve ser 'imobiliaria' ou 'tecnico'");
+    if (!["imobiliaria", "tecnico", "pessoa_fisica"].includes(role)) {
+      throw new Error("Role deve ser 'imobiliaria', 'tecnico' ou 'pessoa_fisica'");
     }
 
     // Create user via admin API

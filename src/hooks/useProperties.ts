@@ -47,7 +47,7 @@ export function useProperties() {
 
       let query = typedFrom('properties').select('*');
 
-      if (role === 'imobiliaria') {
+      if (role === 'imobiliaria' || role === 'pessoa_fisica') {
         query = query.eq('imobiliaria_id', user.id);
       }
       // Admin sees all, tecnico handled by RLS

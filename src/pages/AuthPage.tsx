@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { Wrench, Building2, Mail, Lock, Loader2, ShieldCheck, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Wrench, Building2, Mail, Lock, Loader2, ShieldCheck, ArrowLeft, CheckCircle2, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import MFAVerify from '@/components/MFAVerify';
@@ -15,7 +15,7 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
 });
 
-type SelectedProfile = 'admin' | 'imobiliaria' | 'tecnico' | null;
+type SelectedProfile = 'admin' | 'imobiliaria' | 'tecnico' | 'pessoa_fisica' | null;
 
 const profileCards = [
   {
@@ -47,6 +47,16 @@ const profileCards = [
     borderColor: 'border-emerald-500/40 hover:border-emerald-400',
     iconColor: 'text-emerald-500',
     selectedBorder: 'border-emerald-400 bg-emerald-500/10',
+  },
+  {
+    key: 'pessoa_fisica' as const,
+    title: 'Entrar como Pessoa Física',
+    icon: User,
+    description: 'Solicite serviços para o seu imóvel.',
+    gradient: 'from-purple-500/20 to-fuchsia-500/20',
+    borderColor: 'border-purple-500/40 hover:border-purple-400',
+    iconColor: 'text-purple-500',
+    selectedBorder: 'border-purple-400 bg-purple-500/10',
   },
 ];
 
