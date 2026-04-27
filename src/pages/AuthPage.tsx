@@ -456,6 +456,8 @@ const AuthPage = () => {
                 <button
                   key={card.key}
                   data-profile-key={card.key}
+                  aria-label={`${card.title}. ${card.description}`}
+                  type="button"
                   onClick={() => setSelectedProfile(card.key)}
                   className={`group relative flex items-center gap-4 p-5 rounded-2xl border-2 bg-card/90 backdrop-blur-sm transition-all duration-200 ${card.borderColor}`}
                 >
