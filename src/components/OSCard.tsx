@@ -1,6 +1,7 @@
 import { ServiceOrder } from '@/types/serviceOrder';
 import { StatusBadge } from '@/components/StatusBadge';
 import { UrgencyIndicator } from '@/components/UrgencyIndicator';
+import { RequesterBadge } from '@/components/RequesterBadge';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MapPin, Calendar, User, ArrowRight } from 'lucide-react';
@@ -27,6 +28,9 @@ export const OSCard: React.FC<OSCardProps> = ({ order, showActions = true }) => 
             </span>
             <StatusBadge status={order.status} />
             <UrgencyIndicator urgency={order.urgency} />
+            {role === 'admin' || role === 'tecnico' ? (
+              <RequesterBadge imobiliariaId={order.imobiliariaId} />
+            ) : null}
           </div>
 
           {/* Problem description */}
@@ -73,8 +77,8 @@ export const OSCard: React.FC<OSCardProps> = ({ order, showActions = true }) => 
             </div>
           )}
 
-          {/* Imobiliaria only sees final price */}
-          {role === 'imobiliaria' && order.finalPrice && (
+          {/* Solicitante (imobiliária / pessoa física) só vê o valor final */}
+          {(role === 'imobiliaria' || role === 'pessoa_fisica') && order.finalPrice && (
             <div className="mt-3 flex items-center gap-4 text-sm">
               <span className="text-muted-foreground">
                 Valor do serviço: <strong className="text-primary">R$ {order.finalPrice.toFixed(2)}</strong>
