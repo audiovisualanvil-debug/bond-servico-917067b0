@@ -488,7 +488,7 @@ export type Database = {
       is_user_banned: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "admin" | "imobiliaria" | "tecnico"
+      app_role: "admin" | "imobiliaria" | "tecnico" | "pessoa_fisica"
       os_status:
         | "aguardando_orcamento_prestador"
         | "aguardando_aprovacao_admin"
@@ -624,7 +624,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "imobiliaria", "tecnico"],
+      app_role: ["admin", "imobiliaria", "tecnico", "pessoa_fisica"],
       os_status: [
         "aguardando_orcamento_prestador",
         "aguardando_aprovacao_admin",
