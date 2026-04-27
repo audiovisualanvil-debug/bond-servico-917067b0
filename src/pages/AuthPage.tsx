@@ -52,7 +52,7 @@ const profileCards = [
     key: 'pessoa_fisica' as const,
     title: 'Entrar como Pessoa Física',
     icon: User,
-    description: 'Solicite serviços para o seu imóvel.',
+    description: 'Solicita serviços para meus imóveis.',
     gradient: 'from-purple-500/20 to-fuchsia-500/20',
     borderColor: 'border-purple-500/40 hover:border-purple-400',
     iconColor: 'text-purple-500',
