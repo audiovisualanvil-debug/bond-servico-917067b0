@@ -24,6 +24,7 @@ import {
   normalizeCNPJ,
   isValidCNPJ,
 } from '@/lib/validators';
+import { useAuditLog } from '@/hooks/useAuditLog';
 
 interface UserWithRole {
   id: string;
@@ -40,6 +41,7 @@ interface UserWithRole {
 const GerenciarUsuarios = () => {
   const { role, user } = useAuth();
   const queryClient = useQueryClient();
+  const { log: auditLog } = useAuditLog();
   const [isCreating, setIsCreating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
@@ -120,6 +122,40 @@ const GerenciarUsuarios = () => {
     setIsCreating(true);
     const TIMEOUT_MS = 30000;
     const TIMEOUT_SENTINEL = Symbol('timeout');
+    const startedAt = new Date().toISOString();
+
+    // Sanitized payload (NEVER log password)
+    const safePayload = {
+      email: payload.email,
+      name: payload.name,
+      phone: payload.phone || null,
+      company: payload.company || null,
+      cnpj: payload.cnpj || null,
+      role: payload.role,
+    };
+
+    // Log attempt start (fire-and-forget)
+    void auditLog({
+      action: 'create_user_attempt',
+      entity_type: 'user',
+      details: { started_at: startedAt, payload: safePayload },
+    });
+
+    const logOutcome = (status: 'success' | 'error', extra: Record<string, any> = {}) => {
+      void auditLog({
+        action: status === 'success' ? 'create_user_success' : 'create_user_error',
+        entity_type: 'user',
+        entity_id: extra.user_id,
+        details: {
+          started_at: startedAt,
+          finished_at: new Date().toISOString(),
+          duration_ms: Date.now() - new Date(startedAt).getTime(),
+          payload: safePayload,
+          status,
+          ...extra,
+        },
+      });
+    };
 
     const showRetryToast = (title: string, description: string) => {
       toast.error(title, {
@@ -153,6 +189,7 @@ const GerenciarUsuarios = () => {
       ]);
 
       if (raceResult === TIMEOUT_SENTINEL) {
+        logOutcome('error', { reason: 'timeout', timeout_ms: TIMEOUT_MS });
         showRetryToast(
           'Tempo esgotado (30s)',
           'A solicitação demorou demais. Verifique sua conexão.'
@@ -167,6 +204,7 @@ const GerenciarUsuarios = () => {
       const dataMessage = response.data?.message;
 
       if (dataErrorCode === 'EMAIL_ALREADY_IN_USE') {
+        logOutcome('error', { reason: 'email_already_in_use', message: dataMessage });
         // Não retentar — não vai mudar o resultado
         toast.error('E-mail já cadastrado', {
           description: dataMessage || `O e-mail ${payload.email} já existe no sistema.`,
@@ -183,6 +221,7 @@ const GerenciarUsuarios = () => {
           lower.includes('cors') ||
           lower.includes('load failed')
         ) {
+          logOutcome('error', { reason: 'network', message: errMsg });
           showRetryToast(
             'Falha de conexão',
             'Não foi possível alcançar o servidor. Verifique sua internet.'
@@ -190,18 +229,22 @@ const GerenciarUsuarios = () => {
           return;
         }
         if (lower.includes('non-2xx') || lower.includes('functionshttperror')) {
+          logOutcome('error', { reason: 'server_error', message: dataMessage || errMsg });
           showRetryToast('Erro do servidor', dataMessage || errMsg);
           return;
         }
+        logOutcome('error', { reason: 'invoke_error', message: errMsg });
         showRetryToast('Erro ao criar usuário', errMsg);
         return;
       }
 
       if (dataErrorCode) {
+        logOutcome('error', { reason: dataErrorCode, message: dataMessage });
         showRetryToast('Erro ao criar usuário', dataMessage || dataErrorCode);
         return;
       }
 
+      logOutcome('success', { user_id: response.data?.user_id });
       toast.success(`Usuário ${payload.name} criado com sucesso!`);
       setForm({ email: '', password: '', name: '', phone: '', company: '', cnpj: '', role: '' });
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -210,11 +253,13 @@ const GerenciarUsuarios = () => {
       const msg = String(err?.message || err || '');
       const lower = msg.toLowerCase();
       if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('cors')) {
+        logOutcome('error', { reason: 'network_exception', message: msg });
         showRetryToast(
           'Falha de conexão',
           'Não foi possível alcançar o servidor. Verifique sua internet.'
         );
       } else {
+        logOutcome('error', { reason: 'exception', message: msg });
         showRetryToast('Erro ao criar usuário', msg || 'Erro inesperado');
       }
     } finally {
