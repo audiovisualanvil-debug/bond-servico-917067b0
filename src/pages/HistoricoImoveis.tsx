@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { 
   Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
   FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck,
-  ChevronLeft, User
+  ChevronLeft, User, ExternalLink, Link2, Download, CalendarRange, Columns3
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useProperties } from '@/hooks/useProperties';
 import { useServiceOrders, useServiceOrdersRealtime } from '@/hooks/useServiceOrders';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -18,6 +18,13 @@ import type { ServiceOrder, OSStatus } from '@/types/serviceOrder';
 import { STATUS_LABELS } from '@/types/serviceOrder';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 type PeriodKey = 'all' | '7d' | '4w' | '3m' | '12m';
 const PERIOD_LABELS: Record<PeriodKey, string> = {
