@@ -16,6 +16,14 @@ import { toast } from 'sonner';
 import { Loader2, UserPlus, Users, Building2, Wrench, Mail, Phone, Building, Eye, EyeOff, Pencil, Ban, CheckCircle2, KeyRound, User } from 'lucide-react';
 import { Sparkles, Copy } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  normalizeEmail,
+  isValidEmail,
+  normalizeCPF,
+  isValidCPF,
+  normalizeCNPJ,
+  isValidCNPJ,
+} from '@/lib/validators';
 
 interface UserWithRole {
   id: string;
@@ -220,26 +228,60 @@ const GerenciarUsuarios = () => {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
-    if (form.role === 'imobiliaria' && (!form.company || !form.phone || !form.cnpj)) {
-      toast.error('Para imobiliária, empresa, telefone e CNPJ são obrigatórios');
+
+    // E-mail: trim + lowercase + formato válido
+    const email = normalizeEmail(form.email);
+    if (!isValidEmail(email)) {
+      toast.error('E-mail inválido', {
+        description: 'Informe um e-mail no formato usuario@dominio.com',
+      });
       return;
     }
-    if (form.role === 'pessoa_fisica' && !form.phone) {
-      toast.error('Para pessoa física, o telefone é obrigatório');
-      return;
-    }
+
     if (form.password.length < 6) {
       toast.error('A senha deve ter pelo menos 6 caracteres');
       return;
     }
 
+    let normalizedCnpj: string | undefined;
+
+    if (form.role === 'imobiliaria') {
+      if (!form.company || !form.phone || !form.cnpj) {
+        toast.error('Para imobiliária, empresa, telefone e CNPJ são obrigatórios');
+        return;
+      }
+      normalizedCnpj = normalizeCNPJ(form.cnpj);
+      if (!isValidCNPJ(normalizedCnpj)) {
+        toast.error('CNPJ inválido', { description: 'O CNPJ deve ter 14 dígitos.' });
+        return;
+      }
+    }
+
+    if (form.role === 'pessoa_fisica') {
+      if (!form.phone) {
+        toast.error('Para pessoa física, o telefone é obrigatório');
+        return;
+      }
+      // CPF é opcional no formulário, mas se preenchido deve ser válido
+      if (form.cnpj && form.cnpj.trim()) {
+        const normalizedCpf = normalizeCPF(form.cnpj);
+        if (!isValidCPF(normalizedCpf)) {
+          toast.error('CPF inválido', {
+            description: 'Verifique se o CPF tem 11 dígitos e os dígitos verificadores estão corretos.',
+          });
+          return;
+        }
+        normalizedCnpj = normalizedCpf; // reaproveita o campo cnpj para guardar CPF (sem máscara)
+      }
+    }
+
     await performCreateUser({
-      email: form.email.trim().toLowerCase(),
+      email,
       password: form.password,
       name: form.name.trim(),
       phone: form.phone,
       company: form.company,
-      cnpj: form.cnpj,
+      cnpj: normalizedCnpj,
       role: form.role,
     });
   };
