@@ -1,5 +1,5 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -23,8 +23,13 @@ import {
   isValidCPF,
   normalizeCNPJ,
   isValidCNPJ,
+  maskCPF,
+  maskCNPJ,
+  maskPhoneBR,
 } from '@/lib/validators';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { CreateUserHealthBanner } from '@/components/admin/CreateUserHealthBanner';
+import { Link } from 'react-router-dom';
 
 interface UserWithRole {
   id: string;
@@ -50,6 +55,18 @@ const GerenciarUsuarios = () => {
     | { phase: 'error'; email: string; reason: string; message: string; durationMs: number; retry?: () => void };
   const [createStatus, setCreateStatus] = useState<CreateStatus>({ phase: 'idle' });
   const [elapsedMs, setElapsedMs] = useState(0);
+  // Track current in-flight AbortController + auto-retry timer to support cleanup
+  const abortRef = useRef<AbortController | null>(null);
+  const retryTimerRef = useRef<number | null>(null);
+  const autoRetriedRef = useRef<Set<string>>(new Set());
+
+  // Cleanup on unmount: abort in-flight request, cancel pending retry, reset status.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
+    };
+  }, []);
 
   // Tick elapsed time while processing
   useEffect(() => {
@@ -135,9 +152,18 @@ const GerenciarUsuarios = () => {
     cnpj?: string;
     role: string;
   }) => {
+    // Cancel any pending auto-retry from a previous attempt
+    if (retryTimerRef.current) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    // Abort any previous in-flight request (defensive)
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setIsCreating(true);
     const TIMEOUT_MS = 30000;
-    const TIMEOUT_SENTINEL = Symbol('timeout');
     const startedAtMs = Date.now();
     const startedAt = new Date(startedAtMs).toISOString();
     setElapsedMs(0);
@@ -147,6 +173,23 @@ const GerenciarUsuarios = () => {
       email: payload.email,
       role: payload.role,
     });
+
+    // Auto-retry only ONCE per email+role combination, on transient network errors.
+    const retryKey = `${payload.email}|${payload.role}`;
+    const scheduleAutoRetry = (reason: string) => {
+      if (autoRetriedRef.current.has(retryKey)) return false;
+      autoRetriedRef.current.add(retryKey);
+      console.log('[create-user] auto-retry agendado em 2s, motivo:', reason);
+      toast.info('Tentando novamente em 2s…', {
+        description: 'Falha de conexão temporária.',
+      });
+      retryTimerRef.current = window.setTimeout(() => {
+        retryTimerRef.current = null;
+        void performCreateUser(payload);
+      }, 2000);
+      return true;
+    };
+
     const retryFn = () => {
       void performCreateUser(payload);
     };
@@ -206,10 +249,28 @@ const GerenciarUsuarios = () => {
       });
     };
 
+    // Hard-abort timeout (also aborts the network request, not just the promise)
+    const timeoutId = window.setTimeout(() => controller.abort(), TIMEOUT_MS);
+
     try {
       console.log('[create-user] invoking with role=', payload.role, 'email=', payload.email);
-      const invokePromise = supabase.functions.invoke('create-user', {
-        body: {
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
+      const FUNCTIONS_BASE = `${import.meta.env.VITE_SUPABASE_URL || 'https://qdjnmmnageildowekqly.supabase.co'}/functions/v1`;
+
+      const httpResp = await fetch(`${FUNCTIONS_BASE}/create-user`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
+        },
+        body: JSON.stringify({
           email: payload.email,
           password: payload.password,
           name: payload.name,
@@ -217,25 +278,24 @@ const GerenciarUsuarios = () => {
           company: payload.company || undefined,
           cnpj: payload.cnpj || undefined,
           role: payload.role,
-        },
+        }),
       });
 
-      const raceResult: any = await Promise.race([
-        invokePromise,
-        new Promise((resolve) => setTimeout(() => resolve(TIMEOUT_SENTINEL), TIMEOUT_MS)),
-      ]);
+      window.clearTimeout(timeoutId);
 
-      if (raceResult === TIMEOUT_SENTINEL) {
-        logOutcome('error', { reason: 'timeout', timeout_ms: TIMEOUT_MS });
-        setError('timeout', 'A solicitação demorou mais de 30s.');
-        showRetryToast(
-          'Tempo esgotado (30s)',
-          'A solicitação demorou demais. Verifique sua conexão.'
-        );
-        return;
+      let parsed: any = null;
+      try {
+        parsed = await httpResp.json();
+      } catch {
+        parsed = null;
       }
 
-      const response = raceResult as Awaited<typeof invokePromise>;
+      const response = {
+        data: httpResp.ok ? parsed : parsed,
+        error: httpResp.ok ? null : { message: parsed?.message || parsed?.error || `HTTP ${httpResp.status}` },
+        status: httpResp.status,
+      } as { data: any; error: { message: string } | null; status: number };
+
       console.log('[create-user] response', response);
 
       const dataErrorCode = response.data?.error;
@@ -254,21 +314,14 @@ const GerenciarUsuarios = () => {
       if (response.error) {
         const errMsg = String(response.error.message || response.error);
         const lower = errMsg.toLowerCase();
-        if (
-          lower.includes('failed to fetch') ||
-          lower.includes('network') ||
-          lower.includes('cors') ||
-          lower.includes('load failed')
-        ) {
-          logOutcome('error', { reason: 'network', message: errMsg });
-          setError('network', 'Falha de conexão com o servidor.');
-          showRetryToast(
-            'Falha de conexão',
-            'Não foi possível alcançar o servidor. Verifique sua internet.'
-          );
+        if (response.status >= 500 || response.status === 0) {
+          logOutcome('error', { reason: 'server_error', message: dataMessage || errMsg, status: response.status });
+          if (scheduleAutoRetry('server_error')) return;
+          setError('server_error', dataMessage || errMsg);
+          showRetryToast('Erro do servidor', dataMessage || errMsg);
           return;
         }
-        if (lower.includes('non-2xx') || lower.includes('functionshttperror')) {
+        if (response.status >= 400 && response.status < 500) {
           logOutcome('error', { reason: 'server_error', message: dataMessage || errMsg });
           setError('server_error', dataMessage || errMsg);
           showRetryToast('Erro do servidor', dataMessage || errMsg);
@@ -294,15 +347,29 @@ const GerenciarUsuarios = () => {
         userId: response.data?.user_id,
         durationMs: Date.now() - startedAtMs,
       });
+      autoRetriedRef.current.delete(retryKey);
       toast.success(`Usuário ${payload.name} criado com sucesso!`);
       setForm({ email: '', password: '', name: '', phone: '', company: '', cnpj: '', role: '' });
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     } catch (err: any) {
+      window.clearTimeout(timeoutId);
       console.error('[create-user] error', err);
       const msg = String(err?.message || err || '');
       const lower = msg.toLowerCase();
+      const isAbort = err?.name === 'AbortError' || lower.includes('abort');
+      if (isAbort) {
+        // Could be timeout (we aborted) or unmount
+        const wasTimeout = Date.now() - startedAtMs >= TIMEOUT_MS - 500;
+        if (wasTimeout) {
+          logOutcome('error', { reason: 'timeout', timeout_ms: TIMEOUT_MS });
+          setError('timeout', 'A solicitação demorou mais de 30s e foi cancelada.');
+          showRetryToast('Tempo esgotado (30s)', 'A solicitação foi cancelada. Verifique sua conexão.');
+        }
+        return;
+      }
       if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('cors')) {
         logOutcome('error', { reason: 'network_exception', message: msg });
+        if (scheduleAutoRetry('network_exception')) return;
         setError('network_exception', msg || 'Falha de rede inesperada.');
         showRetryToast(
           'Falha de conexão',
@@ -314,6 +381,7 @@ const GerenciarUsuarios = () => {
         showRetryToast('Erro ao criar usuário', msg || 'Erro inesperado');
       }
     } finally {
+      abortRef.current = null;
       setIsCreating(false);
     }
   };
@@ -565,6 +633,7 @@ const GerenciarUsuarios = () => {
               <CardDescription>Crie uma conta para imobiliária ou profissional</CardDescription>
             </CardHeader>
             <CardContent>
+              <CreateUserHealthBanner />
               {/* FIX: Erro #8 - noValidate para evitar mensagens nativas em inglês */}
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <div className="space-y-2">
@@ -658,8 +727,9 @@ const GerenciarUsuarios = () => {
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       value={form.phone}
-                      onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+                      onChange={(e) => setForm(f => ({ ...f, phone: maskPhoneBR(e.target.value) }))}
                       placeholder="(11) 99999-9999"
+                      inputMode="numeric"
                       className="pl-10"
                     />
                   </div>
@@ -683,11 +753,24 @@ const GerenciarUsuarios = () => {
                       <Label>CNPJ *</Label>
                       <Input
                         value={form.cnpj}
-                        onChange={(e) => setForm(f => ({ ...f, cnpj: e.target.value }))}
+                        onChange={(e) => setForm(f => ({ ...f, cnpj: maskCNPJ(e.target.value) }))}
                         placeholder="00.000.000/0000-00"
+                        inputMode="numeric"
                       />
                     </div>
                   </>
+                )}
+
+                {form.role === 'pessoa_fisica' && (
+                  <div className="space-y-2">
+                    <Label>CPF</Label>
+                    <Input
+                      value={form.cnpj}
+                      onChange={(e) => setForm(f => ({ ...f, cnpj: maskCPF(e.target.value) }))}
+                      placeholder="000.000.000-00"
+                      inputMode="numeric"
+                    />
+                  </div>
                 )}
 
                 <Button type="submit" className="w-full" disabled={isCreating}>
@@ -758,6 +841,14 @@ const GerenciarUsuarios = () => {
                               <RotateCw className="h-3 w-3 mr-1" /> Tentar novamente
                             </Button>
                           )}
+                          <div className="mt-2">
+                            <Link
+                              to="/auditoria?action=create_user_error"
+                              className="text-xs underline opacity-80 hover:opacity-100"
+                            >
+                              Ver últimos erros no log
+                            </Link>
+                          </div>
                         </>
                       )}
                     </div>
