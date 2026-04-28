@@ -688,27 +688,52 @@ const HistoricoImoveis = () => {
                           <div key={order.id} className="border border-border rounded-lg p-4 bg-card">
                             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-primary">{order.osNumber}</span>
-                                <StatusBadge status={order.status} />
+                                {columns.osNumber && <span className="font-semibold text-primary">{order.osNumber}</span>}
+                                {columns.status && <StatusBadge status={order.status} />}
+                                {columns.requester && order.requesterName && (
+                                  <span className="text-xs text-muted-foreground">· {order.requesterName}</span>
+                                )}
                               </div>
-                              <div className="flex items-center gap-3">
-                                {order.finalPrice && role !== 'tecnico' && (
+                              <div className="flex items-center gap-2">
+                                {columns.price && order.finalPrice && role !== 'tecnico' && (
                                   <span className="text-sm font-semibold text-foreground">R$ {order.finalPrice.toFixed(2)}</span>
                                 )}
-                                <Button variant="link" className="p-0 h-auto text-xs" asChild>
-                                  <Link to={`/ordens/${order.id}`}>Ver detalhes →</Link>
-                                </Button>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/ordens/${order.id}`)}>
+                                      <ExternalLink className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Abrir OS</TooltipContent>
+                                </Tooltip>
                                 {order.status === 'concluido' && order.completionReport && (
-                                  <Button variant="link" className="p-0 h-auto text-xs text-status-completed" asChild>
-                                    <Link to={`/ordens/${order.id}/relatorio`}>
-                                      <FileText className="h-3 w-3" /> Relatório
-                                    </Link>
-                                  </Button>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-status-completed"
+                                        onClick={() => window.open(`/ordens/${order.id}/relatorio`, '_blank', 'noopener')}
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Baixar relatório PDF</TooltipContent>
+                                  </Tooltip>
                                 )}
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyOrderLink(order)}>
+                                      <Link2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Copiar link / ID</TooltipContent>
+                                </Tooltip>
                               </div>
                             </div>
-                            <p className="text-sm text-foreground mb-4">{order.problem}</p>
+                            {columns.problem && <p className="text-sm text-foreground mb-4">{order.problem}</p>}
 
+                            {columns.dates && (
                             <ol className="relative space-y-3 pl-2">
                               {steps.map((step, i) => {
                                 const Icon = step.icon;
@@ -737,6 +762,7 @@ const HistoricoImoveis = () => {
                                 );
                               })}
                             </ol>
+                            )}
                           </div>
                         );
                       })}
