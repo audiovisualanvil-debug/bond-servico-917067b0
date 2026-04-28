@@ -841,6 +841,14 @@ const GerenciarUsuarios = () => {
                               <RotateCw className="h-3 w-3 mr-1" /> Tentar novamente
                             </Button>
                           )}
+                          <div className="mt-2">
+                            <Link
+                              to="/auditoria?action=create_user_error"
+                              className="text-xs underline opacity-80 hover:opacity-100"
+                            >
+                              Ver últimos erros no log
+                            </Link>
+                          </div>
                         </>
                       )}
                     </div>
