@@ -100,6 +100,120 @@ const GerenciarUsuarios = () => {
     enabled: role === 'admin',
   });
 
+  const performCreateUser = async (payload: {
+    email: string;
+    password: string;
+    name: string;
+    phone?: string;
+    company?: string;
+    cnpj?: string;
+    role: string;
+  }) => {
+    setIsCreating(true);
+    const TIMEOUT_MS = 30000;
+    const TIMEOUT_SENTINEL = Symbol('timeout');
+
+    const showRetryToast = (title: string, description: string) => {
+      toast.error(title, {
+        description,
+        action: {
+          label: 'Tentar novamente',
+          onClick: () => {
+            void performCreateUser(payload);
+          },
+        },
+      });
+    };
+
+    try {
+      console.log('[create-user] invoking with role=', payload.role, 'email=', payload.email);
+      const invokePromise = supabase.functions.invoke('create-user', {
+        body: {
+          email: payload.email,
+          password: payload.password,
+          name: payload.name,
+          phone: payload.phone || undefined,
+          company: payload.company || undefined,
+          cnpj: payload.cnpj || undefined,
+          role: payload.role,
+        },
+      });
+
+      const raceResult: any = await Promise.race([
+        invokePromise,
+        new Promise((resolve) => setTimeout(() => resolve(TIMEOUT_SENTINEL), TIMEOUT_MS)),
+      ]);
+
+      if (raceResult === TIMEOUT_SENTINEL) {
+        showRetryToast(
+          'Tempo esgotado (30s)',
+          'A solicitação demorou demais. Verifique sua conexão.'
+        );
+        return;
+      }
+
+      const response = raceResult as Awaited<typeof invokePromise>;
+      console.log('[create-user] response', response);
+
+      const dataErrorCode = response.data?.error;
+      const dataMessage = response.data?.message;
+
+      if (dataErrorCode === 'EMAIL_ALREADY_IN_USE') {
+        // Não retentar — não vai mudar o resultado
+        toast.error('E-mail já cadastrado', {
+          description: dataMessage || `O e-mail ${payload.email} já existe no sistema.`,
+        });
+        return;
+      }
+
+      if (response.error) {
+        const errMsg = String(response.error.message || response.error);
+        const lower = errMsg.toLowerCase();
+        if (
+          lower.includes('failed to fetch') ||
+          lower.includes('network') ||
+          lower.includes('cors') ||
+          lower.includes('load failed')
+        ) {
+          showRetryToast(
+            'Falha de conexão',
+            'Não foi possível alcançar o servidor. Verifique sua internet.'
+          );
+          return;
+        }
+        if (lower.includes('non-2xx') || lower.includes('functionshttperror')) {
+          showRetryToast('Erro do servidor', dataMessage || errMsg);
+          return;
+        }
+        showRetryToast('Erro ao criar usuário', errMsg);
+        return;
+      }
+
+      if (dataErrorCode) {
+        showRetryToast('Erro ao criar usuário', dataMessage || dataErrorCode);
+        return;
+      }
+
+      toast.success(`Usuário ${payload.name} criado com sucesso!`);
+      setForm({ email: '', password: '', name: '', phone: '', company: '', cnpj: '', role: '' });
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    } catch (err: any) {
+      console.error('[create-user] error', err);
+      const msg = String(err?.message || err || '');
+      const lower = msg.toLowerCase();
+      if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('cors')) {
+        showRetryToast(
+          'Falha de conexão',
+          'Não foi possível alcançar o servidor. Verifique sua internet.'
+        );
+      } else {
+        showRetryToast('Erro ao criar usuário', msg || 'Erro inesperado');
+      }
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.email || !form.password || !form.name || !form.role) {
@@ -119,96 +233,15 @@ const GerenciarUsuarios = () => {
       return;
     }
 
-    setIsCreating(true);
-    const TIMEOUT_MS = 30000;
-    const TIMEOUT_SENTINEL = Symbol('timeout');
-    try {
-      console.log('[create-user] invoking with role=', form.role, 'email=', form.email);
-      const invokePromise = supabase.functions.invoke('create-user', {
-        body: {
-          email: form.email.trim().toLowerCase(),
-          password: form.password,
-          name: form.name.trim(),
-          phone: form.phone || undefined,
-          company: form.company || undefined,
-          cnpj: form.cnpj || undefined,
-          role: form.role,
-        },
-      });
-
-      const raceResult: any = await Promise.race([
-        invokePromise,
-        new Promise((resolve) => setTimeout(() => resolve(TIMEOUT_SENTINEL), TIMEOUT_MS)),
-      ]);
-
-      if (raceResult === TIMEOUT_SENTINEL) {
-        toast.error('Tempo esgotado (30s)', {
-          description: 'A solicitação demorou demais. Verifique sua conexão e tente novamente.',
-        });
-        return;
-      }
-
-      const response = raceResult as Awaited<typeof invokePromise>;
-      console.log('[create-user] response', response);
-
-      // Handle email already in use (status 409 from edge function)
-      const dataErrorCode = response.data?.error;
-      const dataMessage = response.data?.message;
-      if (dataErrorCode === 'EMAIL_ALREADY_IN_USE') {
-        toast.error('E-mail já cadastrado', {
-          description: dataMessage || `O e-mail ${form.email} já existe no sistema.`,
-        });
-        return;
-      }
-
-      // Network / CORS / function unreachable
-      if (response.error) {
-        const errMsg = String(response.error.message || response.error);
-        const lower = errMsg.toLowerCase();
-        if (
-          lower.includes('failed to fetch') ||
-          lower.includes('network') ||
-          lower.includes('cors') ||
-          lower.includes('load failed')
-        ) {
-          toast.error('Falha de conexão', {
-            description: 'Não foi possível alcançar o servidor. Verifique sua internet e tente novamente.',
-          });
-          return;
-        }
-        if (lower.includes('non-2xx') || lower.includes('functionshttperror')) {
-          // Try to surface inner JSON message if available
-          toast.error('Erro do servidor', {
-            description: dataMessage || errMsg,
-          });
-          return;
-        }
-        toast.error('Erro ao criar usuário', { description: errMsg });
-        return;
-      }
-
-      if (dataErrorCode) {
-        toast.error('Erro ao criar usuário', { description: dataMessage || dataErrorCode });
-        return;
-      }
-
-      toast.success(`Usuário ${form.name} criado com sucesso!`);
-      setForm({ email: '', password: '', name: '', phone: '', company: '', cnpj: '', role: '' });
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-    } catch (err: any) {
-      console.error('[create-user] error', err);
-      const msg = String(err?.message || err || '');
-      const lower = msg.toLowerCase();
-      if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('cors')) {
-        toast.error('Falha de conexão', {
-          description: 'Não foi possível alcançar o servidor. Verifique sua internet e tente novamente.',
-        });
-      } else {
-        toast.error('Erro ao criar usuário', { description: msg || 'Erro inesperado' });
-      }
-    } finally {
-      setIsCreating(false);
-    }
+    await performCreateUser({
+      email: form.email.trim().toLowerCase(),
+      password: form.password,
+      name: form.name.trim(),
+      phone: form.phone,
+      company: form.company,
+      cnpj: form.cnpj,
+      role: form.role,
+    });
   };
 
   const handleOpenEdit = (u: UserWithRole) => {
