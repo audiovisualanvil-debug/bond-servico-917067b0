@@ -1095,10 +1095,54 @@ const GerenciarUsuarios = () => {
           <DialogHeader>
             <DialogTitle>Editar Usuário</DialogTitle>
             <DialogDescription>
-              {editUser?.email} — {roleLabel(editUser?.role || '')}
+              {editUser?.email} — original: {roleLabel(editUser?.role || '')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Tipo de Usuário</Label>
+              <Select
+                value={editForm.role}
+                onValueChange={(v) => setEditForm(f => ({
+                  ...f,
+                  role: v,
+                  // Reaplica máscara correta no documento ao trocar role
+                  cnpj: v === 'imobiliaria'
+                    ? maskCNPJ(f.cnpj)
+                    : v === 'pessoa_fisica'
+                    ? maskCPF(f.cnpj)
+                    : f.cnpj,
+                  // Empresa só faz sentido para imobiliária
+                  company: v === 'imobiliaria' ? f.company : '',
+                }))}
+                disabled={editUser?.id === user?.id}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="imobiliaria">
+                    <span className="flex items-center gap-2"><Building2 className="h-4 w-4" /> Imobiliária</span>
+                  </SelectItem>
+                  <SelectItem value="pessoa_fisica">
+                    <span className="flex items-center gap-2"><User className="h-4 w-4" /> Pessoa Física</span>
+                  </SelectItem>
+                  <SelectItem value="tecnico">
+                    <span className="flex items-center gap-2"><Wrench className="h-4 w-4" /> Profissional</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {editUser?.id === user?.id && (
+                <p className="text-xs text-muted-foreground">Você não pode alterar seu próprio tipo.</p>
+              )}
+              {editForm.role && editUser?.role && editForm.role !== editUser.role && (
+                <p className="text-xs text-amber-600 flex items-start gap-1">
+                  <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                  Atenção: trocar o tipo afeta as permissões e o que o usuário consegue ver.
+                </p>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>Nome Completo *</Label>
               <Input
@@ -1110,25 +1154,40 @@ const GerenciarUsuarios = () => {
               <Label>Telefone</Label>
               <Input
                 value={editForm.phone}
-                onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                onChange={(e) => setEditForm(f => ({ ...f, phone: maskPhoneBR(e.target.value) }))}
                 placeholder="(11) 99999-9999"
+                inputMode="numeric"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Empresa</Label>
-              <Input
-                value={editForm.company}
-                onChange={(e) => setEditForm(f => ({ ...f, company: e.target.value }))}
-                placeholder="Nome da empresa"
-              />
-            </div>
-            {editUser?.role === 'imobiliaria' && (
+            {editForm.role === 'imobiliaria' && (
+              <div className="space-y-2">
+                <Label>Empresa *</Label>
+                <Input
+                  value={editForm.company}
+                  onChange={(e) => setEditForm(f => ({ ...f, company: e.target.value }))}
+                  placeholder="Nome da imobiliária"
+                />
+              </div>
+            )}
+            {editForm.role === 'imobiliaria' && (
               <div className="space-y-2">
                 <Label>CNPJ</Label>
                 <Input
                   value={editForm.cnpj}
-                  onChange={(e) => setEditForm(f => ({ ...f, cnpj: e.target.value }))}
+                  onChange={(e) => setEditForm(f => ({ ...f, cnpj: maskCNPJ(e.target.value) }))}
                   placeholder="00.000.000/0000-00"
+                  inputMode="numeric"
+                />
+              </div>
+            )}
+            {editForm.role === 'pessoa_fisica' && (
+              <div className="space-y-2">
+                <Label>CPF</Label>
+                <Input
+                  value={editForm.cnpj}
+                  onChange={(e) => setEditForm(f => ({ ...f, cnpj: maskCPF(e.target.value) }))}
+                  placeholder="000.000.000-00"
+                  inputMode="numeric"
                 />
               </div>
             )}
