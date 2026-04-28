@@ -128,8 +128,8 @@ const HistoricoImoveis = () => {
   const allPropertyOrders = selectedPropertyId
     ? allOrders.filter(os => os.propertyId === selectedPropertyId)
     : [];
-  const propertyOrders = allPropertyOrders
-    .filter(os => statusFilter === 'all' || os.status === statusFilter)
+  // Orders filtered by period + base date + search (but NOT by status) — used for status counters
+  const ordersBeforeStatus = allPropertyOrders
     .filter(os => {
       if (!cutoff) return true;
       const d = os[dateField] as Date | null | undefined;
@@ -144,7 +144,15 @@ const HistoricoImoveis = () => {
         (os.problem ?? '').toLowerCase().includes(q) ||
         (os.requesterName ?? '').toLowerCase().includes(q)
       );
-    })
+    });
+
+  const statusCounts = ordersBeforeStatus.reduce<Record<string, number>>((acc, os) => {
+    acc[os.status] = (acc[os.status] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const propertyOrders = ordersBeforeStatus
+    .filter(os => statusFilter === 'all' || os.status === statusFilter)
     .sort((a, b) => {
       const da = (a[dateField] as Date | null | undefined)?.getTime() ?? a.createdAt.getTime();
       const db = (b[dateField] as Date | null | undefined)?.getTime() ?? b.createdAt.getTime();
