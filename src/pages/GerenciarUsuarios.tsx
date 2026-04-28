@@ -694,6 +694,85 @@ const GerenciarUsuarios = () => {
                   {isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
                   Criar Usuário
                 </Button>
+
+                {createStatus.phase !== 'idle' && (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className={
+                      'mt-3 rounded-md border p-3 text-sm flex items-start gap-3 ' +
+                      (createStatus.phase === 'processing'
+                        ? 'border-blue-200 bg-blue-500/10 text-blue-800'
+                        : createStatus.phase === 'success'
+                        ? 'border-green-200 bg-green-500/10 text-green-800'
+                        : 'border-red-200 bg-red-500/10 text-red-800')
+                    }
+                  >
+                    <div className="mt-0.5">
+                      {createStatus.phase === 'processing' && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {createStatus.phase === 'success' && <CheckCircle2 className="h-4 w-4" />}
+                      {createStatus.phase === 'error' && <AlertCircle className="h-4 w-4" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {createStatus.phase === 'processing' && (
+                        <>
+                          <div className="font-medium">Processando criação…</div>
+                          <div className="text-xs opacity-80 truncate">
+                            {createStatus.email} · {createStatus.role}
+                          </div>
+                          <div className="text-xs opacity-80 flex items-center gap-1 mt-1">
+                            <Clock className="h-3 w-3" />
+                            {(elapsedMs / 1000).toFixed(1)}s / 30s
+                          </div>
+                        </>
+                      )}
+                      {createStatus.phase === 'success' && (
+                        <>
+                          <div className="font-medium">Usuário confirmado</div>
+                          <div className="text-xs opacity-80 truncate">
+                            {createStatus.email}
+                            {createStatus.userId && ` · ID ${createStatus.userId.slice(0, 8)}…`}
+                          </div>
+                          <div className="text-xs opacity-80 mt-1">
+                            Concluído em {(createStatus.durationMs / 1000).toFixed(1)}s
+                          </div>
+                        </>
+                      )}
+                      {createStatus.phase === 'error' && (
+                        <>
+                          <div className="font-medium">Falha na criação</div>
+                          <div className="text-xs opacity-90 break-words">
+                            <span className="font-mono">{createStatus.reason}</span> — {createStatus.message}
+                          </div>
+                          <div className="text-xs opacity-80 mt-1">
+                            Após {(createStatus.durationMs / 1000).toFixed(1)}s · {createStatus.email}
+                          </div>
+                          {createStatus.retry && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="mt-2 h-7"
+                              onClick={createStatus.retry}
+                            >
+                              <RotateCw className="h-3 w-3 mr-1" /> Tentar novamente
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {createStatus.phase !== 'processing' && (
+                      <button
+                        type="button"
+                        aria-label="Fechar status"
+                        className="opacity-60 hover:opacity-100"
+                        onClick={() => setCreateStatus({ phase: 'idle' })}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </form>
             </CardContent>
           </Card>
