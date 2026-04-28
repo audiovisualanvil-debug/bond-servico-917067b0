@@ -246,17 +246,30 @@ export function CompletionReportForm({ onSubmit, isSubmitting, serviceOrderId }:
                 ))}
               </div>
             )}
+            {pendingBefore.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {pendingBefore.map((url, i) => (
+                  <div key={`p-${i}`} className="relative aspect-square rounded-lg overflow-hidden border border-dashed border-primary/50 bg-secondary/30">
+                    <img src={url} alt="Enviando" className="w-full h-full object-cover opacity-60" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/40">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="w-full"
               onClick={() => beforeInputRef.current?.click()}
-              disabled={isUploading}
+              disabled={isUploading || photosBefore.length >= MAX_PHOTOS_PER_SIDE}
             >
               {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-              Adicionar fotos
+              {photosBefore.length >= MAX_PHOTOS_PER_SIDE ? 'Limite atingido' : `Adicionar fotos (${photosBefore.length}/${MAX_PHOTOS_PER_SIDE})`}
             </Button>
+            <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou WebP — até 5MB cada</p>
           </div>
 
           {/* After photos */}
@@ -286,17 +299,30 @@ export function CompletionReportForm({ onSubmit, isSubmitting, serviceOrderId }:
                 ))}
               </div>
             )}
+            {pendingAfter.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {pendingAfter.map((url, i) => (
+                  <div key={`p-${i}`} className="relative aspect-square rounded-lg overflow-hidden border border-dashed border-primary/50 bg-secondary/30">
+                    <img src={url} alt="Enviando" className="w-full h-full object-cover opacity-60" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/40">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="w-full"
               onClick={() => afterInputRef.current?.click()}
-              disabled={isUploading}
+              disabled={isUploading || photosAfter.length >= MAX_PHOTOS_PER_SIDE}
             >
               {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-              Adicionar fotos
+              {photosAfter.length >= MAX_PHOTOS_PER_SIDE ? 'Limite atingido' : `Adicionar fotos (${photosAfter.length}/${MAX_PHOTOS_PER_SIDE})`}
             </Button>
+            <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou WebP — até 5MB cada</p>
           </div>
         </div>
 
