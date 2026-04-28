@@ -104,8 +104,14 @@ const HistoricoImoveis = () => {
   const [requesterQuery, setRequesterQuery] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
+  const [customStart, setCustomStart] = useState<Date | undefined>(undefined);
+  const [customEnd, setCustomEnd] = useState<Date | undefined>(undefined);
+  const [columns, setColumns] = useState<Record<ColumnKey, boolean>>(DEFAULT_COLUMNS);
+  const [exporting, setExporting] = useState(false);
+  const navigate = useNavigate();
 
   const prefsKey = user ? `historicoImoveis:filters:${user.id}` : null;
+  const colsKey = user ? `historicoImoveis:columns:${user.id}` : null;
 
   // Load saved defaults on mount / user change
   useEffect(() => {
@@ -113,19 +119,44 @@ const HistoricoImoveis = () => {
     try {
       const raw = localStorage.getItem(prefsKey);
       if (!raw) { setHasSavedDefault(false); return; }
-      const parsed = JSON.parse(raw) as { statusFilter?: OSStatus | 'all'; periodFilter?: PeriodKey; dateField?: DateField };
+      const parsed = JSON.parse(raw) as { statusFilter?: OSStatus | 'all'; periodFilter?: PeriodKey; dateField?: DateField; customStart?: string; customEnd?: string };
       if (parsed.statusFilter) setStatusFilter(parsed.statusFilter);
       if (parsed.periodFilter) setPeriodFilter(parsed.periodFilter);
       if (parsed.dateField) setDateField(parsed.dateField);
+      if (parsed.customStart) setCustomStart(new Date(parsed.customStart));
+      if (parsed.customEnd) setCustomEnd(new Date(parsed.customEnd));
       setHasSavedDefault(true);
     } catch {
       setHasSavedDefault(false);
     }
   }, [prefsKey]);
 
+  // Load saved columns
+  useEffect(() => {
+    if (!colsKey) return;
+    try {
+      const raw = localStorage.getItem(colsKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<Record<ColumnKey, boolean>>;
+      setColumns({ ...DEFAULT_COLUMNS, ...parsed });
+    } catch { /* ignore */ }
+  }, [colsKey]);
+
+  const toggleColumn = (k: ColumnKey, value: boolean) => {
+    setColumns(prev => {
+      const next = { ...prev, [k]: value };
+      if (colsKey) localStorage.setItem(colsKey, JSON.stringify(next));
+      return next;
+    });
+  };
+
   const saveDefaults = () => {
     if (!prefsKey) return;
-    localStorage.setItem(prefsKey, JSON.stringify({ statusFilter, periodFilter, dateField }));
+    localStorage.setItem(prefsKey, JSON.stringify({
+      statusFilter, periodFilter, dateField,
+      customStart: customStart?.toISOString(),
+      customEnd: customEnd?.toISOString(),
+    }));
     setHasSavedDefault(true);
     toast.success('Filtros salvos como padrão para o seu usuário');
   };
@@ -159,8 +190,20 @@ const HistoricoImoveis = () => {
   // Orders filtered by period + base date + search (but NOT by status) — used for status counters
   const ordersBeforeStatus = allPropertyOrders
     .filter(os => {
-      if (!cutoff) return true;
       const d = os[dateField] as Date | null | undefined;
+      if (periodFilter === 'custom') {
+        if (!customStart && !customEnd) return true;
+        if (!d) return false;
+        if (customStart && d.getTime() < customStart.getTime()) return false;
+        if (customEnd) {
+          // include the full end day
+          const end = new Date(customEnd);
+          end.setHours(23, 59, 59, 999);
+          if (d.getTime() > end.getTime()) return false;
+        }
+        return true;
+      }
+      if (!cutoff) return true;
       if (!d) return false;
       return d.getTime() >= cutoff.getTime();
     })
