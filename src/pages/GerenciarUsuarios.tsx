@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Users, Building2, Wrench, Mail, Phone, Building, Eye, EyeOff, Pencil, Ban, CheckCircle2, KeyRound, User } from 'lucide-react';
+import { Loader2, UserPlus, Users, Building2, Wrench, Mail, Phone, Building, Eye, EyeOff, Pencil, Ban, CheckCircle2, KeyRound, User, AlertCircle, Clock, RotateCw, X } from 'lucide-react';
 import { Sparkles, Copy } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -43,6 +43,22 @@ const GerenciarUsuarios = () => {
   const queryClient = useQueryClient();
   const { log: auditLog } = useAuditLog();
   const [isCreating, setIsCreating] = useState(false);
+  type CreateStatus =
+    | { phase: 'idle' }
+    | { phase: 'processing'; startedAt: number; email: string; role: string }
+    | { phase: 'success'; email: string; userId?: string; durationMs: number }
+    | { phase: 'error'; email: string; reason: string; message: string; durationMs: number; retry?: () => void };
+  const [createStatus, setCreateStatus] = useState<CreateStatus>({ phase: 'idle' });
+  const [elapsedMs, setElapsedMs] = useState(0);
+
+  // Tick elapsed time while processing
+  React.useEffect(() => {
+    if (createStatus.phase !== 'processing') return;
+    const id = setInterval(() => {
+      setElapsedMs(Date.now() - createStatus.startedAt);
+    }, 250);
+    return () => clearInterval(id);
+  }, [createStatus]);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     email: '',
