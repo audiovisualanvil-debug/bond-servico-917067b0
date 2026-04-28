@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
   Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
-  FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck
+  FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck,
+  ChevronLeft
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -72,6 +73,9 @@ const HistoricoImoveis = () => {
   const [periodFilter, setPeriodFilter] = useState<PeriodKey>('all');
   const [dateField, setDateField] = useState<DateField>('createdAt');
   const [hasSavedDefault, setHasSavedDefault] = useState(false);
+  const [orderQuery, setOrderQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 5;
 
   const prefsKey = user ? `historicoImoveis:filters:${user.id}` : null;
 
@@ -132,12 +136,30 @@ const HistoricoImoveis = () => {
       if (!d) return false;
       return d.getTime() >= cutoff.getTime();
     })
+    .filter(os => {
+      if (!orderQuery.trim()) return true;
+      const q = orderQuery.trim().toLowerCase();
+      return (
+        (os.osNumber ?? '').toLowerCase().includes(q) ||
+        (os.problem ?? '').toLowerCase().includes(q) ||
+        (os.requesterName ?? '').toLowerCase().includes(q)
+      );
+    })
     .sort((a, b) => {
       const da = (a[dateField] as Date | null | undefined)?.getTime() ?? a.createdAt.getTime();
       const db = (b[dateField] as Date | null | undefined)?.getTime() ?? b.createdAt.getTime();
       return db - da;
     });
   const filtersActive = statusFilter !== 'all' || periodFilter !== 'all' || dateField !== 'createdAt';
+
+  const totalPages = Math.max(1, Math.ceil(propertyOrders.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedOrders = propertyOrders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  // Reset pagination when filters/search/property change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery]);
 
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
 
@@ -327,8 +349,18 @@ const HistoricoImoveis = () => {
                   </div>
 
                   {propertyOrders.length > 0 ? (
+                    <>
+                    <div className="relative mb-4">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar nesta lista (nº OS, problema, solicitante)..."
+                        value={orderQuery}
+                        onChange={(e) => setOrderQuery(e.target.value)}
+                        className="pl-10 h-9"
+                      />
+                    </div>
                     <div className="space-y-4">
-                      {propertyOrders.map((order) => {
+                      {paginatedOrders.map((order) => {
                         const steps = buildOrderTimeline(order);
                         return (
                           <div key={order.id} className="border border-border rounded-lg p-4 bg-card">
@@ -387,11 +419,43 @@ const HistoricoImoveis = () => {
                         );
                       })}
                     </div>
+                    {propertyOrders.length > PAGE_SIZE && (
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                        <span className="text-xs text-muted-foreground">
+                          Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–
+                          {Math.min(currentPage * PAGE_SIZE, propertyOrders.length)} de {propertyOrders.length}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" /> Anterior
+                          </Button>
+                          <span className="text-xs text-muted-foreground">
+                            Página {currentPage} de {totalPages}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                          >
+                            Próxima <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    </>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-8">
                       {allPropertyOrders.length === 0
                         ? 'Nenhum serviço registrado para este imóvel'
-                        : `Nenhuma OS com ${DATE_FIELD_LABELS[dateField].toLowerCase()} no período selecionado`}
+                        : orderQuery
+                          ? `Nenhuma OS encontrada para "${orderQuery}"`
+                          : `Nenhuma OS com ${DATE_FIELD_LABELS[dateField].toLowerCase()} no período selecionado`}
                     </p>
                   )}
                 </div>
