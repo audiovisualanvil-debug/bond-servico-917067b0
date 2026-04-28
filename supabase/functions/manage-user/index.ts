@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface ManageUserRequest {
-  action: "update" | "ban" | "unban" | "reset_password";
+  action: "update" | "ban" | "unban" | "reset_password" | "change_role";
   user_id: string;
   name?: string;
   phone?: string;
@@ -16,6 +16,7 @@ interface ManageUserRequest {
   cnpj?: string;
   password?: string;
   send_email?: boolean;
+  role?: "admin" | "tecnico" | "imobiliaria" | "pessoa_fisica";
 }
 
 serve(async (req) => {
@@ -85,6 +86,30 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, action: "updated" }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    if (action === "change_role") {
+      const newRole = body.role;
+      const allowed = ["admin", "tecnico", "imobiliaria", "pessoa_fisica"];
+      if (!newRole || !allowed.includes(newRole)) {
+        throw new Error("Role inválido");
+      }
+      // Replace user's role(s) atomically: delete existing, insert new
+      const { error: delErr } = await adminClient
+        .from("user_roles")
+        .delete()
+        .eq("user_id", user_id);
+      if (delErr) throw new Error(`Erro ao remover role atual: ${delErr.message}`);
+
+      const { error: insErr } = await adminClient
+        .from("user_roles")
+        .insert({ user_id, role: newRole });
+      if (insErr) throw new Error(`Erro ao definir novo role: ${insErr.message}`);
+
+      return new Response(
+        JSON.stringify({ success: true, action: "role_changed", role: newRole }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }

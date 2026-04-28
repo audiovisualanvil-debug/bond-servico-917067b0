@@ -89,7 +89,7 @@ const GerenciarUsuarios = () => {
 
   // Edit dialog state
   const [editUser, setEditUser] = useState<UserWithRole | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', phone: '', company: '', cnpj: '' });
+  const [editForm, setEditForm] = useState({ name: '', phone: '', company: '', cnpj: '', role: '' as string });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Ban/unban confirm dialog
@@ -479,7 +479,19 @@ const GerenciarUsuarios = () => {
   };
 
   const handleOpenEdit = (u: UserWithRole) => {
-    setEditForm({ name: u.name, phone: u.phone || '', company: u.company || '', cnpj: u.cnpj || '' });
+    // Aplica máscara conforme role
+    const maskedDoc = u.role === 'imobiliaria'
+      ? maskCNPJ(u.cnpj || '')
+      : u.role === 'pessoa_fisica'
+      ? maskCPF(u.cnpj || '')
+      : (u.cnpj || '');
+    setEditForm({
+      name: u.name,
+      phone: maskPhoneBR(u.phone || ''),
+      company: u.company || '',
+      cnpj: maskedDoc,
+      role: u.role,
+    });
     setEditUser(u);
   };
 
@@ -490,16 +502,61 @@ const GerenciarUsuarios = () => {
       return;
     }
 
+    // Validações específicas por role
+    let normalizedDoc: string | null = null;
+    if (editForm.role === 'imobiliaria') {
+      if (!editForm.company.trim()) {
+        toast.error('Empresa é obrigatória para Imobiliária');
+        return;
+      }
+      if (editForm.cnpj.trim()) {
+        const n = normalizeCNPJ(editForm.cnpj);
+        if (!isValidCNPJ(n)) {
+          toast.error('CNPJ inválido', { description: 'O CNPJ deve ter 14 dígitos.' });
+          return;
+        }
+        normalizedDoc = n;
+      }
+    } else if (editForm.role === 'pessoa_fisica') {
+      if (editForm.cnpj.trim()) {
+        const n = normalizeCPF(editForm.cnpj);
+        if (!isValidCPF(n)) {
+          toast.error('CPF inválido', {
+            description: 'Verifique se o CPF tem 11 dígitos e os dígitos verificadores estão corretos.',
+          });
+          return;
+        }
+        normalizedDoc = n;
+      }
+    } else {
+      // admin/tecnico — mantém valor digitado sem máscara
+      normalizedDoc = editForm.cnpj.trim() || null;
+    }
+
     setIsSavingEdit(true);
     try {
+      // 1) Se o role mudou, atualiza primeiro
+      if (editForm.role && editForm.role !== editUser.role) {
+        const roleResp = await supabase.functions.invoke('manage-user', {
+          body: {
+            action: 'change_role',
+            user_id: editUser.id,
+            role: editForm.role,
+          },
+        });
+        if (roleResp.error) throw new Error(roleResp.error.message);
+        if (roleResp.data?.error) throw new Error(roleResp.data.error);
+      }
+
+      // 2) Atualiza dados de perfil
       const response = await supabase.functions.invoke('manage-user', {
         body: {
           action: 'update',
           user_id: editUser.id,
           name: editForm.name,
           phone: editForm.phone,
-          company: editForm.company,
-          cnpj: editForm.cnpj,
+          company: editForm.role === 'imobiliaria' ? editForm.company : '',
+          cnpj: normalizedDoc ?? '',
         },
       });
 
@@ -1038,10 +1095,54 @@ const GerenciarUsuarios = () => {
           <DialogHeader>
             <DialogTitle>Editar Usuário</DialogTitle>
             <DialogDescription>
-              {editUser?.email} — {roleLabel(editUser?.role || '')}
+              {editUser?.email} — original: {roleLabel(editUser?.role || '')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Tipo de Usuário</Label>
+              <Select
+                value={editForm.role}
+                onValueChange={(v) => setEditForm(f => ({
+                  ...f,
+                  role: v,
+                  // Reaplica máscara correta no documento ao trocar role
+                  cnpj: v === 'imobiliaria'
+                    ? maskCNPJ(f.cnpj)
+                    : v === 'pessoa_fisica'
+                    ? maskCPF(f.cnpj)
+                    : f.cnpj,
+                  // Empresa só faz sentido para imobiliária
+                  company: v === 'imobiliaria' ? f.company : '',
+                }))}
+                disabled={editUser?.id === user?.id}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="imobiliaria">
+                    <span className="flex items-center gap-2"><Building2 className="h-4 w-4" /> Imobiliária</span>
+                  </SelectItem>
+                  <SelectItem value="pessoa_fisica">
+                    <span className="flex items-center gap-2"><User className="h-4 w-4" /> Pessoa Física</span>
+                  </SelectItem>
+                  <SelectItem value="tecnico">
+                    <span className="flex items-center gap-2"><Wrench className="h-4 w-4" /> Profissional</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {editUser?.id === user?.id && (
+                <p className="text-xs text-muted-foreground">Você não pode alterar seu próprio tipo.</p>
+              )}
+              {editForm.role && editUser?.role && editForm.role !== editUser.role && (
+                <p className="text-xs text-amber-600 flex items-start gap-1">
+                  <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                  Atenção: trocar o tipo afeta as permissões e o que o usuário consegue ver.
+                </p>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>Nome Completo *</Label>
               <Input
@@ -1053,25 +1154,40 @@ const GerenciarUsuarios = () => {
               <Label>Telefone</Label>
               <Input
                 value={editForm.phone}
-                onChange={(e) => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                onChange={(e) => setEditForm(f => ({ ...f, phone: maskPhoneBR(e.target.value) }))}
                 placeholder="(11) 99999-9999"
+                inputMode="numeric"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Empresa</Label>
-              <Input
-                value={editForm.company}
-                onChange={(e) => setEditForm(f => ({ ...f, company: e.target.value }))}
-                placeholder="Nome da empresa"
-              />
-            </div>
-            {editUser?.role === 'imobiliaria' && (
+            {editForm.role === 'imobiliaria' && (
+              <div className="space-y-2">
+                <Label>Empresa *</Label>
+                <Input
+                  value={editForm.company}
+                  onChange={(e) => setEditForm(f => ({ ...f, company: e.target.value }))}
+                  placeholder="Nome da imobiliária"
+                />
+              </div>
+            )}
+            {editForm.role === 'imobiliaria' && (
               <div className="space-y-2">
                 <Label>CNPJ</Label>
                 <Input
                   value={editForm.cnpj}
-                  onChange={(e) => setEditForm(f => ({ ...f, cnpj: e.target.value }))}
+                  onChange={(e) => setEditForm(f => ({ ...f, cnpj: maskCNPJ(e.target.value) }))}
                   placeholder="00.000.000/0000-00"
+                  inputMode="numeric"
+                />
+              </div>
+            )}
+            {editForm.role === 'pessoa_fisica' && (
+              <div className="space-y-2">
+                <Label>CPF</Label>
+                <Input
+                  value={editForm.cnpj}
+                  onChange={(e) => setEditForm(f => ({ ...f, cnpj: maskCPF(e.target.value) }))}
+                  placeholder="000.000.000-00"
+                  inputMode="numeric"
                 />
               </div>
             )}
