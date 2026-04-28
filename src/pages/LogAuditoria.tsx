@@ -117,6 +117,26 @@ const LogAuditoria = () => {
           />
         </div>
 
+        {actionFilter && (
+          <div className="mb-4 flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Filtrando por ação:</span>
+            <Badge variant="outline" className={ACTION_LABELS[actionFilter]?.color || ''}>
+              {ACTION_LABELS[actionFilter]?.label || actionFilter}
+            </Badge>
+            <button
+              type="button"
+              className="text-xs underline text-muted-foreground hover:text-foreground"
+              onClick={() => {
+                setActionFilter(null);
+                searchParams.delete('action');
+                setSearchParams(searchParams, { replace: true });
+              }}
+            >
+              Limpar filtro
+            </button>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
