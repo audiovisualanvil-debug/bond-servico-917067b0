@@ -23,8 +23,13 @@ import {
   isValidCPF,
   normalizeCNPJ,
   isValidCNPJ,
+  maskCPF,
+  maskCNPJ,
+  maskPhoneBR,
 } from '@/lib/validators';
 import { useAuditLog } from '@/hooks/useAuditLog';
+import { CreateUserHealthBanner } from '@/components/admin/CreateUserHealthBanner';
+import { Link } from 'react-router-dom';
 
 interface UserWithRole {
   id: string;
