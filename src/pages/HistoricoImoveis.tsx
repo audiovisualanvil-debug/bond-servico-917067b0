@@ -49,9 +49,9 @@ const DATE_FIELD_LABELS: Record<DateField, string> = {
 const periodCutoff = (key: PeriodKey): Date | null => {
   if (key === 'all' || key === 'custom') return null;
   const now = new Date();
-  const map: Record<Exclude<PeriodKey, 'all'>, number> = { '7d': 7, '4w': 28, '3m': 90, '12m': 365 };
+  const map: Record<Exclude<PeriodKey, 'all' | 'custom'>, number> = { '7d': 7, '4w': 28, '3m': 90, '12m': 365 };
   const d = new Date(now);
-  d.setDate(d.getDate() - map[key as Exclude<PeriodKey, 'all' | 'custom'>]);
+  d.setDate(d.getDate() - map[key]);
   return d;
 };
 
