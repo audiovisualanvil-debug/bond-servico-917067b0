@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { 
   Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
   FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck,
-  ChevronLeft, User
+  ChevronLeft, User, ExternalLink, Link2, Download, CalendarRange, Columns3
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useProperties } from '@/hooks/useProperties';
 import { useServiceOrders, useServiceOrdersRealtime } from '@/hooks/useServiceOrders';
 import { StatusBadge } from '@/components/StatusBadge';
@@ -18,14 +18,22 @@ import type { ServiceOrder, OSStatus } from '@/types/serviceOrder';
 import { STATUS_LABELS } from '@/types/serviceOrder';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-type PeriodKey = 'all' | '7d' | '4w' | '3m' | '12m';
+type PeriodKey = 'all' | '7d' | '4w' | '3m' | '12m' | 'custom';
 const PERIOD_LABELS: Record<PeriodKey, string> = {
   all: 'Todo o período',
   '7d': 'Últimos 7 dias',
   '4w': 'Últimas 4 semanas',
   '3m': 'Últimos 3 meses',
   '12m': 'Últimos 12 meses',
+  custom: 'Intervalo personalizado',
 };
 
 type DateField = 'createdAt' | 'quoteSentAt' | 'adminApprovedAt' | 'clientApprovedAt' | 'executionStartedAt' | 'completedAt';
@@ -39,12 +47,25 @@ const DATE_FIELD_LABELS: Record<DateField, string> = {
 };
 
 const periodCutoff = (key: PeriodKey): Date | null => {
-  if (key === 'all') return null;
+  if (key === 'all' || key === 'custom') return null;
   const now = new Date();
-  const map: Record<Exclude<PeriodKey, 'all'>, number> = { '7d': 7, '4w': 28, '3m': 90, '12m': 365 };
+  const map: Record<Exclude<PeriodKey, 'all' | 'custom'>, number> = { '7d': 7, '4w': 28, '3m': 90, '12m': 365 };
   const d = new Date(now);
   d.setDate(d.getDate() - map[key]);
   return d;
+};
+
+type ColumnKey = 'osNumber' | 'problem' | 'requester' | 'status' | 'dates' | 'price';
+const COLUMN_LABELS: Record<ColumnKey, string> = {
+  osNumber: 'Nº da OS',
+  problem: 'Problema',
+  requester: 'Solicitante',
+  status: 'Status',
+  dates: 'Linha do tempo / datas',
+  price: 'Valor final',
+};
+const DEFAULT_COLUMNS: Record<ColumnKey, boolean> = {
+  osNumber: true, problem: true, requester: true, status: true, dates: true, price: true,
 };
 
 const formatDateTime = (d?: Date) =>
@@ -83,8 +104,14 @@ const HistoricoImoveis = () => {
   const [requesterQuery, setRequesterQuery] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
+  const [customStart, setCustomStart] = useState<Date | undefined>(undefined);
+  const [customEnd, setCustomEnd] = useState<Date | undefined>(undefined);
+  const [columns, setColumns] = useState<Record<ColumnKey, boolean>>(DEFAULT_COLUMNS);
+  const [exporting, setExporting] = useState(false);
+  const navigate = useNavigate();
 
   const prefsKey = user ? `historicoImoveis:filters:${user.id}` : null;
+  const colsKey = user ? `historicoImoveis:columns:${user.id}` : null;
 
   // Load saved defaults on mount / user change
   useEffect(() => {
@@ -92,19 +119,44 @@ const HistoricoImoveis = () => {
     try {
       const raw = localStorage.getItem(prefsKey);
       if (!raw) { setHasSavedDefault(false); return; }
-      const parsed = JSON.parse(raw) as { statusFilter?: OSStatus | 'all'; periodFilter?: PeriodKey; dateField?: DateField };
+      const parsed = JSON.parse(raw) as { statusFilter?: OSStatus | 'all'; periodFilter?: PeriodKey; dateField?: DateField; customStart?: string; customEnd?: string };
       if (parsed.statusFilter) setStatusFilter(parsed.statusFilter);
       if (parsed.periodFilter) setPeriodFilter(parsed.periodFilter);
       if (parsed.dateField) setDateField(parsed.dateField);
+      if (parsed.customStart) setCustomStart(new Date(parsed.customStart));
+      if (parsed.customEnd) setCustomEnd(new Date(parsed.customEnd));
       setHasSavedDefault(true);
     } catch {
       setHasSavedDefault(false);
     }
   }, [prefsKey]);
 
+  // Load saved columns
+  useEffect(() => {
+    if (!colsKey) return;
+    try {
+      const raw = localStorage.getItem(colsKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<Record<ColumnKey, boolean>>;
+      setColumns({ ...DEFAULT_COLUMNS, ...parsed });
+    } catch { /* ignore */ }
+  }, [colsKey]);
+
+  const toggleColumn = (k: ColumnKey, value: boolean) => {
+    setColumns(prev => {
+      const next = { ...prev, [k]: value };
+      if (colsKey) localStorage.setItem(colsKey, JSON.stringify(next));
+      return next;
+    });
+  };
+
   const saveDefaults = () => {
     if (!prefsKey) return;
-    localStorage.setItem(prefsKey, JSON.stringify({ statusFilter, periodFilter, dateField }));
+    localStorage.setItem(prefsKey, JSON.stringify({
+      statusFilter, periodFilter, dateField,
+      customStart: customStart?.toISOString(),
+      customEnd: customEnd?.toISOString(),
+    }));
     setHasSavedDefault(true);
     toast.success('Filtros salvos como padrão para o seu usuário');
   };
@@ -138,8 +190,20 @@ const HistoricoImoveis = () => {
   // Orders filtered by period + base date + search (but NOT by status) — used for status counters
   const ordersBeforeStatus = allPropertyOrders
     .filter(os => {
-      if (!cutoff) return true;
       const d = os[dateField] as Date | null | undefined;
+      if (periodFilter === 'custom') {
+        if (!customStart && !customEnd) return true;
+        if (!d) return false;
+        if (customStart && d.getTime() < customStart.getTime()) return false;
+        if (customEnd) {
+          // include the full end day
+          const end = new Date(customEnd);
+          end.setHours(23, 59, 59, 999);
+          if (d.getTime() > end.getTime()) return false;
+        }
+        return true;
+      }
+      if (!cutoff) return true;
       if (!d) return false;
       return d.getTime() >= cutoff.getTime();
     })
@@ -202,7 +266,86 @@ const HistoricoImoveis = () => {
       const db = (b[dateField] as Date | null | undefined)?.getTime() ?? b.createdAt.getTime();
       return db - da;
     });
-  const filtersActive = statusFilter !== 'all' || periodFilter !== 'all' || dateField !== 'createdAt';
+  const filtersActive = statusFilter !== 'all' || periodFilter !== 'all' || dateField !== 'createdAt' || !!customStart || !!customEnd;
+
+  const copyOrderLink = async (order: ServiceOrder) => {
+    const url = `${window.location.origin}/ordens/${order.id}`;
+    const text = `${order.osNumber ?? order.id} — ${url}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Link da OS copiado');
+    } catch {
+      toast.error('Não foi possível copiar o link');
+    }
+  };
+
+  const exportHistoryPdf = async () => {
+    if (!selectedProperty) return;
+    setExporting(true);
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const periodLabel = periodFilter === 'custom'
+        ? `${customStart ? format(customStart, 'dd/MM/yyyy', { locale: ptBR }) : '—'} a ${customEnd ? format(customEnd, 'dd/MM/yyyy', { locale: ptBR }) : '—'}`
+        : PERIOD_LABELS[periodFilter];
+      const statusLabel = statusFilter === 'all' ? 'Todos' : STATUS_LABELS[statusFilter];
+      const rows = propertyOrders.map(o => `
+        <tr>
+          <td style="padding:6px;border:1px solid #ddd;font-weight:600;color:#1a56db;">${o.osNumber ?? '-'}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${(o.problem ?? '').replace(/</g, '&lt;')}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${(o.requesterName ?? '-').replace(/</g, '&lt;')}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${STATUS_LABELS[o.status]}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${formatDateShort(o.createdAt)}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${o.completedAt ? formatDateShort(o.completedAt) : '-'}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${o.finalPrice ? 'R$ ' + o.finalPrice.toFixed(2) : '-'}</td>
+        </tr>
+      `).join('');
+      const html = `
+        <div style="font-family: Arial, sans-serif; padding:24px; color:#111;">
+          <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${selectedProperty.address}</h1>
+          <p style="margin:0 0 12px 0; color:#555; font-size:12px;">
+            ${selectedProperty.neighborhood}, ${selectedProperty.city} - ${selectedProperty.state}
+          </p>
+          <p style="margin:0 0 12px 0; font-size:12px;">
+            <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
+            <strong>Status:</strong> ${statusLabel} ·
+            <strong>Total:</strong> ${propertyOrders.length} OS
+            ${orderQuery ? ` · <strong>Busca:</strong> "${orderQuery}"` : ''}
+            ${requesterQuery ? ` · <strong>Solicitante:</strong> "${requesterQuery}"` : ''}
+          </p>
+          <table style="width:100%; border-collapse:collapse; font-size:11px;">
+            <thead>
+              <tr style="background:#f3f4f6;">
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Nº OS</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Problema</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Solicitante</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Status</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Aberto em</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Concluído em</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Valor</th>
+              </tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="7" style="padding:12px;text-align:center;color:#888;">Nenhuma OS no filtro</td></tr>'}</tbody>
+          </table>
+          <p style="margin-top:16px; font-size:10px; color:#888;">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
+        </div>
+      `;
+      const container = document.createElement('div');
+      container.innerHTML = html;
+      await html2pdf().set({
+        margin: 10,
+        filename: `historico-${(selectedProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+      }).from(container).save();
+      toast.success('PDF gerado com sucesso');
+    } catch (e) {
+      console.error(e);
+      toast.error('Falha ao gerar PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const totalPages = Math.max(1, Math.ceil(propertyOrders.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -385,15 +528,76 @@ const HistoricoImoveis = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      {periodFilter === 'custom' && (
+                        <div className="flex items-center gap-1">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-9">
+                                <CalendarRange className="h-4 w-4 mr-1" />
+                                {customStart ? format(customStart, 'dd/MM/yyyy', { locale: ptBR }) : 'Início'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={customStart} onSelect={setCustomStart} initialFocus className={cn('p-3 pointer-events-auto')} locale={ptBR} />
+                            </PopoverContent>
+                          </Popover>
+                          <span className="text-xs text-muted-foreground">até</span>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-9">
+                                <CalendarRange className="h-4 w-4 mr-1" />
+                                {customEnd ? format(customEnd, 'dd/MM/yyyy', { locale: ptBR }) : 'Fim'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={customEnd} onSelect={setCustomEnd} initialFocus className={cn('p-3 pointer-events-auto')} locale={ptBR} />
+                            </PopoverContent>
+                          </Popover>
+                          {(customStart || customEnd) && (
+                            <Button variant="ghost" size="sm" onClick={() => { setCustomStart(undefined); setCustomEnd(undefined); }}>
+                              ✕
+                            </Button>
+                          )}
+                        </div>
+                      )}
                       {filtersActive && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => { setStatusFilter('all'); setPeriodFilter('all'); setDateField('createdAt'); }}
+                          onClick={() => { setStatusFilter('all'); setPeriodFilter('all'); setDateField('createdAt'); setCustomStart(undefined); setCustomEnd(undefined); }}
                         >
                           Limpar
                         </Button>
                       )}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" title="Escolher colunas visíveis">
+                            <Columns3 className="h-4 w-4 mr-1" /> Colunas
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-56">
+                          <p className="text-xs font-semibold mb-2 text-muted-foreground">Colunas visíveis</p>
+                          <div className="space-y-2">
+                            {(Object.keys(COLUMN_LABELS) as ColumnKey[]).map(k => (
+                              <div key={k} className="flex items-center gap-2">
+                                <Checkbox id={`col-${k}`} checked={columns[k]} onCheckedChange={(v) => toggleColumn(k, !!v)} />
+                                <Label htmlFor={`col-${k}`} className="text-sm cursor-pointer">{COLUMN_LABELS[k]}</Label>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-2">Sua preferência é salva automaticamente.</p>
+                        </PopoverContent>
+                      </Popover>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportHistoryPdf}
+                        disabled={exporting || propertyOrders.length === 0}
+                        title="Exportar histórico filtrado em PDF"
+                      >
+                        {exporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
+                        Exportar PDF
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -484,27 +688,52 @@ const HistoricoImoveis = () => {
                           <div key={order.id} className="border border-border rounded-lg p-4 bg-card">
                             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-primary">{order.osNumber}</span>
-                                <StatusBadge status={order.status} />
+                                {columns.osNumber && <span className="font-semibold text-primary">{order.osNumber}</span>}
+                                {columns.status && <StatusBadge status={order.status} />}
+                                {columns.requester && order.requesterName && (
+                                  <span className="text-xs text-muted-foreground">· {order.requesterName}</span>
+                                )}
                               </div>
-                              <div className="flex items-center gap-3">
-                                {order.finalPrice && role !== 'tecnico' && (
+                              <div className="flex items-center gap-2">
+                                {columns.price && order.finalPrice && role !== 'tecnico' && (
                                   <span className="text-sm font-semibold text-foreground">R$ {order.finalPrice.toFixed(2)}</span>
                                 )}
-                                <Button variant="link" className="p-0 h-auto text-xs" asChild>
-                                  <Link to={`/ordens/${order.id}`}>Ver detalhes →</Link>
-                                </Button>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/ordens/${order.id}`)}>
+                                      <ExternalLink className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Abrir OS</TooltipContent>
+                                </Tooltip>
                                 {order.status === 'concluido' && order.completionReport && (
-                                  <Button variant="link" className="p-0 h-auto text-xs text-status-completed" asChild>
-                                    <Link to={`/ordens/${order.id}/relatorio`}>
-                                      <FileText className="h-3 w-3" /> Relatório
-                                    </Link>
-                                  </Button>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-status-completed"
+                                        onClick={() => window.open(`/ordens/${order.id}/relatorio`, '_blank', 'noopener')}
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Baixar relatório PDF</TooltipContent>
+                                  </Tooltip>
                                 )}
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyOrderLink(order)}>
+                                      <Link2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Copiar link / ID</TooltipContent>
+                                </Tooltip>
                               </div>
                             </div>
-                            <p className="text-sm text-foreground mb-4">{order.problem}</p>
+                            {columns.problem && <p className="text-sm text-foreground mb-4">{order.problem}</p>}
 
+                            {columns.dates && (
                             <ol className="relative space-y-3 pl-2">
                               {steps.map((step, i) => {
                                 const Icon = step.icon;
@@ -533,6 +762,7 @@ const HistoricoImoveis = () => {
                                 );
                               })}
                             </ol>
+                            )}
                           </div>
                         );
                       })}
