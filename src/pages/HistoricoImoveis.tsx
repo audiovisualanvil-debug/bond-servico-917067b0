@@ -12,7 +12,26 @@ import { Link } from 'react-router-dom';
 import { useProperties } from '@/hooks/useProperties';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { StatusBadge } from '@/components/StatusBadge';
-import type { ServiceOrder } from '@/types/serviceOrder';
+import type { ServiceOrder, OSStatus } from '@/types/serviceOrder';
+import { STATUS_LABELS } from '@/types/serviceOrder';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+type PeriodKey = 'all' | '7d' | '4w' | '3m' | '12m';
+const PERIOD_LABELS: Record<PeriodKey, string> = {
+  all: 'Todo o período',
+  '7d': 'Últimos 7 dias',
+  '4w': 'Últimas 4 semanas',
+  '3m': 'Últimos 3 meses',
+  '12m': 'Últimos 12 meses',
+};
+const periodCutoff = (key: PeriodKey): Date | null => {
+  if (key === 'all') return null;
+  const now = new Date();
+  const map: Record<Exclude<PeriodKey, 'all'>, number> = { '7d': 7, '4w': 28, '3m': 90, '12m': 365 };
+  const d = new Date(now);
+  d.setDate(d.getDate() - map[key]);
+  return d;
+};
 
 const formatDateTime = (d?: Date) =>
   d ? d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
@@ -37,6 +56,8 @@ const HistoricoImoveis = () => {
   const { user, role } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<OSStatus | 'all'>('all');
+  const [periodFilter, setPeriodFilter] = useState<PeriodKey>('all');
 
   const { data: properties = [], isLoading: propertiesLoading } = useProperties();
   const { data: allOrders = [], isLoading: ordersLoading } = useServiceOrders();
@@ -53,11 +74,15 @@ const HistoricoImoveis = () => {
     );
   });
 
-  const propertyOrders = selectedPropertyId
-    ? allOrders
-        .filter(os => os.propertyId === selectedPropertyId)
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+  const cutoff = periodCutoff(periodFilter);
+  const allPropertyOrders = selectedPropertyId
+    ? allOrders.filter(os => os.propertyId === selectedPropertyId)
     : [];
+  const propertyOrders = allPropertyOrders
+    .filter(os => statusFilter === 'all' || os.status === statusFilter)
+    .filter(os => !cutoff || os.createdAt.getTime() >= cutoff.getTime())
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  const filtersActive = statusFilter !== 'all' || periodFilter !== 'all';
 
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
 
