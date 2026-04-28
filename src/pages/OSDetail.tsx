@@ -104,6 +104,17 @@ const OSDetail = () => {
 
   // ---------- Handlers ----------
 
+  const notifyStatus = async (newStatus: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('notify-status-change', {
+        body: { serviceOrderId: order!.id, newStatus },
+      });
+      if (error) console.warn('[notify-status-change] erro:', error.message);
+    } catch (e: any) {
+      console.warn('[notify-status-change] falha de rede:', e?.message);
+    }
+  };
+
   const handleTechnicianSubmit = async () => {
     if (!techQuote.description.trim()) { toast.error('Preencha a descrição do serviço'); return; }
     const totalCost = techQuote.laborCost + techQuote.materialCost + techQuote.taxCost;
@@ -116,7 +127,7 @@ const OSDetail = () => {
         estimated_deadline: techQuote.deadline, status: 'aguardando_aprovacao_admin',
         quote_sent_at: new Date().toISOString(),
       });
-      supabase.functions.invoke('notify-status-change', { body: { serviceOrderId: order.id, newStatus: 'aguardando_aprovacao_admin' } }).catch(console.error);
+      notifyStatus('aguardando_aprovacao_admin');
       toast.success('Orçamento enviado!');
     } catch (e: any) { toast.error('Erro ao enviar orçamento', { description: e.message }); }
   };
