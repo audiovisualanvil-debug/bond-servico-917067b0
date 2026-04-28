@@ -528,15 +528,76 @@ const HistoricoImoveis = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      {periodFilter === 'custom' && (
+                        <div className="flex items-center gap-1">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-9">
+                                <CalendarRange className="h-4 w-4 mr-1" />
+                                {customStart ? format(customStart, 'dd/MM/yyyy', { locale: ptBR }) : 'Início'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={customStart} onSelect={setCustomStart} initialFocus className={cn('p-3 pointer-events-auto')} locale={ptBR} />
+                            </PopoverContent>
+                          </Popover>
+                          <span className="text-xs text-muted-foreground">até</span>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="h-9">
+                                <CalendarRange className="h-4 w-4 mr-1" />
+                                {customEnd ? format(customEnd, 'dd/MM/yyyy', { locale: ptBR }) : 'Fim'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={customEnd} onSelect={setCustomEnd} initialFocus className={cn('p-3 pointer-events-auto')} locale={ptBR} />
+                            </PopoverContent>
+                          </Popover>
+                          {(customStart || customEnd) && (
+                            <Button variant="ghost" size="sm" onClick={() => { setCustomStart(undefined); setCustomEnd(undefined); }}>
+                              ✕
+                            </Button>
+                          )}
+                        </div>
+                      )}
                       {filtersActive && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => { setStatusFilter('all'); setPeriodFilter('all'); setDateField('createdAt'); }}
+                          onClick={() => { setStatusFilter('all'); setPeriodFilter('all'); setDateField('createdAt'); setCustomStart(undefined); setCustomEnd(undefined); }}
                         >
                           Limpar
                         </Button>
                       )}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" title="Escolher colunas visíveis">
+                            <Columns3 className="h-4 w-4 mr-1" /> Colunas
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-56">
+                          <p className="text-xs font-semibold mb-2 text-muted-foreground">Colunas visíveis</p>
+                          <div className="space-y-2">
+                            {(Object.keys(COLUMN_LABELS) as ColumnKey[]).map(k => (
+                              <div key={k} className="flex items-center gap-2">
+                                <Checkbox id={`col-${k}`} checked={columns[k]} onCheckedChange={(v) => toggleColumn(k, !!v)} />
+                                <Label htmlFor={`col-${k}`} className="text-sm cursor-pointer">{COLUMN_LABELS[k]}</Label>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-2">Sua preferência é salva automaticamente.</p>
+                        </PopoverContent>
+                      </Popover>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportHistoryPdf}
+                        disabled={exporting || propertyOrders.length === 0}
+                        title="Exportar histórico filtrado em PDF"
+                      >
+                        {exporting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}
+                        Exportar PDF
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
