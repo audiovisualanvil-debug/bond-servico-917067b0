@@ -208,8 +208,49 @@ serve(async (req) => {
       const newRole = body.role;
       const allowed = ["admin", "tecnico", "imobiliaria", "pessoa_fisica"];
       if (!newRole || !allowed.includes(newRole)) {
-        throw new Error("Role inválido");
+        return errorResponse(
+          "Tipo de usuário inválido. Use admin, tecnico, imobiliaria ou pessoa_fisica.",
+          400,
+          { field: "role" }
+        );
       }
+
+      // Prevent admin from removing their own admin role (lockout protection)
+      if (user_id === caller.id && newRole !== "admin") {
+        return errorResponse(
+          "Você não pode alterar seu próprio tipo de usuário.",
+          400,
+          { field: "role" }
+        );
+      }
+
+      // Validate that profile document matches the new role
+      const { data: profile } = await adminClient
+        .from("profiles")
+        .select("cnpj, company")
+        .eq("id", user_id)
+        .maybeSingle();
+
+      const docDigits = onlyDigits(profile?.cnpj || "");
+
+      if (newRole === "imobiliaria") {
+        if (docDigits && !isValidCNPJ(docDigits)) {
+          return errorResponse(
+            "Para mudar para Imobiliária, o CNPJ cadastrado precisa ser válido (14 dígitos). Atualize o CNPJ antes de alterar o tipo.",
+            400,
+            { field: "cnpj" }
+          );
+        }
+      } else if (newRole === "pessoa_fisica") {
+        if (docDigits && !isValidCPF(docDigits)) {
+          return errorResponse(
+            "Para mudar para Pessoa Física, o CPF cadastrado precisa ser válido (11 dígitos). Atualize o CPF antes de alterar o tipo.",
+            400,
+            { field: "cnpj" }
+          );
+        }
+      }
+
       // Replace user's role(s) atomically: delete existing, insert new
       const { error: delErr } = await adminClient
         .from("user_roles")
