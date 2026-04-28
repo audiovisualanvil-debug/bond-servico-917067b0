@@ -121,11 +121,12 @@ const GerenciarUsuarios = () => {
 
     setIsCreating(true);
     try {
-      const response = await supabase.functions.invoke('create-user', {
+      console.log('[create-user] invoking with role=', form.role, 'email=', form.email);
+      const invokePromise = supabase.functions.invoke('create-user', {
         body: {
-          email: form.email,
+          email: form.email.trim().toLowerCase(),
           password: form.password,
-          name: form.name,
+          name: form.name.trim(),
           phone: form.phone || undefined,
           company: form.company || undefined,
           cnpj: form.cnpj || undefined,
@@ -133,6 +134,17 @@ const GerenciarUsuarios = () => {
         },
       });
 
+      const response = await Promise.race([
+        invokePromise,
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Tempo esgotado (30s). Tente novamente ou verifique se o e-mail já está em uso.')),
+            30000
+          )
+        ),
+      ]) as Awaited<typeof invokePromise>;
+
+      console.log('[create-user] response', response);
       if (response.error) throw new Error(response.error.message);
       if (response.data?.error) throw new Error(response.data.error);
 
@@ -140,6 +152,7 @@ const GerenciarUsuarios = () => {
       setForm({ email: '', password: '', name: '', phone: '', company: '', cnpj: '', role: '' });
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     } catch (err: any) {
+      console.error('[create-user] error', err);
       toast.error(err.message || 'Erro ao criar usuário');
     } finally {
       setIsCreating(false);
