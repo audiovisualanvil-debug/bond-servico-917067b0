@@ -266,7 +266,7 @@ const HistoricoImoveis = () => {
       const db = (b[dateField] as Date | null | undefined)?.getTime() ?? b.createdAt.getTime();
       return db - da;
     });
-  const filtersActive = statusFilter !== 'all' || periodFilter !== 'all' || dateField !== 'createdAt';
+  const filtersActive = statusFilter !== 'all' || periodFilter !== 'all' || dateField !== 'createdAt' || !!customStart || !!customEnd;
 
   const copyOrderLink = async (order: ServiceOrder) => {
     const url = `${window.location.origin}/ordens/${order.id}`;
