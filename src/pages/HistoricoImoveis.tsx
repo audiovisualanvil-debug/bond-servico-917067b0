@@ -128,8 +128,8 @@ const HistoricoImoveis = () => {
   const allPropertyOrders = selectedPropertyId
     ? allOrders.filter(os => os.propertyId === selectedPropertyId)
     : [];
-  const propertyOrders = allPropertyOrders
-    .filter(os => statusFilter === 'all' || os.status === statusFilter)
+  // Orders filtered by period + base date + search (but NOT by status) — used for status counters
+  const ordersBeforeStatus = allPropertyOrders
     .filter(os => {
       if (!cutoff) return true;
       const d = os[dateField] as Date | null | undefined;
@@ -144,7 +144,15 @@ const HistoricoImoveis = () => {
         (os.problem ?? '').toLowerCase().includes(q) ||
         (os.requesterName ?? '').toLowerCase().includes(q)
       );
-    })
+    });
+
+  const statusCounts = ordersBeforeStatus.reduce<Record<string, number>>((acc, os) => {
+    acc[os.status] = (acc[os.status] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const propertyOrders = ordersBeforeStatus
+    .filter(os => statusFilter === 'all' || os.status === statusFilter)
     .sort((a, b) => {
       const da = (a[dateField] as Date | null | undefined)?.getTime() ?? a.createdAt.getTime();
       const db = (b[dateField] as Date | null | undefined)?.getTime() ?? b.createdAt.getTime();
@@ -292,13 +300,23 @@ const HistoricoImoveis = () => {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as OSStatus | 'all')}>
-                        <SelectTrigger className="h-9 w-[210px]">
+                        <SelectTrigger className="h-9 w-[260px]">
                           <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">Todos os status</SelectItem>
+                          <SelectItem value="all">
+                            <span className="flex items-center justify-between gap-3 w-full">
+                              <span>Todos os status</span>
+                              <span className="text-xs text-muted-foreground">{ordersBeforeStatus.length}</span>
+                            </span>
+                          </SelectItem>
                           {(Object.keys(STATUS_LABELS) as OSStatus[]).map((s) => (
-                            <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                            <SelectItem key={s} value={s}>
+                              <span className="flex items-center justify-between gap-3 w-full">
+                                <span>{STATUS_LABELS[s]}</span>
+                                <span className="text-xs text-muted-foreground">{statusCounts[s] ?? 0}</span>
+                              </span>
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -346,6 +364,41 @@ const HistoricoImoveis = () => {
                         </Button>
                       )}
                     </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilter('all')}
+                      className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                        statusFilter === 'all'
+                          ? 'bg-primary/10 border-primary/30 text-primary font-medium'
+                          : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      Todos <span className="ml-1 font-semibold">{ordersBeforeStatus.length}</span>
+                    </button>
+                    {(Object.keys(STATUS_LABELS) as OSStatus[]).map((s) => {
+                      const count = statusCounts[s] ?? 0;
+                      const active = statusFilter === s;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setStatusFilter(active ? 'all' : s)}
+                          disabled={count === 0 && !active}
+                          className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                            active
+                              ? 'bg-primary/10 border-primary/30 text-primary font-medium'
+                              : count === 0
+                                ? 'bg-secondary/40 border-border text-muted-foreground/50 cursor-not-allowed'
+                                : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
+                          }`}
+                        >
+                          {STATUS_LABELS[s]} <span className="ml-1 font-semibold">{count}</span>
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {propertyOrders.length > 0 ? (
