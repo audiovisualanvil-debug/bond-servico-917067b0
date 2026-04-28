@@ -125,6 +125,72 @@ serve(async (req) => {
         throw new Error("Nome não pode ser vazio");
       }
 
+      // Validate name length
+      if (updates.name !== undefined && (updates.name as string).length > 120) {
+        return errorResponse("Nome muito longo (máximo 120 caracteres)", 400, { field: "name" });
+      }
+
+      // Validate phone format if provided (non-null)
+      if (updates.phone && !isValidPhoneBR(updates.phone as string)) {
+        return errorResponse(
+          "Telefone inválido. Use formato (DDD) número, com 10 ou 11 dígitos.",
+          400,
+          { field: "phone" }
+        );
+      }
+
+      // Validate CPF/CNPJ against the user's current role
+      if (updates.cnpj) {
+        const docDigits = onlyDigits(updates.cnpj as string);
+        const { data: currentRoles } = await adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user_id);
+        const roles = (currentRoles || []).map((r) => r.role);
+        const isImob = roles.includes("imobiliaria");
+        const isPF = roles.includes("pessoa_fisica");
+
+        if (isImob) {
+          if (!isValidCNPJ(docDigits)) {
+            return errorResponse(
+              "CNPJ inválido. Verifique os 14 dígitos e os dígitos verificadores.",
+              400,
+              { field: "cnpj" }
+            );
+          }
+          updates.cnpj = docDigits;
+        } else if (isPF) {
+          if (!isValidCPF(docDigits)) {
+            return errorResponse(
+              "CPF inválido. Verifique os 11 dígitos e os dígitos verificadores.",
+              400,
+              { field: "cnpj" }
+            );
+          }
+          updates.cnpj = docDigits;
+        }
+        // admin/tecnico: aceita valor livre, mas grava só dígitos se houver
+        else if (docDigits.length > 0) {
+          updates.cnpj = docDigits;
+        }
+      }
+
+      // Imobiliária: empresa obrigatória se vier vazia explicitamente
+      if (updates.company !== undefined && updates.company === null) {
+        const { data: currentRoles } = await adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user_id);
+        const roles = (currentRoles || []).map((r) => r.role);
+        if (roles.includes("imobiliaria")) {
+          return errorResponse(
+            "Nome da empresa é obrigatório para Imobiliária.",
+            400,
+            { field: "company" }
+          );
+        }
+      }
+
       const { error } = await adminClient
         .from("profiles")
         .update(updates)
