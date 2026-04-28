@@ -89,7 +89,7 @@ const GerenciarUsuarios = () => {
 
   // Edit dialog state
   const [editUser, setEditUser] = useState<UserWithRole | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', phone: '', company: '', cnpj: '' });
+  const [editForm, setEditForm] = useState({ name: '', phone: '', company: '', cnpj: '', role: '' as string });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Ban/unban confirm dialog
@@ -479,7 +479,19 @@ const GerenciarUsuarios = () => {
   };
 
   const handleOpenEdit = (u: UserWithRole) => {
-    setEditForm({ name: u.name, phone: u.phone || '', company: u.company || '', cnpj: u.cnpj || '' });
+    // Aplica máscara conforme role
+    const maskedDoc = u.role === 'imobiliaria'
+      ? maskCNPJ(u.cnpj || '')
+      : u.role === 'pessoa_fisica'
+      ? maskCPF(u.cnpj || '')
+      : (u.cnpj || '');
+    setEditForm({
+      name: u.name,
+      phone: maskPhoneBR(u.phone || ''),
+      company: u.company || '',
+      cnpj: maskedDoc,
+      role: u.role,
+    });
     setEditUser(u);
   };
 
@@ -490,16 +502,61 @@ const GerenciarUsuarios = () => {
       return;
     }
 
+    // Validações específicas por role
+    let normalizedDoc: string | null = null;
+    if (editForm.role === 'imobiliaria') {
+      if (!editForm.company.trim()) {
+        toast.error('Empresa é obrigatória para Imobiliária');
+        return;
+      }
+      if (editForm.cnpj.trim()) {
+        const n = normalizeCNPJ(editForm.cnpj);
+        if (!isValidCNPJ(n)) {
+          toast.error('CNPJ inválido', { description: 'O CNPJ deve ter 14 dígitos.' });
+          return;
+        }
+        normalizedDoc = n;
+      }
+    } else if (editForm.role === 'pessoa_fisica') {
+      if (editForm.cnpj.trim()) {
+        const n = normalizeCPF(editForm.cnpj);
+        if (!isValidCPF(n)) {
+          toast.error('CPF inválido', {
+            description: 'Verifique se o CPF tem 11 dígitos e os dígitos verificadores estão corretos.',
+          });
+          return;
+        }
+        normalizedDoc = n;
+      }
+    } else {
+      // admin/tecnico — mantém valor digitado sem máscara
+      normalizedDoc = editForm.cnpj.trim() || null;
+    }
+
     setIsSavingEdit(true);
     try {
+      // 1) Se o role mudou, atualiza primeiro
+      if (editForm.role && editForm.role !== editUser.role) {
+        const roleResp = await supabase.functions.invoke('manage-user', {
+          body: {
+            action: 'change_role',
+            user_id: editUser.id,
+            role: editForm.role,
+          },
+        });
+        if (roleResp.error) throw new Error(roleResp.error.message);
+        if (roleResp.data?.error) throw new Error(roleResp.data.error);
+      }
+
+      // 2) Atualiza dados de perfil
       const response = await supabase.functions.invoke('manage-user', {
         body: {
           action: 'update',
           user_id: editUser.id,
           name: editForm.name,
           phone: editForm.phone,
-          company: editForm.company,
-          cnpj: editForm.cnpj,
+          company: editForm.role === 'imobiliaria' ? editForm.company : '',
+          cnpj: normalizedDoc ?? '',
         },
       });
 
