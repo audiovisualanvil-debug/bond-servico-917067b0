@@ -152,9 +152,18 @@ const GerenciarUsuarios = () => {
     cnpj?: string;
     role: string;
   }) => {
+    // Cancel any pending auto-retry from a previous attempt
+    if (retryTimerRef.current) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    // Abort any previous in-flight request (defensive)
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setIsCreating(true);
     const TIMEOUT_MS = 30000;
-    const TIMEOUT_SENTINEL = Symbol('timeout');
     const startedAtMs = Date.now();
     const startedAt = new Date(startedAtMs).toISOString();
     setElapsedMs(0);
@@ -164,6 +173,23 @@ const GerenciarUsuarios = () => {
       email: payload.email,
       role: payload.role,
     });
+
+    // Auto-retry only ONCE per email+role combination, on transient network errors.
+    const retryKey = `${payload.email}|${payload.role}`;
+    const scheduleAutoRetry = (reason: string) => {
+      if (autoRetriedRef.current.has(retryKey)) return false;
+      autoRetriedRef.current.add(retryKey);
+      console.log('[create-user] auto-retry agendado em 2s, motivo:', reason);
+      toast.info('Tentando novamente em 2s…', {
+        description: 'Falha de conexão temporária.',
+      });
+      retryTimerRef.current = window.setTimeout(() => {
+        retryTimerRef.current = null;
+        void performCreateUser(payload);
+      }, 2000);
+      return true;
+    };
+
     const retryFn = () => {
       void performCreateUser(payload);
     };
@@ -223,10 +249,28 @@ const GerenciarUsuarios = () => {
       });
     };
 
+    // Hard-abort timeout (also aborts the network request, not just the promise)
+    const timeoutId = window.setTimeout(() => controller.abort(), TIMEOUT_MS);
+
     try {
       console.log('[create-user] invoking with role=', payload.role, 'email=', payload.email);
-      const invokePromise = supabase.functions.invoke('create-user', {
-        body: {
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
+      const FUNCTIONS_BASE = `${import.meta.env.VITE_SUPABASE_URL || 'https://qdjnmmnageildowekqly.supabase.co'}/functions/v1`;
+
+      const httpResp = await fetch(`${FUNCTIONS_BASE}/create-user`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
+        },
+        body: JSON.stringify({
           email: payload.email,
           password: payload.password,
           name: payload.name,
@@ -234,25 +278,24 @@ const GerenciarUsuarios = () => {
           company: payload.company || undefined,
           cnpj: payload.cnpj || undefined,
           role: payload.role,
-        },
+        }),
       });
 
-      const raceResult: any = await Promise.race([
-        invokePromise,
-        new Promise((resolve) => setTimeout(() => resolve(TIMEOUT_SENTINEL), TIMEOUT_MS)),
-      ]);
+      window.clearTimeout(timeoutId);
 
-      if (raceResult === TIMEOUT_SENTINEL) {
-        logOutcome('error', { reason: 'timeout', timeout_ms: TIMEOUT_MS });
-        setError('timeout', 'A solicitação demorou mais de 30s.');
-        showRetryToast(
-          'Tempo esgotado (30s)',
-          'A solicitação demorou demais. Verifique sua conexão.'
-        );
-        return;
+      let parsed: any = null;
+      try {
+        parsed = await httpResp.json();
+      } catch {
+        parsed = null;
       }
 
-      const response = raceResult as Awaited<typeof invokePromise>;
+      const response = {
+        data: httpResp.ok ? parsed : parsed,
+        error: httpResp.ok ? null : { message: parsed?.message || parsed?.error || `HTTP ${httpResp.status}` },
+        status: httpResp.status,
+      } as { data: any; error: { message: string } | null; status: number };
+
       console.log('[create-user] response', response);
 
       const dataErrorCode = response.data?.error;
@@ -271,21 +314,14 @@ const GerenciarUsuarios = () => {
       if (response.error) {
         const errMsg = String(response.error.message || response.error);
         const lower = errMsg.toLowerCase();
-        if (
-          lower.includes('failed to fetch') ||
-          lower.includes('network') ||
-          lower.includes('cors') ||
-          lower.includes('load failed')
-        ) {
-          logOutcome('error', { reason: 'network', message: errMsg });
-          setError('network', 'Falha de conexão com o servidor.');
-          showRetryToast(
-            'Falha de conexão',
-            'Não foi possível alcançar o servidor. Verifique sua internet.'
-          );
+        if (response.status >= 500 || response.status === 0) {
+          logOutcome('error', { reason: 'server_error', message: dataMessage || errMsg, status: response.status });
+          if (scheduleAutoRetry('server_error')) return;
+          setError('server_error', dataMessage || errMsg);
+          showRetryToast('Erro do servidor', dataMessage || errMsg);
           return;
         }
-        if (lower.includes('non-2xx') || lower.includes('functionshttperror')) {
+        if (response.status >= 400 && response.status < 500) {
           logOutcome('error', { reason: 'server_error', message: dataMessage || errMsg });
           setError('server_error', dataMessage || errMsg);
           showRetryToast('Erro do servidor', dataMessage || errMsg);
@@ -311,15 +347,29 @@ const GerenciarUsuarios = () => {
         userId: response.data?.user_id,
         durationMs: Date.now() - startedAtMs,
       });
+      autoRetriedRef.current.delete(retryKey);
       toast.success(`Usuário ${payload.name} criado com sucesso!`);
       setForm({ email: '', password: '', name: '', phone: '', company: '', cnpj: '', role: '' });
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     } catch (err: any) {
+      window.clearTimeout(timeoutId);
       console.error('[create-user] error', err);
       const msg = String(err?.message || err || '');
       const lower = msg.toLowerCase();
+      const isAbort = err?.name === 'AbortError' || lower.includes('abort');
+      if (isAbort) {
+        // Could be timeout (we aborted) or unmount
+        const wasTimeout = Date.now() - startedAtMs >= TIMEOUT_MS - 500;
+        if (wasTimeout) {
+          logOutcome('error', { reason: 'timeout', timeout_ms: TIMEOUT_MS });
+          setError('timeout', 'A solicitação demorou mais de 30s e foi cancelada.');
+          showRetryToast('Tempo esgotado (30s)', 'A solicitação foi cancelada. Verifique sua conexão.');
+        }
+        return;
+      }
       if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('cors')) {
         logOutcome('error', { reason: 'network_exception', message: msg });
+        if (scheduleAutoRetry('network_exception')) return;
         setError('network_exception', msg || 'Falha de rede inesperada.');
         showRetryToast(
           'Falha de conexão',
@@ -331,6 +381,7 @@ const GerenciarUsuarios = () => {
         showRetryToast('Erro ao criar usuário', msg || 'Erro inesperado');
       }
     } finally {
+      abortRef.current = null;
       setIsCreating(false);
     }
   };
