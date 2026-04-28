@@ -305,9 +305,16 @@ const GerenciarUsuarios = () => {
         logOutcome('error', { reason: 'email_already_in_use', message: dataMessage });
         setError('email_already_in_use', dataMessage || `O e-mail ${payload.email} já existe.`);
         // Não retentar — não vai mudar o resultado
+        const conflict = users.find(u => u.email.toLowerCase() === payload.email.toLowerCase());
         toast.error('E-mail já cadastrado', {
           description: dataMessage || `O e-mail ${payload.email} já existe no sistema.`,
+          duration: 10000,
+          action: conflict
+            ? { label: 'Editar existente', onClick: () => handleOpenEdit(conflict) }
+            : undefined,
         });
+        // Atualiza a lista para garantir que o usuário existente apareça
+        queryClient.invalidateQueries({ queryKey: ['admin-users'] });
         return;
       }
 
