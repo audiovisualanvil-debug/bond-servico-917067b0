@@ -726,8 +726,9 @@ const GerenciarUsuarios = () => {
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       value={form.phone}
-                      onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+                      onChange={(e) => setForm(f => ({ ...f, phone: maskPhoneBR(e.target.value) }))}
                       placeholder="(11) 99999-9999"
+                      inputMode="numeric"
                       className="pl-10"
                     />
                   </div>
@@ -751,11 +752,24 @@ const GerenciarUsuarios = () => {
                       <Label>CNPJ *</Label>
                       <Input
                         value={form.cnpj}
-                        onChange={(e) => setForm(f => ({ ...f, cnpj: e.target.value }))}
+                        onChange={(e) => setForm(f => ({ ...f, cnpj: maskCNPJ(e.target.value) }))}
                         placeholder="00.000.000/0000-00"
+                        inputMode="numeric"
                       />
                     </div>
                   </>
+                )}
+
+                {form.role === 'pessoa_fisica' && (
+                  <div className="space-y-2">
+                    <Label>CPF</Label>
+                    <Input
+                      value={form.cnpj}
+                      onChange={(e) => setForm(f => ({ ...f, cnpj: maskCPF(e.target.value) }))}
+                      placeholder="000.000.000-00"
+                      inputMode="numeric"
+                    />
+                  </div>
                 )}
 
                 <Button type="submit" className="w-full" disabled={isCreating}>
