@@ -7,6 +7,54 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// ============ Validation helpers (BR) ============
+const onlyDigits = (v: string): string => (v || "").replace(/\D+/g, "");
+
+const isValidCPF = (cpf: string): boolean => {
+  const d = onlyDigits(cpf);
+  if (d.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(d)) return false;
+  const calc = (slice: string, factor: number): number => {
+    let sum = 0;
+    for (let i = 0; i < slice.length; i++) sum += parseInt(slice[i], 10) * (factor - i);
+    const mod = (sum * 10) % 11;
+    return mod === 10 ? 0 : mod;
+  };
+  const d1 = calc(d.slice(0, 9), 10);
+  if (d1 !== parseInt(d[9], 10)) return false;
+  const d2 = calc(d.slice(0, 10), 11);
+  return d2 === parseInt(d[10], 10);
+};
+
+const isValidCNPJ = (cnpj: string): boolean => {
+  const d = onlyDigits(cnpj);
+  if (d.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(d)) return false;
+  const calc = (slice: string, factors: number[]): number => {
+    let sum = 0;
+    for (let i = 0; i < slice.length; i++) sum += parseInt(slice[i], 10) * factors[i];
+    const mod = sum % 11;
+    return mod < 2 ? 0 : 11 - mod;
+  };
+  const f1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const f2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const d1 = calc(d.slice(0, 12), f1);
+  if (d1 !== parseInt(d[12], 10)) return false;
+  const d2 = calc(d.slice(0, 13), f2);
+  return d2 === parseInt(d[13], 10);
+};
+
+const isValidPhoneBR = (phone: string): boolean => {
+  const d = onlyDigits(phone);
+  return d.length === 10 || d.length === 11;
+};
+
+const errorResponse = (message: string, status = 400, extra: Record<string, unknown> = {}) =>
+  new Response(
+    JSON.stringify({ error: message, ...extra }),
+    { status, headers: { "Content-Type": "application/json", ...corsHeaders } }
+  );
+
 interface ManageUserRequest {
   action: "update" | "ban" | "unban" | "reset_password" | "change_role";
   user_id: string;
@@ -77,6 +125,72 @@ serve(async (req) => {
         throw new Error("Nome não pode ser vazio");
       }
 
+      // Validate name length
+      if (updates.name !== undefined && (updates.name as string).length > 120) {
+        return errorResponse("Nome muito longo (máximo 120 caracteres)", 400, { field: "name" });
+      }
+
+      // Validate phone format if provided (non-null)
+      if (updates.phone && !isValidPhoneBR(updates.phone as string)) {
+        return errorResponse(
+          "Telefone inválido. Use formato (DDD) número, com 10 ou 11 dígitos.",
+          400,
+          { field: "phone" }
+        );
+      }
+
+      // Validate CPF/CNPJ against the user's current role
+      if (updates.cnpj) {
+        const docDigits = onlyDigits(updates.cnpj as string);
+        const { data: currentRoles } = await adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user_id);
+        const roles = (currentRoles || []).map((r) => r.role);
+        const isImob = roles.includes("imobiliaria");
+        const isPF = roles.includes("pessoa_fisica");
+
+        if (isImob) {
+          if (!isValidCNPJ(docDigits)) {
+            return errorResponse(
+              "CNPJ inválido. Verifique os 14 dígitos e os dígitos verificadores.",
+              400,
+              { field: "cnpj" }
+            );
+          }
+          updates.cnpj = docDigits;
+        } else if (isPF) {
+          if (!isValidCPF(docDigits)) {
+            return errorResponse(
+              "CPF inválido. Verifique os 11 dígitos e os dígitos verificadores.",
+              400,
+              { field: "cnpj" }
+            );
+          }
+          updates.cnpj = docDigits;
+        }
+        // admin/tecnico: aceita valor livre, mas grava só dígitos se houver
+        else if (docDigits.length > 0) {
+          updates.cnpj = docDigits;
+        }
+      }
+
+      // Imobiliária: empresa obrigatória se vier vazia explicitamente
+      if (updates.company !== undefined && updates.company === null) {
+        const { data: currentRoles } = await adminClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user_id);
+        const roles = (currentRoles || []).map((r) => r.role);
+        if (roles.includes("imobiliaria")) {
+          return errorResponse(
+            "Nome da empresa é obrigatório para Imobiliária.",
+            400,
+            { field: "company" }
+          );
+        }
+      }
+
       const { error } = await adminClient
         .from("profiles")
         .update(updates)
@@ -94,8 +208,49 @@ serve(async (req) => {
       const newRole = body.role;
       const allowed = ["admin", "tecnico", "imobiliaria", "pessoa_fisica"];
       if (!newRole || !allowed.includes(newRole)) {
-        throw new Error("Role inválido");
+        return errorResponse(
+          "Tipo de usuário inválido. Use admin, tecnico, imobiliaria ou pessoa_fisica.",
+          400,
+          { field: "role" }
+        );
       }
+
+      // Prevent admin from removing their own admin role (lockout protection)
+      if (user_id === caller.id && newRole !== "admin") {
+        return errorResponse(
+          "Você não pode alterar seu próprio tipo de usuário.",
+          400,
+          { field: "role" }
+        );
+      }
+
+      // Validate that profile document matches the new role
+      const { data: profile } = await adminClient
+        .from("profiles")
+        .select("cnpj, company")
+        .eq("id", user_id)
+        .maybeSingle();
+
+      const docDigits = onlyDigits(profile?.cnpj || "");
+
+      if (newRole === "imobiliaria") {
+        if (docDigits && !isValidCNPJ(docDigits)) {
+          return errorResponse(
+            "Para mudar para Imobiliária, o CNPJ cadastrado precisa ser válido (14 dígitos). Atualize o CNPJ antes de alterar o tipo.",
+            400,
+            { field: "cnpj" }
+          );
+        }
+      } else if (newRole === "pessoa_fisica") {
+        if (docDigits && !isValidCPF(docDigits)) {
+          return errorResponse(
+            "Para mudar para Pessoa Física, o CPF cadastrado precisa ser válido (11 dígitos). Atualize o CPF antes de alterar o tipo.",
+            400,
+            { field: "cnpj" }
+          );
+        }
+      }
+
       // Replace user's role(s) atomically: delete existing, insert new
       const { error: delErr } = await adminClient
         .from("user_roles")
