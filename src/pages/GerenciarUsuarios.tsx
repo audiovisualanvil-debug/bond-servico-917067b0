@@ -705,6 +705,30 @@ const GerenciarUsuarios = () => {
                       className="pl-10"
                     />
                   </div>
+                  {(() => {
+                    const normalized = normalizeEmail(form.email);
+                    if (!normalized) return null;
+                    const dup = users.find(u => u.email.toLowerCase() === normalized);
+                    if (!dup) return null;
+                    return (
+                      <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+                        <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                        <div className="flex-1">
+                          <p className="font-medium">E-mail já cadastrado</p>
+                          <p className="opacity-90">
+                            {dup.name} ({dup.role}){dup.is_banned ? ' — banido' : ''}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(dup)}
+                          className="text-xs underline shrink-0"
+                        >
+                          Editar
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* FIX: Erro #3 - Indicador de força de senha */}
