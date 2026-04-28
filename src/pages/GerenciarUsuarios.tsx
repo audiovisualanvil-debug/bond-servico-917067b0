@@ -402,6 +402,27 @@ const GerenciarUsuarios = () => {
       return;
     }
 
+    // Pré-checagem: e-mail já existe na lista carregada?
+    const existing = users.find(u => u.email.toLowerCase() === email);
+    if (existing) {
+      toast.error('E-mail já cadastrado', {
+        description: `${existing.email} já existe como ${existing.role}. Edite o usuário existente ou use outro e-mail.`,
+        duration: 8000,
+        action: {
+          label: 'Editar existente',
+          onClick: () => handleOpenEdit(existing),
+        },
+      });
+      setCreateStatus({
+        phase: 'error',
+        email,
+        reason: 'email_already_in_use',
+        message: `${email} já está cadastrado como ${existing.role}.`,
+        durationMs: 0,
+      });
+      return;
+    }
+
     if (form.password.length < 6) {
       toast.error('A senha deve ter pelo menos 6 caracteres');
       return;
