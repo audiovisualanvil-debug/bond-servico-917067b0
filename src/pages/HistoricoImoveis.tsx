@@ -412,50 +412,70 @@ const HistoricoImoveis = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <button
-                      type="button"
-                      onClick={() => setStatusFilter('all')}
-                      className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-                        statusFilter === 'all'
-                          ? 'bg-primary/10 border-primary/30 text-primary font-medium'
-                          : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
-                      }`}
-                    >
-                      Todos <span className="ml-1 font-semibold">{ordersBeforeStatus.length}</span>
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setStatusFilter('all')}
+                          className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                            statusFilter === 'all'
+                              ? 'bg-primary/10 border-primary/30 text-primary font-medium'
+                              : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
+                          }`}
+                        >
+                          Todos <span className="ml-1 font-semibold">{ordersBeforeStatus.length}</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{buildTooltip(allStats)}</TooltipContent>
+                    </Tooltip>
                     {(Object.keys(STATUS_LABELS) as OSStatus[]).map((s) => {
                       const count = statusCounts[s] ?? 0;
                       const active = statusFilter === s;
                       return (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setStatusFilter(active ? 'all' : s)}
-                          disabled={count === 0 && !active}
-                          className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-                            active
-                              ? 'bg-primary/10 border-primary/30 text-primary font-medium'
-                              : count === 0
-                                ? 'bg-secondary/40 border-border text-muted-foreground/50 cursor-not-allowed'
-                                : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
-                          }`}
-                        >
-                          {STATUS_LABELS[s]} <span className="ml-1 font-semibold">{count}</span>
-                        </button>
+                        <Tooltip key={s}>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => setStatusFilter(active ? 'all' : s)}
+                              disabled={count === 0 && !active}
+                              className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                                active
+                                  ? 'bg-primary/10 border-primary/30 text-primary font-medium'
+                                  : count === 0
+                                    ? 'bg-secondary/40 border-border text-muted-foreground/50 cursor-not-allowed'
+                                    : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
+                              }`}
+                            >
+                              {STATUS_LABELS[s]} <span className="ml-1 font-semibold">{count}</span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{buildTooltip(statusStats[s] ?? { count: 0 })}</TooltipContent>
+                        </Tooltip>
                       );
                     })}
                   </div>
 
                   {propertyOrders.length > 0 ? (
                     <>
-                    <div className="relative mb-4">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar nesta lista (nº OS, problema, solicitante)..."
-                        value={orderQuery}
-                        onChange={(e) => setOrderQuery(e.target.value)}
-                        className="pl-10 h-9"
-                      />
+                    <div className="grid gap-2 md:grid-cols-2 mb-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Buscar nesta lista (nº OS, problema, solicitante)..."
+                          value={orderQuery}
+                          onChange={(e) => setOrderQuery(e.target.value)}
+                          className="pl-10 h-9"
+                        />
+                      </div>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Filtrar por nome do solicitante..."
+                          value={requesterQuery}
+                          onChange={(e) => setRequesterQuery(e.target.value)}
+                          className="pl-10 h-9"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-4">
                       {paginatedOrders.map((order) => {
@@ -553,7 +573,9 @@ const HistoricoImoveis = () => {
                         ? 'Nenhum serviço registrado para este imóvel'
                         : orderQuery
                           ? `Nenhuma OS encontrada para "${orderQuery}"`
-                          : `Nenhuma OS com ${DATE_FIELD_LABELS[dateField].toLowerCase()} no período selecionado`}
+                          : requesterQuery
+                            ? `Nenhuma OS encontrada para o solicitante "${requesterQuery}"`
+                            : `Nenhuma OS com ${DATE_FIELD_LABELS[dateField].toLowerCase()} no período selecionado`}
                     </p>
                   )}
                 </div>
@@ -569,6 +591,7 @@ const HistoricoImoveis = () => {
           </div>
         </div>
       )}
+    </TooltipProvider>
     </DashboardLayout>
   );
 };
