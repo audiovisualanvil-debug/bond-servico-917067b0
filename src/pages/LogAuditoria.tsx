@@ -21,6 +21,9 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   complete_service: { label: 'Concluiu Serviço', color: 'bg-green-600/10 text-green-800 border-green-300' },
   delete_order: { label: 'Excluiu OS', color: 'bg-red-500/10 text-red-700 border-red-200' },
   submit_quote: { label: 'Enviou Orçamento', color: 'bg-purple-500/10 text-purple-700 border-purple-200' },
+  create_user_attempt: { label: 'Tentativa: Criar Usuário', color: 'bg-slate-500/10 text-slate-700 border-slate-200' },
+  create_user_success: { label: 'Criou Usuário', color: 'bg-green-500/10 text-green-700 border-green-200' },
+  create_user_error: { label: 'Falha: Criar Usuário', color: 'bg-red-500/10 text-red-700 border-red-200' },
 };
 
 interface AuditLog {
