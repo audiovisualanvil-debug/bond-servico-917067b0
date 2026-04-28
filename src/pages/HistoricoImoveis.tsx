@@ -3,7 +3,8 @@ import { formatPhone } from '@/components/ui/phone-input';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
-  Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText
+  Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
+  FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +12,26 @@ import { Link } from 'react-router-dom';
 import { useProperties } from '@/hooks/useProperties';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
 import { StatusBadge } from '@/components/StatusBadge';
+import type { ServiceOrder } from '@/types/serviceOrder';
+
+const formatDateTime = (d?: Date) =>
+  d ? d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
+type StepIcon = typeof FilePlus2;
+
+const buildOrderTimeline = (order: ServiceOrder) => {
+  const steps: { key: string; label: string; date?: Date; icon: StepIcon; color: string }[] = [
+    { key: 'created', label: 'Chamado aberto', date: order.createdAt, icon: FilePlus2, color: 'text-blue-600 bg-blue-500/10' },
+    { key: 'quote', label: 'Orçamento do profissional enviado', date: order.quoteSentAt, icon: DollarSign, color: 'text-purple-600 bg-purple-500/10' },
+    { key: 'admin', label: 'Aprovado pelo dono / Admin', date: order.adminApprovedAt, icon: ShieldCheck, color: 'text-indigo-600 bg-indigo-500/10' },
+    { key: 'sent', label: 'Enviado à imobiliária', date: order.adminApprovedAt, icon: Send, color: 'text-cyan-600 bg-cyan-500/10' },
+    { key: 'client', label: 'Aprovado pela imobiliária', date: order.clientApprovedAt, icon: ThumbsUp, color: 'text-teal-600 bg-teal-500/10' },
+    { key: 'execution', label: 'Execução iniciada', date: order.executionStartedAt, icon: Wrench, color: 'text-orange-600 bg-orange-500/10' },
+    { key: 'completed', label: 'Concluído', date: order.completedAt, icon: CheckCircle2, color: 'text-green-600 bg-green-500/10' },
+  ];
+  // Hide "Enviado" if it duplicates "Aprovado pelo dono" timestamp visually but show both labels distinctly only when there's something between
+  return steps;
+};
 
 const HistoricoImoveis = () => {
   const { user, role } = useAuth();
