@@ -24,6 +24,17 @@ const PERIOD_LABELS: Record<PeriodKey, string> = {
   '3m': 'Últimos 3 meses',
   '12m': 'Últimos 12 meses',
 };
+
+type DateField = 'createdAt' | 'quoteSentAt' | 'adminApprovedAt' | 'clientApprovedAt' | 'executionStartedAt' | 'completedAt';
+const DATE_FIELD_LABELS: Record<DateField, string> = {
+  createdAt: 'Abertura do chamado',
+  quoteSentAt: 'Orçamento enviado',
+  adminApprovedAt: 'Aprovado pelo dono/admin',
+  clientApprovedAt: 'Aprovado pela imobiliária',
+  executionStartedAt: 'Execução iniciada',
+  completedAt: 'Conclusão',
+};
+
 const periodCutoff = (key: PeriodKey): Date | null => {
   if (key === 'all') return null;
   const now = new Date();
@@ -58,6 +69,7 @@ const HistoricoImoveis = () => {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<OSStatus | 'all'>('all');
   const [periodFilter, setPeriodFilter] = useState<PeriodKey>('all');
+  const [dateField, setDateField] = useState<DateField>('createdAt');
 
   const { data: properties = [], isLoading: propertiesLoading } = useProperties();
   const { data: allOrders = [], isLoading: ordersLoading } = useServiceOrders();
@@ -80,9 +92,18 @@ const HistoricoImoveis = () => {
     : [];
   const propertyOrders = allPropertyOrders
     .filter(os => statusFilter === 'all' || os.status === statusFilter)
-    .filter(os => !cutoff || os.createdAt.getTime() >= cutoff.getTime())
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  const filtersActive = statusFilter !== 'all' || periodFilter !== 'all';
+    .filter(os => {
+      if (!cutoff) return true;
+      const d = os[dateField] as Date | null | undefined;
+      if (!d) return false;
+      return d.getTime() >= cutoff.getTime();
+    })
+    .sort((a, b) => {
+      const da = (a[dateField] as Date | null | undefined)?.getTime() ?? a.createdAt.getTime();
+      const db = (b[dateField] as Date | null | undefined)?.getTime() ?? b.createdAt.getTime();
+      return db - da;
+    });
+  const filtersActive = statusFilter !== 'all' || periodFilter !== 'all' || dateField !== 'createdAt';
 
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
 
@@ -235,11 +256,21 @@ const HistoricoImoveis = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      <Select value={dateField} onValueChange={(v) => setDateField(v as DateField)}>
+                        <SelectTrigger className="h-9 w-[220px]" title="Base de data para o filtro de período">
+                          <SelectValue placeholder="Base de data" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(DATE_FIELD_LABELS) as DateField[]).map((f) => (
+                            <SelectItem key={f} value={f}>Por: {DATE_FIELD_LABELS[f]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       {filtersActive && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => { setStatusFilter('all'); setPeriodFilter('all'); }}
+                          onClick={() => { setStatusFilter('all'); setPeriodFilter('all'); setDateField('createdAt'); }}
                         >
                           Limpar
                         </Button>
@@ -312,7 +343,7 @@ const HistoricoImoveis = () => {
                     <p className="text-sm text-muted-foreground text-center py-8">
                       {allPropertyOrders.length === 0
                         ? 'Nenhum serviço registrado para este imóvel'
-                        : 'Nenhuma OS encontrada com os filtros selecionados'}
+                        : `Nenhuma OS com ${DATE_FIELD_LABELS[dateField].toLowerCase()} no período selecionado`}
                     </p>
                   )}
                 </div>
