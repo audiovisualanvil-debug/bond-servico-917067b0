@@ -227,6 +227,7 @@ const GerenciarUsuarios = () => {
 
       if (raceResult === TIMEOUT_SENTINEL) {
         logOutcome('error', { reason: 'timeout', timeout_ms: TIMEOUT_MS });
+        setError('timeout', 'A solicitação demorou mais de 30s.');
         showRetryToast(
           'Tempo esgotado (30s)',
           'A solicitação demorou demais. Verifique sua conexão.'
@@ -242,6 +243,7 @@ const GerenciarUsuarios = () => {
 
       if (dataErrorCode === 'EMAIL_ALREADY_IN_USE') {
         logOutcome('error', { reason: 'email_already_in_use', message: dataMessage });
+        setError('email_already_in_use', dataMessage || `O e-mail ${payload.email} já existe.`);
         // Não retentar — não vai mudar o resultado
         toast.error('E-mail já cadastrado', {
           description: dataMessage || `O e-mail ${payload.email} já existe no sistema.`,
@@ -259,6 +261,7 @@ const GerenciarUsuarios = () => {
           lower.includes('load failed')
         ) {
           logOutcome('error', { reason: 'network', message: errMsg });
+          setError('network', 'Falha de conexão com o servidor.');
           showRetryToast(
             'Falha de conexão',
             'Não foi possível alcançar o servidor. Verifique sua internet.'
@@ -267,21 +270,30 @@ const GerenciarUsuarios = () => {
         }
         if (lower.includes('non-2xx') || lower.includes('functionshttperror')) {
           logOutcome('error', { reason: 'server_error', message: dataMessage || errMsg });
+          setError('server_error', dataMessage || errMsg);
           showRetryToast('Erro do servidor', dataMessage || errMsg);
           return;
         }
         logOutcome('error', { reason: 'invoke_error', message: errMsg });
+        setError('invoke_error', errMsg);
         showRetryToast('Erro ao criar usuário', errMsg);
         return;
       }
 
       if (dataErrorCode) {
         logOutcome('error', { reason: dataErrorCode, message: dataMessage });
+        setError(dataErrorCode, dataMessage || dataErrorCode);
         showRetryToast('Erro ao criar usuário', dataMessage || dataErrorCode);
         return;
       }
 
       logOutcome('success', { user_id: response.data?.user_id });
+      setCreateStatus({
+        phase: 'success',
+        email: payload.email,
+        userId: response.data?.user_id,
+        durationMs: Date.now() - startedAtMs,
+      });
       toast.success(`Usuário ${payload.name} criado com sucesso!`);
       setForm({ email: '', password: '', name: '', phone: '', company: '', cnpj: '', role: '' });
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -291,12 +303,14 @@ const GerenciarUsuarios = () => {
       const lower = msg.toLowerCase();
       if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('cors')) {
         logOutcome('error', { reason: 'network_exception', message: msg });
+        setError('network_exception', msg || 'Falha de rede inesperada.');
         showRetryToast(
           'Falha de conexão',
           'Não foi possível alcançar o servidor. Verifique sua internet.'
         );
       } else {
         logOutcome('error', { reason: 'exception', message: msg });
+        setError('exception', msg || 'Erro inesperado.');
         showRetryToast('Erro ao criar usuário', msg || 'Erro inesperado');
       }
     } finally {
