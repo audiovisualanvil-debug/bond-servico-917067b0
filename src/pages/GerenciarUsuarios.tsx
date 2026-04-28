@@ -1,5 +1,5 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -52,7 +52,7 @@ const GerenciarUsuarios = () => {
   const [elapsedMs, setElapsedMs] = useState(0);
 
   // Tick elapsed time while processing
-  React.useEffect(() => {
+  useEffect(() => {
     if (createStatus.phase !== 'processing') return;
     const id = setInterval(() => {
       setElapsedMs(Date.now() - createStatus.startedAt);
