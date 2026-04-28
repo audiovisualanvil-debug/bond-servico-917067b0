@@ -5,18 +5,19 @@ import { Button } from '@/components/ui/button';
 import { 
   Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
   FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck,
-  ChevronLeft
+  ChevronLeft, User
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { useProperties } from '@/hooks/useProperties';
-import { useServiceOrders } from '@/hooks/useServiceOrders';
+import { useServiceOrders, useServiceOrdersRealtime } from '@/hooks/useServiceOrders';
 import { StatusBadge } from '@/components/StatusBadge';
 import type { ServiceOrder, OSStatus } from '@/types/serviceOrder';
 import { STATUS_LABELS } from '@/types/serviceOrder';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type PeriodKey = 'all' | '7d' | '4w' | '3m' | '12m';
 const PERIOD_LABELS: Record<PeriodKey, string> = {
@@ -49,6 +50,9 @@ const periodCutoff = (key: PeriodKey): Date | null => {
 const formatDateTime = (d?: Date) =>
   d ? d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
+const formatDateShort = (d?: Date) =>
+  d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+
 type StepIcon = typeof FilePlus2;
 
 const buildOrderTimeline = (order: ServiceOrder) => {
@@ -67,6 +71,8 @@ const buildOrderTimeline = (order: ServiceOrder) => {
 
 const HistoricoImoveis = () => {
   const { user, role } = useAuth();
+  // Realtime: invalidate service-orders cache on any change so counters/timeline update without reload.
+  useServiceOrdersRealtime();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<OSStatus | 'all'>('all');
@@ -74,6 +80,7 @@ const HistoricoImoveis = () => {
   const [dateField, setDateField] = useState<DateField>('createdAt');
   const [hasSavedDefault, setHasSavedDefault] = useState(false);
   const [orderQuery, setOrderQuery] = useState('');
+  const [requesterQuery, setRequesterQuery] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
 
@@ -144,12 +151,49 @@ const HistoricoImoveis = () => {
         (os.problem ?? '').toLowerCase().includes(q) ||
         (os.requesterName ?? '').toLowerCase().includes(q)
       );
+    })
+    .filter(os => {
+      if (!requesterQuery.trim()) return true;
+      const q = requesterQuery.trim().toLowerCase();
+      return (os.requesterName ?? '').toLowerCase().includes(q);
     });
 
   const statusCounts = ordersBeforeStatus.reduce<Record<string, number>>((acc, os) => {
     acc[os.status] = (acc[os.status] ?? 0) + 1;
     return acc;
   }, {});
+
+  // Stats per status: count + min/max date based on selected dateField
+  const statusStats = ordersBeforeStatus.reduce<Record<string, { count: number; min?: Date; max?: Date }>>((acc, os) => {
+    const cur = acc[os.status] ?? { count: 0 };
+    cur.count += 1;
+    const d = os[dateField] as Date | null | undefined;
+    if (d) {
+      if (!cur.min || d.getTime() < cur.min.getTime()) cur.min = d;
+      if (!cur.max || d.getTime() > cur.max.getTime()) cur.max = d;
+    }
+    acc[os.status] = cur;
+    return acc;
+  }, {});
+
+  const allStats = (() => {
+    let min: Date | undefined, max: Date | undefined;
+    for (const os of ordersBeforeStatus) {
+      const d = os[dateField] as Date | null | undefined;
+      if (!d) continue;
+      if (!min || d.getTime() < min.getTime()) min = d;
+      if (!max || d.getTime() > max.getTime()) max = d;
+    }
+    return { count: ordersBeforeStatus.length, min, max };
+  })();
+
+  const buildTooltip = (s: { count: number; min?: Date; max?: Date }) => {
+    const base = DATE_FIELD_LABELS[dateField].toLowerCase();
+    if (s.count === 0) return 'Nenhuma OS no período';
+    if (!s.min || !s.max) return `${s.count} OS · sem datas no período (base: ${base})`;
+    if (s.min.getTime() === s.max.getTime()) return `${s.count} OS · ${formatDateShort(s.min)} (base: ${base})`;
+    return `${s.count} OS · de ${formatDateShort(s.min)} até ${formatDateShort(s.max)} (base: ${base})`;
+  };
 
   const propertyOrders = ordersBeforeStatus
     .filter(os => statusFilter === 'all' || os.status === statusFilter)
@@ -167,7 +211,7 @@ const HistoricoImoveis = () => {
   // Reset pagination when filters/search/property change
   useEffect(() => {
     setPage(1);
-  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery]);
+  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery]);
 
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
 
@@ -184,6 +228,7 @@ const HistoricoImoveis = () => {
 
   return (
     <DashboardLayout>
+    <TooltipProvider delayDuration={150}>
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-display text-3xl font-bold text-foreground">Histórico por Imóvel</h1>
@@ -367,50 +412,70 @@ const HistoricoImoveis = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <button
-                      type="button"
-                      onClick={() => setStatusFilter('all')}
-                      className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-                        statusFilter === 'all'
-                          ? 'bg-primary/10 border-primary/30 text-primary font-medium'
-                          : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
-                      }`}
-                    >
-                      Todos <span className="ml-1 font-semibold">{ordersBeforeStatus.length}</span>
-                    </button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => setStatusFilter('all')}
+                          className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                            statusFilter === 'all'
+                              ? 'bg-primary/10 border-primary/30 text-primary font-medium'
+                              : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
+                          }`}
+                        >
+                          Todos <span className="ml-1 font-semibold">{ordersBeforeStatus.length}</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{buildTooltip(allStats)}</TooltipContent>
+                    </Tooltip>
                     {(Object.keys(STATUS_LABELS) as OSStatus[]).map((s) => {
                       const count = statusCounts[s] ?? 0;
                       const active = statusFilter === s;
                       return (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setStatusFilter(active ? 'all' : s)}
-                          disabled={count === 0 && !active}
-                          className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
-                            active
-                              ? 'bg-primary/10 border-primary/30 text-primary font-medium'
-                              : count === 0
-                                ? 'bg-secondary/40 border-border text-muted-foreground/50 cursor-not-allowed'
-                                : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
-                          }`}
-                        >
-                          {STATUS_LABELS[s]} <span className="ml-1 font-semibold">{count}</span>
-                        </button>
+                        <Tooltip key={s}>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => setStatusFilter(active ? 'all' : s)}
+                              disabled={count === 0 && !active}
+                              className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                                active
+                                  ? 'bg-primary/10 border-primary/30 text-primary font-medium'
+                                  : count === 0
+                                    ? 'bg-secondary/40 border-border text-muted-foreground/50 cursor-not-allowed'
+                                    : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
+                              }`}
+                            >
+                              {STATUS_LABELS[s]} <span className="ml-1 font-semibold">{count}</span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>{buildTooltip(statusStats[s] ?? { count: 0 })}</TooltipContent>
+                        </Tooltip>
                       );
                     })}
                   </div>
 
                   {propertyOrders.length > 0 ? (
                     <>
-                    <div className="relative mb-4">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar nesta lista (nº OS, problema, solicitante)..."
-                        value={orderQuery}
-                        onChange={(e) => setOrderQuery(e.target.value)}
-                        className="pl-10 h-9"
-                      />
+                    <div className="grid gap-2 md:grid-cols-2 mb-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Buscar nesta lista (nº OS, problema, solicitante)..."
+                          value={orderQuery}
+                          onChange={(e) => setOrderQuery(e.target.value)}
+                          className="pl-10 h-9"
+                        />
+                      </div>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Filtrar por nome do solicitante..."
+                          value={requesterQuery}
+                          onChange={(e) => setRequesterQuery(e.target.value)}
+                          className="pl-10 h-9"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-4">
                       {paginatedOrders.map((order) => {
@@ -508,7 +573,9 @@ const HistoricoImoveis = () => {
                         ? 'Nenhum serviço registrado para este imóvel'
                         : orderQuery
                           ? `Nenhuma OS encontrada para "${orderQuery}"`
-                          : `Nenhuma OS com ${DATE_FIELD_LABELS[dateField].toLowerCase()} no período selecionado`}
+                          : requesterQuery
+                            ? `Nenhuma OS encontrada para o solicitante "${requesterQuery}"`
+                            : `Nenhuma OS com ${DATE_FIELD_LABELS[dateField].toLowerCase()} no período selecionado`}
                     </p>
                   )}
                 </div>
@@ -524,6 +591,7 @@ const HistoricoImoveis = () => {
           </div>
         </div>
       )}
+    </TooltipProvider>
     </DashboardLayout>
   );
 };
