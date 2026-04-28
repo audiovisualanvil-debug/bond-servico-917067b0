@@ -11,11 +11,14 @@ interface AuditLogEntry {
 export function useAuditLog() {
   const log = useCallback(async (entry: AuditLogEntry) => {
     try {
-      await supabase.functions.invoke('log-audit', {
+      const { error } = await supabase.functions.invoke('log-audit', {
         body: entry,
       });
+      if (error) {
+        console.warn('[audit] log-audit retornou erro:', error.message, entry);
+      }
     } catch (err) {
-      console.error('Audit log failed:', err);
+      console.warn('[audit] log-audit falhou (rede):', err, entry);
       // Fire-and-forget: don't block the main action
     }
   }, []);
