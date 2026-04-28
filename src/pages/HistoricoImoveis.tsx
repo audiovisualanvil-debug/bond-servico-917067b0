@@ -366,6 +366,41 @@ const HistoricoImoveis = () => {
                     </div>
                   </div>
 
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilter('all')}
+                      className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                        statusFilter === 'all'
+                          ? 'bg-primary/10 border-primary/30 text-primary font-medium'
+                          : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
+                      }`}
+                    >
+                      Todos <span className="ml-1 font-semibold">{ordersBeforeStatus.length}</span>
+                    </button>
+                    {(Object.keys(STATUS_LABELS) as OSStatus[]).map((s) => {
+                      const count = statusCounts[s] ?? 0;
+                      const active = statusFilter === s;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setStatusFilter(active ? 'all' : s)}
+                          disabled={count === 0 && !active}
+                          className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${
+                            active
+                              ? 'bg-primary/10 border-primary/30 text-primary font-medium'
+                              : count === 0
+                                ? 'bg-secondary/40 border-border text-muted-foreground/50 cursor-not-allowed'
+                                : 'bg-secondary border-border text-muted-foreground hover:bg-secondary/80'
+                          }`}
+                        >
+                          {STATUS_LABELS[s]} <span className="ml-1 font-semibold">{count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   {propertyOrders.length > 0 ? (
                     <>
                     <div className="relative mb-4">
