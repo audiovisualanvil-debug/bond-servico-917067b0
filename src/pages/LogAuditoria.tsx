@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,7 +40,15 @@ interface AuditLog {
 }
 
 const LogAuditoria = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
+  const [actionFilter, setActionFilter] = useState<string | null>(null);
+
+  // Hydrate filter from ?action= query string
+  useEffect(() => {
+    const a = searchParams.get('action');
+    if (a) setActionFilter(a);
+  }, [searchParams]);
 
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ['audit-logs'],
@@ -69,6 +78,7 @@ const LogAuditoria = () => {
   });
 
   const filtered = logs.filter(log => {
+    if (actionFilter && log.action !== actionFilter) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     const actionLabel = ACTION_LABELS[log.action]?.label || log.action;
