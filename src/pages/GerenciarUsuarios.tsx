@@ -55,6 +55,18 @@ const GerenciarUsuarios = () => {
     | { phase: 'error'; email: string; reason: string; message: string; durationMs: number; retry?: () => void };
   const [createStatus, setCreateStatus] = useState<CreateStatus>({ phase: 'idle' });
   const [elapsedMs, setElapsedMs] = useState(0);
+  // Track current in-flight AbortController + auto-retry timer to support cleanup
+  const abortRef = React.useRef<AbortController | null>(null);
+  const retryTimerRef = React.useRef<number | null>(null);
+  const autoRetriedRef = React.useRef<Set<string>>(new Set());
+
+  // Cleanup on unmount: abort in-flight request, cancel pending retry, reset status.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
+    };
+  }, []);
 
   // Tick elapsed time while processing
   useEffect(() => {
