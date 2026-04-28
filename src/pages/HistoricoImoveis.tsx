@@ -26,13 +26,14 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-type PeriodKey = 'all' | '7d' | '4w' | '3m' | '12m';
+type PeriodKey = 'all' | '7d' | '4w' | '3m' | '12m' | 'custom';
 const PERIOD_LABELS: Record<PeriodKey, string> = {
   all: 'Todo o período',
   '7d': 'Últimos 7 dias',
   '4w': 'Últimas 4 semanas',
   '3m': 'Últimos 3 meses',
   '12m': 'Últimos 12 meses',
+  custom: 'Intervalo personalizado',
 };
 
 type DateField = 'createdAt' | 'quoteSentAt' | 'adminApprovedAt' | 'clientApprovedAt' | 'executionStartedAt' | 'completedAt';
@@ -46,12 +47,25 @@ const DATE_FIELD_LABELS: Record<DateField, string> = {
 };
 
 const periodCutoff = (key: PeriodKey): Date | null => {
-  if (key === 'all') return null;
+  if (key === 'all' || key === 'custom') return null;
   const now = new Date();
   const map: Record<Exclude<PeriodKey, 'all'>, number> = { '7d': 7, '4w': 28, '3m': 90, '12m': 365 };
   const d = new Date(now);
-  d.setDate(d.getDate() - map[key]);
+  d.setDate(d.getDate() - map[key as Exclude<PeriodKey, 'all' | 'custom'>]);
   return d;
+};
+
+type ColumnKey = 'osNumber' | 'problem' | 'requester' | 'status' | 'dates' | 'price';
+const COLUMN_LABELS: Record<ColumnKey, string> = {
+  osNumber: 'Nº da OS',
+  problem: 'Problema',
+  requester: 'Solicitante',
+  status: 'Status',
+  dates: 'Linha do tempo / datas',
+  price: 'Valor final',
+};
+const DEFAULT_COLUMNS: Record<ColumnKey, boolean> = {
+  osNumber: true, problem: true, requester: true, status: true, dates: true, price: true,
 };
 
 const formatDateTime = (d?: Date) =>
