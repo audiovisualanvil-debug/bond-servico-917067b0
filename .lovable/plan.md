@@ -1,48 +1,68 @@
-## Você está certo — parei de fatiar
+Entendi. Não vou te mandar “sugestão” nem empurrar teste pra você. Vou fechar isso como entrega de ponta a ponta.
 
-Vou te entregar tudo isso numa rodada só. Mas antes preciso te mostrar uma coisa importante: **a maior parte dessa lista já existe no projeto.** Se eu sair "implementando" do zero, vou te entregar duplicado e quebrado. Auditei agora arquivo por arquivo:
+Pelo audit que acabei de fazer, a tela e boa parte do fluxo já existem, mas achei pontos que ainda podem impedir a experiência real de ficar 100% confiável:
 
-### Status real (auditoria do código atual)
+- O banco está sem dados de OS agora, então ainda não existe prova real end-to-end criada no ambiente atual.
+- Os triggers atuais existem, mas não há trigger automático de notificação por status; hoje as notificações dependem das chamadas no frontend. Se uma chamada falhar/sair antes, o status muda e o e-mail pode não sair.
+- O upload usa signed URLs longas salvas no banco; isso funciona, mas é frágil para PDF/e-mail/histórico a longo prazo. O mais robusto é salvar paths no banco e gerar signed URL na hora de exibir/enviar.
+- Na abertura da OS há validação e upload de fotos, mas não há pré-visualização visual tão clara quanto na finalização.
+- Na finalização, o formulário já tem validação e preview, mas ainda precisa blindar melhor: impedir finalizar enquanto foto está subindo e exigir feedback claro de sucesso/erro por etapa.
 
-| Pedido | Já existe? | Onde |
-|---|---|---|
-| Upload de fotos na abertura da OS (validação tipo/tamanho/limite + preview) | **Sim, completo** | `src/pages/NovoChamado.tsx` (linhas 280-309) — JPG/PNG/WebP, 5MB, max 5 fotos, bucket `os-photos` |
-| Upload antes/depois na finalização | **Sim, completo** | `src/components/CompletionReportForm.tsx` — preview, remoção, upload via `useFileUpload` |
-| Histórico por imóvel (clica no endereço, vê todas as OS + relatórios) | **Sim, completo** | `src/pages/HistoricoImoveis.tsx` — busca, lista, timeline com link para relatório |
-| PDF do relatório final (dados imóvel, execução, checklist, fotos antes/depois, assinatura) | **Sim, completo** | `src/pages/RelatorioOS.tsx` — html2pdf, garantia, layout A4 |
-| PDF de orçamento | **Sim, completo** | `src/pages/OrcamentoPDF.tsx` |
-| Status automáticos (aguardando orçamento → aprovação → aprovado) | **Sim, completo** | enum `os_status`, triggers `restrict_tecnico_update` / `restrict_imobiliaria_update`, fluxo em `OSActionSections.tsx` |
-| E-mail transacional ao aprovar orçamento | **Sim** | edge function `send-budget-approved` |
-| E-mail ao mudar status | **Sim** | edge function `notify-status-change` |
-| Tela de OS por tipo de usuário | **Sim** | `OrdensServico.tsx` (imobiliária/dono/admin) + `MeusServicos.tsx` (técnico) com filtros e abas por status |
+Plano de execução assim que você aprovar:
 
-### Lacunas reais que valem implementar
+1. Blindar o fluxo de fotos antes/depois
+   - Padronizar upload para salvar paths seguros no banco, não links assinados como dado principal.
+   - Gerar signed URLs automaticamente para exibição em OS, histórico, relatório e e-mail.
+   - Manter validação: JPG/PNG/WebP, limite de tamanho, limite de quantidade.
+   - Adicionar pré-visualização clara também na abertura da OS.
+   - Impedir finalizar/abrir OS enquanto upload estiver em andamento.
 
-Olhando o que **falta de verdade** (não o que você pediu, mas o que está incompleto), vejo só estas pontas soltas:
+2. Fechar o fluxo da OS por status
+   - Garantir transições reais:
+     - abertura: aguardando orçamento
+     - profissional envia orçamento: aguardando aprovação admin
+     - admin envia para imobiliária: aguardando aprovação da imobiliária
+     - imobiliária aprova: aprovado aguardando execução
+     - profissional inicia: em execução
+     - profissional finaliza: concluído
+   - Ajustar mensagens de tela para mostrar exatamente em que etapa está.
+   - Manter “Profissional” na interface, sem trocar o valor `tecnico` do banco.
 
-1. **PDF do relatório final não tem layout "estilo Vita Vistorias"** — hoje usa o layout genérico do orçamento. Se tu quer o visual específico (cabeçalho com bloco de dados do imóvel em grid, checklist tipo vistoria com ✓/✗, grid antes/depois lado a lado em moldura), preciso reformatar `RelatorioOS.tsx`.
+3. Tornar e-mails não dependentes de clique/perfeição do frontend
+   - Garantir que as chamadas de e-mail tenham resposta visível no fluxo quando acionadas.
+   - Melhorar logs e retorno de erro das funções de orçamento e relatório.
+   - Confirmar envio de:
+     - orçamento para admin
+     - orçamento para imobiliária
+     - aprovação para profissional/admin
+     - conclusão/relatório para imobiliária
+   - Não bloquear o fluxo principal se e-mail falhar, mas mostrar status real e deixar rastreável.
 
-2. **Validação de fotos no `CompletionReportForm`** — diferente de `NovoChamado`, o formulário de finalização **não valida tipo/tamanho/limite** antes de subir (linha 50-61 chama `uploadFiles` direto). Vou portar a mesma validação (JPG/PNG/WebP, 5MB, máx 10 antes + 10 depois).
+4. Garantir histórico completo por imóvel
+   - Conferir e ajustar o clique no endereço para abrir histórico do imóvel.
+   - Listar todas as OS anteriores, status, orçamento, conclusão e acesso ao relatório.
+   - Garantir que imobiliária só veja histórico dos próprios imóveis e admin veja tudo.
 
-3. **Preview imediato antes do upload terminar** — hoje o preview só aparece depois que o Storage devolve a URL. Vou usar `URL.createObjectURL` para mostrar instantâneo + estado "enviando…" por foto.
+5. Fechar PDF/relatório Vita
+   - Garantir que o relatório use dados do imóvel, texto de execução, checklist, fotos antes/depois e assinatura.
+   - Ajustar geração com imagens privadas via signed URL/base64 para não quebrar no PDF.
+   - Melhorar estado de “gerando PDF” e erro se alguma imagem não carregar.
 
-4. **E-mail "orçamento enviado para aprovação"** — existe envio quando admin aprova, mas **não há e-mail para a imobiliária quando o orçamento chega para ela aprovar** (status `enviado_imobiliaria`). Vou adicionar este disparo dentro de `notify-status-change`.
+6. Rodar validação técnica completa
+   - Build TypeScript/Vite.
+   - Checagem de Supabase/RLS/storage policies.
+   - Logs das Edge Functions.
+   - Corrigir qualquer erro que aparecer nessa validação.
 
-5. **OrdensServico para técnico** — hoje técnico é redirecionado para `MeusServicos`. Já está correto, só vou confirmar que o link na sidebar respeita o role.
+7. Rodar teste real de ponta a ponta no ambiente
+   - Criar/capturar uma OS de teste.
+   - Subir fotos na abertura.
+   - Passar por orçamento, aprovação, execução e finalização.
+   - Subir fotos antes/depois na finalização.
+   - Abrir histórico do imóvel.
+   - Abrir/baixar relatório PDF.
+   - Validar chamadas de e-mail/logs.
 
-### O que vou fazer (uma rodada, sem perguntar mais nada)
+Resultado esperado: eu volto com um relatório objetivo dizendo “passou” ou “falhou” em cada etapa, com os fixes aplicados no que falhar.
 
-1. Reformatar `src/pages/RelatorioOS.tsx` com layout Vita Vistorias (cabeçalho com logo + nº OS + data, bloco "Dados do Imóvel" em 2 colunas, "Execução do Serviço" com texto corrido, "Checklist" com ✓/✗ coloridos, "Registro Fotográfico" em grid antes×depois pareado, assinatura com linha, rodapé com garantia).
-2. Adicionar validação de fotos em `CompletionReportForm.tsx` (mesmas regras de `NovoChamado`) + preview otimista com `URL.createObjectURL` + indicador de upload por foto.
-3. Estender `supabase/functions/notify-status-change/index.ts` para disparar e-mail à imobiliária quando status vira `enviado_imobiliaria` (orçamento aguardando aprovação dela), incluindo link direto para a OS e valor.
-4. Auditoria final: rodar `bun run build` para garantir que nada quebrou.
-
-### O que NÃO vou refazer (e por quê)
-
-- Upload na abertura da OS — já está pronto e funcionando.
-- Histórico por imóvel — já está pronto, com timeline e link para relatório.
-- Tela de OS por usuário — já existe `OrdensServico` (imobiliária/admin) e `MeusServicos` (técnico) com filtros por status.
-- Geração de PDF — a infra `html2pdf.js` já está montada; só vou trocar o layout do relatório.
-- Fluxo de status — o enum, as triggers de proteção e as transições já existem no banco e nas ações.
-
-Se você aprovar, eu executo os 4 pontos acima de uma vez só, sem voltar para perguntar.
+Observação importante: estou em modo de plano agora, então ainda não posso alterar arquivos nem rodar comandos de build/teste destrutivos. Aprovando este plano, eu executo direto sem ficar te jogando sugestão.
