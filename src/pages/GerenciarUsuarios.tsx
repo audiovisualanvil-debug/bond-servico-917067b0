@@ -138,7 +138,28 @@ const GerenciarUsuarios = () => {
     setIsCreating(true);
     const TIMEOUT_MS = 30000;
     const TIMEOUT_SENTINEL = Symbol('timeout');
-    const startedAt = new Date().toISOString();
+    const startedAtMs = Date.now();
+    const startedAt = new Date(startedAtMs).toISOString();
+    setElapsedMs(0);
+    setCreateStatus({
+      phase: 'processing',
+      startedAt: startedAtMs,
+      email: payload.email,
+      role: payload.role,
+    });
+    const retryFn = () => {
+      void performCreateUser(payload);
+    };
+    const setError = (reason: string, message: string) => {
+      setCreateStatus({
+        phase: 'error',
+        email: payload.email,
+        reason,
+        message,
+        durationMs: Date.now() - startedAtMs,
+        retry: reason === 'email_already_in_use' ? undefined : retryFn,
+      });
+    };
 
     // Sanitized payload (NEVER log password)
     const safePayload = {
