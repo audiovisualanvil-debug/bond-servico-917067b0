@@ -7,6 +7,54 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// ============ Validation helpers (BR) ============
+const onlyDigits = (v: string): string => (v || "").replace(/\D+/g, "");
+
+const isValidCPF = (cpf: string): boolean => {
+  const d = onlyDigits(cpf);
+  if (d.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(d)) return false;
+  const calc = (slice: string, factor: number): number => {
+    let sum = 0;
+    for (let i = 0; i < slice.length; i++) sum += parseInt(slice[i], 10) * (factor - i);
+    const mod = (sum * 10) % 11;
+    return mod === 10 ? 0 : mod;
+  };
+  const d1 = calc(d.slice(0, 9), 10);
+  if (d1 !== parseInt(d[9], 10)) return false;
+  const d2 = calc(d.slice(0, 10), 11);
+  return d2 === parseInt(d[10], 10);
+};
+
+const isValidCNPJ = (cnpj: string): boolean => {
+  const d = onlyDigits(cnpj);
+  if (d.length !== 14) return false;
+  if (/^(\d)\1{13}$/.test(d)) return false;
+  const calc = (slice: string, factors: number[]): number => {
+    let sum = 0;
+    for (let i = 0; i < slice.length; i++) sum += parseInt(slice[i], 10) * factors[i];
+    const mod = sum % 11;
+    return mod < 2 ? 0 : 11 - mod;
+  };
+  const f1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const f2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+  const d1 = calc(d.slice(0, 12), f1);
+  if (d1 !== parseInt(d[12], 10)) return false;
+  const d2 = calc(d.slice(0, 13), f2);
+  return d2 === parseInt(d[13], 10);
+};
+
+const isValidPhoneBR = (phone: string): boolean => {
+  const d = onlyDigits(phone);
+  return d.length === 10 || d.length === 11;
+};
+
+const errorResponse = (message: string, status = 400, extra: Record<string, unknown> = {}) =>
+  new Response(
+    JSON.stringify({ error: message, ...extra }),
+    { status, headers: { "Content-Type": "application/json", ...corsHeaders } }
+  );
+
 interface ManageUserRequest {
   action: "update" | "ban" | "unban" | "reset_password" | "change_role";
   user_id: string;
