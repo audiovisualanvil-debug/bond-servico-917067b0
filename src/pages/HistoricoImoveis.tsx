@@ -4,10 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { 
   Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
-  FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench
+  FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { useProperties } from '@/hooks/useProperties';
 import { useServiceOrders } from '@/hooks/useServiceOrders';
@@ -70,6 +71,39 @@ const HistoricoImoveis = () => {
   const [statusFilter, setStatusFilter] = useState<OSStatus | 'all'>('all');
   const [periodFilter, setPeriodFilter] = useState<PeriodKey>('all');
   const [dateField, setDateField] = useState<DateField>('createdAt');
+  const [hasSavedDefault, setHasSavedDefault] = useState(false);
+
+  const prefsKey = user ? `historicoImoveis:filters:${user.id}` : null;
+
+  // Load saved defaults on mount / user change
+  useEffect(() => {
+    if (!prefsKey) return;
+    try {
+      const raw = localStorage.getItem(prefsKey);
+      if (!raw) { setHasSavedDefault(false); return; }
+      const parsed = JSON.parse(raw) as { statusFilter?: OSStatus | 'all'; periodFilter?: PeriodKey; dateField?: DateField };
+      if (parsed.statusFilter) setStatusFilter(parsed.statusFilter);
+      if (parsed.periodFilter) setPeriodFilter(parsed.periodFilter);
+      if (parsed.dateField) setDateField(parsed.dateField);
+      setHasSavedDefault(true);
+    } catch {
+      setHasSavedDefault(false);
+    }
+  }, [prefsKey]);
+
+  const saveDefaults = () => {
+    if (!prefsKey) return;
+    localStorage.setItem(prefsKey, JSON.stringify({ statusFilter, periodFilter, dateField }));
+    setHasSavedDefault(true);
+    toast.success('Filtros salvos como padrão para o seu usuário');
+  };
+
+  const clearDefaults = () => {
+    if (!prefsKey) return;
+    localStorage.removeItem(prefsKey);
+    setHasSavedDefault(false);
+    toast.success('Padrão removido');
+  };
 
   const { data: properties = [], isLoading: propertiesLoading } = useProperties();
   const { data: allOrders = [], isLoading: ordersLoading } = useServiceOrders();
@@ -273,6 +307,20 @@ const HistoricoImoveis = () => {
                           onClick={() => { setStatusFilter('all'); setPeriodFilter('all'); setDateField('createdAt'); }}
                         >
                           Limpar
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={saveDefaults}
+                        title="Salvar filtros atuais como padrão para seu usuário"
+                      >
+                        {hasSavedDefault ? <BookmarkCheck className="h-4 w-4 mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                        {hasSavedDefault ? 'Atualizar padrão' : 'Salvar como padrão'}
+                      </Button>
+                      {hasSavedDefault && (
+                        <Button variant="ghost" size="sm" onClick={clearDefaults} title="Remover padrão salvo">
+                          Remover padrão
                         </Button>
                       )}
                     </div>
