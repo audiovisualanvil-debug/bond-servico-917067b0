@@ -205,9 +205,46 @@ const HistoricoImoveis = () => {
                 </div>
 
                 <div className="os-card">
-                  <div className="flex items-center gap-2 mb-4">
-                    <History className="h-5 w-5 text-primary" />
-                    <h3 className="font-display font-semibold">Histórico de Serviços</h3>
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <History className="h-5 w-5 text-primary" />
+                      <h3 className="font-display font-semibold">Histórico de Serviços</h3>
+                      <span className="text-xs text-muted-foreground">
+                        ({propertyOrders.length} de {allPropertyOrders.length})
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as OSStatus | 'all')}>
+                        <SelectTrigger className="h-9 w-[210px]">
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos os status</SelectItem>
+                          {(Object.keys(STATUS_LABELS) as OSStatus[]).map((s) => (
+                            <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={periodFilter} onValueChange={(v) => setPeriodFilter(v as PeriodKey)}>
+                        <SelectTrigger className="h-9 w-[180px]">
+                          <SelectValue placeholder="Período" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(PERIOD_LABELS) as PeriodKey[]).map((p) => (
+                            <SelectItem key={p} value={p}>{PERIOD_LABELS[p]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {filtersActive && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => { setStatusFilter('all'); setPeriodFilter('all'); }}
+                        >
+                          Limpar
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {propertyOrders.length > 0 ? (
@@ -272,7 +309,11 @@ const HistoricoImoveis = () => {
                       })}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">Nenhum serviço registrado para este imóvel</p>
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                      {allPropertyOrders.length === 0
+                        ? 'Nenhum serviço registrado para este imóvel'
+                        : 'Nenhuma OS encontrada com os filtros selecionados'}
+                    </p>
                   )}
                 </div>
               </div>
