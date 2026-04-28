@@ -1,5 +1,5 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -56,9 +56,9 @@ const GerenciarUsuarios = () => {
   const [createStatus, setCreateStatus] = useState<CreateStatus>({ phase: 'idle' });
   const [elapsedMs, setElapsedMs] = useState(0);
   // Track current in-flight AbortController + auto-retry timer to support cleanup
-  const abortRef = React.useRef<AbortController | null>(null);
-  const retryTimerRef = React.useRef<number | null>(null);
-  const autoRetriedRef = React.useRef<Set<string>>(new Set());
+  const abortRef = useRef<AbortController | null>(null);
+  const retryTimerRef = useRef<number | null>(null);
+  const autoRetriedRef = useRef<Set<string>>(new Set());
 
   // Cleanup on unmount: abort in-flight request, cancel pending retry, reset status.
   useEffect(() => {
