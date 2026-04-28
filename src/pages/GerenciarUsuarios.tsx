@@ -1,5 +1,5 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { typedFrom } from '@/integrations/supabase/helpers';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Users, Building2, Wrench, Mail, Phone, Building, Eye, EyeOff, Pencil, Ban, CheckCircle2, KeyRound, User } from 'lucide-react';
+import { Loader2, UserPlus, Users, Building2, Wrench, Mail, Phone, Building, Eye, EyeOff, Pencil, Ban, CheckCircle2, KeyRound, User, AlertCircle, Clock, RotateCw, X } from 'lucide-react';
 import { Sparkles, Copy } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -43,6 +43,22 @@ const GerenciarUsuarios = () => {
   const queryClient = useQueryClient();
   const { log: auditLog } = useAuditLog();
   const [isCreating, setIsCreating] = useState(false);
+  type CreateStatus =
+    | { phase: 'idle' }
+    | { phase: 'processing'; startedAt: number; email: string; role: string }
+    | { phase: 'success'; email: string; userId?: string; durationMs: number }
+    | { phase: 'error'; email: string; reason: string; message: string; durationMs: number; retry?: () => void };
+  const [createStatus, setCreateStatus] = useState<CreateStatus>({ phase: 'idle' });
+  const [elapsedMs, setElapsedMs] = useState(0);
+
+  // Tick elapsed time while processing
+  useEffect(() => {
+    if (createStatus.phase !== 'processing') return;
+    const id = setInterval(() => {
+      setElapsedMs(Date.now() - createStatus.startedAt);
+    }, 250);
+    return () => clearInterval(id);
+  }, [createStatus]);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     email: '',
@@ -122,7 +138,28 @@ const GerenciarUsuarios = () => {
     setIsCreating(true);
     const TIMEOUT_MS = 30000;
     const TIMEOUT_SENTINEL = Symbol('timeout');
-    const startedAt = new Date().toISOString();
+    const startedAtMs = Date.now();
+    const startedAt = new Date(startedAtMs).toISOString();
+    setElapsedMs(0);
+    setCreateStatus({
+      phase: 'processing',
+      startedAt: startedAtMs,
+      email: payload.email,
+      role: payload.role,
+    });
+    const retryFn = () => {
+      void performCreateUser(payload);
+    };
+    const setError = (reason: string, message: string) => {
+      setCreateStatus({
+        phase: 'error',
+        email: payload.email,
+        reason,
+        message,
+        durationMs: Date.now() - startedAtMs,
+        retry: reason === 'email_already_in_use' ? undefined : retryFn,
+      });
+    };
 
     // Sanitized payload (NEVER log password)
     const safePayload = {
@@ -190,6 +227,7 @@ const GerenciarUsuarios = () => {
 
       if (raceResult === TIMEOUT_SENTINEL) {
         logOutcome('error', { reason: 'timeout', timeout_ms: TIMEOUT_MS });
+        setError('timeout', 'A solicitação demorou mais de 30s.');
         showRetryToast(
           'Tempo esgotado (30s)',
           'A solicitação demorou demais. Verifique sua conexão.'
@@ -205,6 +243,7 @@ const GerenciarUsuarios = () => {
 
       if (dataErrorCode === 'EMAIL_ALREADY_IN_USE') {
         logOutcome('error', { reason: 'email_already_in_use', message: dataMessage });
+        setError('email_already_in_use', dataMessage || `O e-mail ${payload.email} já existe.`);
         // Não retentar — não vai mudar o resultado
         toast.error('E-mail já cadastrado', {
           description: dataMessage || `O e-mail ${payload.email} já existe no sistema.`,
@@ -222,6 +261,7 @@ const GerenciarUsuarios = () => {
           lower.includes('load failed')
         ) {
           logOutcome('error', { reason: 'network', message: errMsg });
+          setError('network', 'Falha de conexão com o servidor.');
           showRetryToast(
             'Falha de conexão',
             'Não foi possível alcançar o servidor. Verifique sua internet.'
@@ -230,21 +270,30 @@ const GerenciarUsuarios = () => {
         }
         if (lower.includes('non-2xx') || lower.includes('functionshttperror')) {
           logOutcome('error', { reason: 'server_error', message: dataMessage || errMsg });
+          setError('server_error', dataMessage || errMsg);
           showRetryToast('Erro do servidor', dataMessage || errMsg);
           return;
         }
         logOutcome('error', { reason: 'invoke_error', message: errMsg });
+        setError('invoke_error', errMsg);
         showRetryToast('Erro ao criar usuário', errMsg);
         return;
       }
 
       if (dataErrorCode) {
         logOutcome('error', { reason: dataErrorCode, message: dataMessage });
+        setError(dataErrorCode, dataMessage || dataErrorCode);
         showRetryToast('Erro ao criar usuário', dataMessage || dataErrorCode);
         return;
       }
 
       logOutcome('success', { user_id: response.data?.user_id });
+      setCreateStatus({
+        phase: 'success',
+        email: payload.email,
+        userId: response.data?.user_id,
+        durationMs: Date.now() - startedAtMs,
+      });
       toast.success(`Usuário ${payload.name} criado com sucesso!`);
       setForm({ email: '', password: '', name: '', phone: '', company: '', cnpj: '', role: '' });
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -254,12 +303,14 @@ const GerenciarUsuarios = () => {
       const lower = msg.toLowerCase();
       if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('cors')) {
         logOutcome('error', { reason: 'network_exception', message: msg });
+        setError('network_exception', msg || 'Falha de rede inesperada.');
         showRetryToast(
           'Falha de conexão',
           'Não foi possível alcançar o servidor. Verifique sua internet.'
         );
       } else {
         logOutcome('error', { reason: 'exception', message: msg });
+        setError('exception', msg || 'Erro inesperado.');
         showRetryToast('Erro ao criar usuário', msg || 'Erro inesperado');
       }
     } finally {
@@ -643,6 +694,85 @@ const GerenciarUsuarios = () => {
                   {isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
                   Criar Usuário
                 </Button>
+
+                {createStatus.phase !== 'idle' && (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className={
+                      'mt-3 rounded-md border p-3 text-sm flex items-start gap-3 ' +
+                      (createStatus.phase === 'processing'
+                        ? 'border-blue-200 bg-blue-500/10 text-blue-800'
+                        : createStatus.phase === 'success'
+                        ? 'border-green-200 bg-green-500/10 text-green-800'
+                        : 'border-red-200 bg-red-500/10 text-red-800')
+                    }
+                  >
+                    <div className="mt-0.5">
+                      {createStatus.phase === 'processing' && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {createStatus.phase === 'success' && <CheckCircle2 className="h-4 w-4" />}
+                      {createStatus.phase === 'error' && <AlertCircle className="h-4 w-4" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {createStatus.phase === 'processing' && (
+                        <>
+                          <div className="font-medium">Processando criação…</div>
+                          <div className="text-xs opacity-80 truncate">
+                            {createStatus.email} · {createStatus.role}
+                          </div>
+                          <div className="text-xs opacity-80 flex items-center gap-1 mt-1">
+                            <Clock className="h-3 w-3" />
+                            {(elapsedMs / 1000).toFixed(1)}s / 30s
+                          </div>
+                        </>
+                      )}
+                      {createStatus.phase === 'success' && (
+                        <>
+                          <div className="font-medium">Usuário confirmado</div>
+                          <div className="text-xs opacity-80 truncate">
+                            {createStatus.email}
+                            {createStatus.userId && ` · ID ${createStatus.userId.slice(0, 8)}…`}
+                          </div>
+                          <div className="text-xs opacity-80 mt-1">
+                            Concluído em {(createStatus.durationMs / 1000).toFixed(1)}s
+                          </div>
+                        </>
+                      )}
+                      {createStatus.phase === 'error' && (
+                        <>
+                          <div className="font-medium">Falha na criação</div>
+                          <div className="text-xs opacity-90 break-words">
+                            <span className="font-mono">{createStatus.reason}</span> — {createStatus.message}
+                          </div>
+                          <div className="text-xs opacity-80 mt-1">
+                            Após {(createStatus.durationMs / 1000).toFixed(1)}s · {createStatus.email}
+                          </div>
+                          {createStatus.retry && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="mt-2 h-7"
+                              onClick={createStatus.retry}
+                            >
+                              <RotateCw className="h-3 w-3 mr-1" /> Tentar novamente
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {createStatus.phase !== 'processing' && (
+                      <button
+                        type="button"
+                        aria-label="Fechar status"
+                        className="opacity-60 hover:opacity-100"
+                        onClick={() => setCreateStatus({ phase: 'idle' })}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </form>
             </CardContent>
           </Card>
