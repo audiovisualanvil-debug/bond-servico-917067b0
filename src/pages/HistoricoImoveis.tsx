@@ -300,13 +300,23 @@ const HistoricoImoveis = () => {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as OSStatus | 'all')}>
-                        <SelectTrigger className="h-9 w-[210px]">
+                        <SelectTrigger className="h-9 w-[260px]">
                           <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">Todos os status</SelectItem>
+                          <SelectItem value="all">
+                            <span className="flex items-center justify-between gap-3 w-full">
+                              <span>Todos os status</span>
+                              <span className="text-xs text-muted-foreground">{ordersBeforeStatus.length}</span>
+                            </span>
+                          </SelectItem>
                           {(Object.keys(STATUS_LABELS) as OSStatus[]).map((s) => (
-                            <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                            <SelectItem key={s} value={s}>
+                              <span className="flex items-center justify-between gap-3 w-full">
+                                <span>{STATUS_LABELS[s]}</span>
+                                <span className="text-xs text-muted-foreground">{statusCounts[s] ?? 0}</span>
+                              </span>
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
