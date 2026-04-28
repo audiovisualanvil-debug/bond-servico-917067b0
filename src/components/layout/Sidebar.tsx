@@ -22,7 +22,7 @@ const navItems: NavItem[] = [
   { label: 'Aprovar Orçamentos', href: '/aprovar', icon: DollarSign, roles: ['admin'] },
   { label: 'Meus Serviços', href: '/meus-servicos', icon: Wrench, roles: ['tecnico'] },
   { label: 'Histórico Imóveis', href: '/historico', icon: History, roles: ['imobiliaria', 'admin', 'pessoa_fisica'] },
-  { label: 'Imobiliárias', href: '/imobiliarias', icon: Building2, roles: ['admin'] },
+  { label: 'Clientes', href: '/imobiliarias', icon: Building2, roles: ['admin'] },
   { label: 'Profissionais', href: '/tecnicos', icon: Users, roles: ['admin'] },
   { label: 'Gerenciar Usuários', href: '/usuarios', icon: UserPlus, roles: ['admin'] },
   { label: 'Relatórios', href: '/relatorios', icon: FileText, roles: ['admin'] },

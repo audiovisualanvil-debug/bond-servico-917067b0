@@ -1,68 +1,57 @@
-Entendi. Não vou te mandar “sugestão” nem empurrar teste pra você. Vou fechar isso como entrega de ponta a ponta.
+# Diagnóstico e correção do cadastro de usuários
 
-Pelo audit que acabei de fazer, a tela e boa parte do fluxo já existem, mas achei pontos que ainda podem impedir a experiência real de ficar 100% confiável:
+## O que está acontecendo (verificado no banco de produção)
 
-- O banco está sem dados de OS agora, então ainda não existe prova real end-to-end criada no ambiente atual.
-- Os triggers atuais existem, mas não há trigger automático de notificação por status; hoje as notificações dependem das chamadas no frontend. Se uma chamada falhar/sair antes, o status muda e o e-mail pode não sair.
-- O upload usa signed URLs longas salvas no banco; isso funciona, mas é frágil para PDF/e-mail/histórico a longo prazo. O mais robusto é salvar paths no banco e gerar signed URL na hora de exibir/enviar.
-- Na abertura da OS há validação e upload de fotos, mas não há pré-visualização visual tão clara quanto na finalização.
-- Na finalização, o formulário já tem validação e preview, mas ainda precisa blindar melhor: impedir finalizar enquanto foto está subindo e exigir feedback claro de sucesso/erro por etapa.
+A imobiliária que você está tentando cadastrar **JÁ EXISTE** no banco:
 
-Plano de execução assim que você aprovar:
+- **E-mail:** `danielsilveira@imobiliariagestao.com.br`
+- **Empresa:** IMOBILIÁRIA GESTÃO
+- **CNPJ:** 09.191.551/0001-54
+- **Cadastrada em:** 09/04/2026
 
-1. Blindar o fluxo de fotos antes/depois
-   - Padronizar upload para salvar paths seguros no banco, não links assinados como dado principal.
-   - Gerar signed URLs automaticamente para exibição em OS, histórico, relatório e e-mail.
-   - Manter validação: JPG/PNG/WebP, limite de tamanho, limite de quantidade.
-   - Adicionar pré-visualização clara também na abertura da OS.
-   - Impedir finalizar/abrir OS enquanto upload estiver em andamento.
+A edge function `create-user` está devolvendo `EMAIL_ALREADY_IN_USE` (HTTP 409), mas no card de status que você vê na tela isso não está ficando claro — o botão parece "travado em loading" e você não percebe que o erro já foi devolvido.
 
-2. Fechar o fluxo da OS por status
-   - Garantir transições reais:
-     - abertura: aguardando orçamento
-     - profissional envia orçamento: aguardando aprovação admin
-     - admin envia para imobiliária: aguardando aprovação da imobiliária
-     - imobiliária aprova: aprovado aguardando execução
-     - profissional inicia: em execução
-     - profissional finaliza: concluído
-   - Ajustar mensagens de tela para mostrar exatamente em que etapa está.
-   - Manter “Profissional” na interface, sem trocar o valor `tecnico` do banco.
+Além disso:
 
-3. Tornar e-mails não dependentes de clique/perfeição do frontend
-   - Garantir que as chamadas de e-mail tenham resposta visível no fluxo quando acionadas.
-   - Melhorar logs e retorno de erro das funções de orçamento e relatório.
-   - Confirmar envio de:
-     - orçamento para admin
-     - orçamento para imobiliária
-     - aprovação para profissional/admin
-     - conclusão/relatório para imobiliária
-   - Não bloquear o fluxo principal se e-mail falhar, mas mostrar status real e deixar rastreável.
+1. A página **/imobiliarias** mostra apenas role `imobiliaria` — a IMOBILIÁRIA GESTÃO está lá (cadastrada na primeira vez). O que você não está vendo é a **nova tentativa**, porque ela nunca foi criada (e-mail duplicado).
+2. **/imobiliarias não inclui Pessoa Física** — você pediu que esses "atalhos" também mostrem PF.
+3. **`audit_logs` está vazio** — o log de tentativas de criação não está sendo gravado, dificultando o diagnóstico futuro.
 
-4. Garantir histórico completo por imóvel
-   - Conferir e ajustar o clique no endereço para abrir histórico do imóvel.
-   - Listar todas as OS anteriores, status, orçamento, conclusão e acesso ao relatório.
-   - Garantir que imobiliária só veja histórico dos próprios imóveis e admin veja tudo.
+## O que vou corrigir
 
-5. Fechar PDF/relatório Vita
-   - Garantir que o relatório use dados do imóvel, texto de execução, checklist, fotos antes/depois e assinatura.
-   - Ajustar geração com imagens privadas via signed URL/base64 para não quebrar no PDF.
-   - Melhorar estado de “gerando PDF” e erro se alguma imagem não carregar.
+### 1. Tornar o erro de e-mail duplicado ÓBVIO
+Quando a edge function devolve `EMAIL_ALREADY_IN_USE`:
+- Banner vermelho grande no topo do formulário com o e-mail conflitante
+- Toast persistente (não some sozinho) com botão "Ver usuário existente" que rola até a linha na tabela e destaca
+- Botão "Criar Usuário" volta ao estado normal imediatamente (sem loading travado)
+- Mensagem clara: *"O e-mail X já está cadastrado como [role]. Edite o usuário existente ou use outro e-mail."*
 
-6. Rodar validação técnica completa
-   - Build TypeScript/Vite.
-   - Checagem de Supabase/RLS/storage policies.
-   - Logs das Edge Functions.
-   - Corrigir qualquer erro que aparecer nessa validação.
+### 2. Mostrar lista de e-mails já cadastrados ao digitar
+No campo de e-mail do formulário, se o usuário digitar um e-mail que já existe na lista de `users` carregada, mostrar aviso inline em tempo real (antes mesmo de submeter), evitando a tentativa.
 
-7. Rodar teste real de ponta a ponta no ambiente
-   - Criar/capturar uma OS de teste.
-   - Subir fotos na abertura.
-   - Passar por orçamento, aprovação, execução e finalização.
-   - Subir fotos antes/depois na finalização.
-   - Abrir histórico do imóvel.
-   - Abrir/baixar relatório PDF.
-   - Validar chamadas de e-mail/logs.
+### 3. Renomear página "Imobiliárias" → "Clientes" e incluir Pessoa Física
+- A página `/imobiliarias` passa a listar **imobiliárias + pessoas físicas**, com filtro por tipo (chips: "Todos · Imobiliárias · Pessoas Físicas")
+- Item da sidebar renomeado para "Clientes" (mantendo a rota `/imobiliarias` para não quebrar)
+- Card mostra badge do tipo (Imobiliária / Pessoa Física)
 
-Resultado esperado: eu volto com um relatório objetivo dizendo “passou” ou “falhou” em cada etapa, com os fixes aplicados no que falhar.
+### 4. Corrigir gravação de audit logs
+Investigar por que `auditLog()` não está persistindo (provavelmente erro silencioso na edge `log-audit` ou RLS). Logar em `console.warn` quando falhar para não esconder problemas futuros.
 
-Observação importante: estou em modo de plano agora, então ainda não posso alterar arquivos nem rodar comandos de build/teste destrutivos. Aprovando este plano, eu executo direto sem ficar te jogando sugestão.
+### 5. Adicionar botão "Editar usuário existente" no erro 409
+Quando o e-mail já existe, oferecer atalho direto para abrir o diálogo de edição daquele usuário.
+
+## Detalhes técnicos
+
+**Arquivos a editar:**
+- `src/pages/GerenciarUsuarios.tsx` — tratamento visual do 409, validação inline de e-mail duplicado
+- `src/pages/Imobiliarias.tsx` — incluir `pessoa_fisica`, filtro por tipo, renomear para Clientes
+- `src/components/layout/Sidebar.tsx` — label "Clientes"
+- `src/hooks/useAuditLog.ts` — log de falha em vez de silenciar
+
+**Sem mudanças de banco** — apenas frontend.
+
+## Importante
+
+A IMOBILIÁRIA GESTÃO **já está cadastrada e funcional** desde 09/04. Você pode confirmar agora indo em **Imobiliárias** no menu lateral — ela aparece lá com Daniel Silveira. Suas tentativas recentes estavam falhando porque o e-mail é duplicado, não porque o sistema está quebrado.
+
+Aprovando o plano, eu implemento as 5 correções acima e você passa a ver os erros com clareza.
