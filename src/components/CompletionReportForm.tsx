@@ -8,6 +8,11 @@ import { useFileUpload } from '@/hooks/useFileUpload';
 import {
   FileText, Camera, CheckCircle2, Loader2, X, Plus, Pencil,
 } from 'lucide-react';
+import { toast } from 'sonner';
+
+const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_PHOTOS_PER_SIDE = 10;
 
 interface ChecklistItem {
   id: string;
@@ -38,6 +43,8 @@ export function CompletionReportForm({ onSubmit, isSubmitting, serviceOrderId }:
   const [technicianSignature, setTechnicianSignature] = useState('');
   const [photosBefore, setPhotosBefore] = useState<string[]>([]);
   const [photosAfter, setPhotosAfter] = useState<string[]>([]);
+  const [pendingBefore, setPendingBefore] = useState<string[]>([]);
+  const [pendingAfter, setPendingAfter] = useState<string[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState('');
   const [checklist, setChecklist] = useState<ChecklistItem[]>([
     { id: '1', item: 'Problema identificado e diagnosticado', completed: false },
@@ -49,14 +56,63 @@ export function CompletionReportForm({ onSubmit, isSubmitting, serviceOrderId }:
 
   const handlePhotoUpload = async (files: FileList | null, type: 'before' | 'after') => {
     if (!files || files.length === 0) return;
-    const fileArray = Array.from(files);
-    const folder = `${serviceOrderId}/${type}`;
-    const urls = await uploadFiles(fileArray, folder);
 
+    const currentCount = type === 'before' ? photosBefore.length : photosAfter.length;
+    const remainingSlots = MAX_PHOTOS_PER_SIDE - currentCount;
+
+    if (remainingSlots <= 0) {
+      toast.error(`Máximo de ${MAX_PHOTOS_PER_SIDE} fotos ${type === 'before' ? 'antes' : 'depois'} atingido.`);
+      return;
+    }
+
+    const incoming = Array.from(files);
+    const validFiles: File[] = [];
+
+    for (const file of incoming) {
+      if (!ALLOWED_PHOTO_TYPES.includes(file.type)) {
+        toast.error(`"${file.name}" — formato inválido. Use JPG, PNG ou WebP.`);
+        continue;
+      }
+      if (file.size > MAX_PHOTO_SIZE) {
+        toast.error(`"${file.name}" — tamanho excede 5MB.`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) return;
+
+    const accepted = validFiles.slice(0, remainingSlots);
+    if (validFiles.length > remainingSlots) {
+      toast.warning(`Apenas ${remainingSlots} foto(s) adicionada(s) — limite de ${MAX_PHOTOS_PER_SIDE} por seção.`);
+    }
+
+    // Optimistic preview via blob URLs
+    const previews = accepted.map(f => URL.createObjectURL(f));
     if (type === 'before') {
-      setPhotosBefore(prev => [...prev, ...urls]);
+      setPendingBefore(prev => [...prev, ...previews]);
     } else {
-      setPhotosAfter(prev => [...prev, ...urls]);
+      setPendingAfter(prev => [...prev, ...previews]);
+    }
+
+    try {
+      const folder = `${serviceOrderId}/${type}`;
+      const urls = await uploadFiles(accepted, folder);
+      if (type === 'before') {
+        setPhotosBefore(prev => [...prev, ...urls]);
+      } else {
+        setPhotosAfter(prev => [...prev, ...urls]);
+      }
+    } catch (err: any) {
+      toast.error('Falha no envio das fotos', { description: err?.message });
+    } finally {
+      // Remove pending previews and revoke blob URLs
+      previews.forEach(u => URL.revokeObjectURL(u));
+      if (type === 'before') {
+        setPendingBefore(prev => prev.filter(u => !previews.includes(u)));
+      } else {
+        setPendingAfter(prev => prev.filter(u => !previews.includes(u)));
+      }
     }
   };
 
