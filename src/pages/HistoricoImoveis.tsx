@@ -268,6 +268,85 @@ const HistoricoImoveis = () => {
     });
   const filtersActive = statusFilter !== 'all' || periodFilter !== 'all' || dateField !== 'createdAt';
 
+  const copyOrderLink = async (order: ServiceOrder) => {
+    const url = `${window.location.origin}/ordens/${order.id}`;
+    const text = `${order.osNumber ?? order.id} — ${url}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Link da OS copiado');
+    } catch {
+      toast.error('Não foi possível copiar o link');
+    }
+  };
+
+  const exportHistoryPdf = async () => {
+    if (!selectedProperty) return;
+    setExporting(true);
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const periodLabel = periodFilter === 'custom'
+        ? `${customStart ? format(customStart, 'dd/MM/yyyy', { locale: ptBR }) : '—'} a ${customEnd ? format(customEnd, 'dd/MM/yyyy', { locale: ptBR }) : '—'}`
+        : PERIOD_LABELS[periodFilter];
+      const statusLabel = statusFilter === 'all' ? 'Todos' : STATUS_LABELS[statusFilter];
+      const rows = propertyOrders.map(o => `
+        <tr>
+          <td style="padding:6px;border:1px solid #ddd;font-weight:600;color:#1a56db;">${o.osNumber ?? '-'}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${(o.problem ?? '').replace(/</g, '&lt;')}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${(o.requesterName ?? '-').replace(/</g, '&lt;')}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${STATUS_LABELS[o.status]}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${formatDateShort(o.createdAt)}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${o.completedAt ? formatDateShort(o.completedAt) : '-'}</td>
+          <td style="padding:6px;border:1px solid #ddd;">${o.finalPrice ? 'R$ ' + o.finalPrice.toFixed(2) : '-'}</td>
+        </tr>
+      `).join('');
+      const html = `
+        <div style="font-family: Arial, sans-serif; padding:24px; color:#111;">
+          <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${selectedProperty.address}</h1>
+          <p style="margin:0 0 12px 0; color:#555; font-size:12px;">
+            ${selectedProperty.neighborhood}, ${selectedProperty.city} - ${selectedProperty.state}
+          </p>
+          <p style="margin:0 0 12px 0; font-size:12px;">
+            <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
+            <strong>Status:</strong> ${statusLabel} ·
+            <strong>Total:</strong> ${propertyOrders.length} OS
+            ${orderQuery ? ` · <strong>Busca:</strong> "${orderQuery}"` : ''}
+            ${requesterQuery ? ` · <strong>Solicitante:</strong> "${requesterQuery}"` : ''}
+          </p>
+          <table style="width:100%; border-collapse:collapse; font-size:11px;">
+            <thead>
+              <tr style="background:#f3f4f6;">
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Nº OS</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Problema</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Solicitante</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Status</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Aberto em</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Concluído em</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Valor</th>
+              </tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="7" style="padding:12px;text-align:center;color:#888;">Nenhuma OS no filtro</td></tr>'}</tbody>
+          </table>
+          <p style="margin-top:16px; font-size:10px; color:#888;">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
+        </div>
+      `;
+      const container = document.createElement('div');
+      container.innerHTML = html;
+      await html2pdf().set({
+        margin: 10,
+        filename: `historico-${(selectedProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+      }).from(container).save();
+      toast.success('PDF gerado com sucesso');
+    } catch (e) {
+      console.error(e);
+      toast.error('Falha ao gerar PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil(propertyOrders.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const paginatedOrders = propertyOrders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
