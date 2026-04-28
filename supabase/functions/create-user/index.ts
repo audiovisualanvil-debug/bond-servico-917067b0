@@ -66,7 +66,24 @@ serve(async (req) => {
       email_confirm: true,
     });
 
-    if (createError) throw new Error(`Erro ao criar usuário: ${createError.message}`);
+    if (createError) {
+      const msg = (createError.message || "").toLowerCase();
+      if (
+        msg.includes("already") ||
+        msg.includes("registered") ||
+        msg.includes("exists") ||
+        msg.includes("duplicate")
+      ) {
+        return new Response(
+          JSON.stringify({
+            error: "EMAIL_ALREADY_IN_USE",
+            message: `O e-mail ${email} já está cadastrado no sistema.`,
+          }),
+          { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      throw new Error(`Erro ao criar usuário: ${createError.message}`);
+    }
 
     const userId = newUser.user.id;
 
