@@ -633,6 +633,7 @@ const GerenciarUsuarios = () => {
               <CardDescription>Crie uma conta para imobiliária ou profissional</CardDescription>
             </CardHeader>
             <CardContent>
+              <CreateUserHealthBanner />
               {/* FIX: Erro #8 - noValidate para evitar mensagens nativas em inglês */}
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <div className="space-y-2">
