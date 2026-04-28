@@ -50,13 +50,41 @@ serve(async (req) => {
     if (!roleData) throw new Error("Apenas administradores podem criar usuários");
 
     const body: CreateUserRequest = await req.json();
-    const { email, password, name, phone, company, cnpj, role } = body;
+    let { email, password, name, phone, company, cnpj, role } = body;
 
     if (!email || !password || !name || !role) {
       throw new Error("Campos obrigatórios: email, password, name, role");
     }
     if (!["imobiliaria", "tecnico", "pessoa_fisica"].includes(role)) {
       throw new Error("Role deve ser 'imobiliaria', 'tecnico' ou 'pessoa_fisica'");
+    }
+
+    // Normalize & validate email
+    email = String(email).trim().toLowerCase();
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_RE.test(email) || email.length > 255) {
+      throw new Error("E-mail inválido");
+    }
+
+    if (typeof password !== "string" || password.length < 6) {
+      throw new Error("Senha deve ter pelo menos 6 caracteres");
+    }
+
+    name = String(name).trim();
+    if (name.length === 0 || name.length > 200) {
+      throw new Error("Nome inválido");
+    }
+
+    // Normalize CPF/CNPJ (remove mask) and validate length
+    if (cnpj) {
+      const digits = String(cnpj).replace(/\D+/g, "");
+      if (role === "imobiliaria" && digits.length !== 14) {
+        throw new Error("CNPJ deve ter 14 dígitos");
+      }
+      if (role === "pessoa_fisica" && digits.length !== 11) {
+        throw new Error("CPF deve ter 11 dígitos");
+      }
+      cnpj = digits;
     }
 
     // Create user via admin API
