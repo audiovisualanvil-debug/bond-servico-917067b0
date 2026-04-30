@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { 
   Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
   FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck,
-  ChevronLeft, User, ExternalLink, Link2, Download, CalendarRange, Columns3
+  ChevronLeft, User, ExternalLink, Link2, Download, CalendarRange, Columns3, Hash, RotateCcw
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -102,6 +102,7 @@ const HistoricoImoveis = () => {
   const [hasSavedDefault, setHasSavedDefault] = useState(false);
   const [orderQuery, setOrderQuery] = useState('');
   const [requesterQuery, setRequesterQuery] = useState('');
+  const [osNumberQuery, setOsNumberQuery] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
   const [customStart, setCustomStart] = useState<Date | undefined>(undefined);
@@ -148,6 +149,12 @@ const HistoricoImoveis = () => {
       if (colsKey) localStorage.setItem(colsKey, JSON.stringify(next));
       return next;
     });
+  };
+
+  const resetColumnsToDefault = () => {
+    setColumns(DEFAULT_COLUMNS);
+    if (colsKey) localStorage.setItem(colsKey, JSON.stringify(DEFAULT_COLUMNS));
+    toast.success('Colunas padrão restauradas e salvas');
   };
 
   const saveDefaults = () => {
@@ -220,6 +227,15 @@ const HistoricoImoveis = () => {
       if (!requesterQuery.trim()) return true;
       const q = requesterQuery.trim().toLowerCase();
       return (os.requesterName ?? '').toLowerCase().includes(q);
+    })
+    .filter(os => {
+      const q = osNumberQuery.trim();
+      if (!q) return true;
+      // Match digits only against os number digits — works whether user types "1023" or "OS-1023"
+      const onlyDigits = q.replace(/\D/g, '');
+      const osDigits = (os.osNumber ?? '').replace(/\D/g, '');
+      if (onlyDigits) return osDigits.includes(onlyDigits);
+      return (os.osNumber ?? '').toLowerCase().includes(q.toLowerCase());
     });
 
   const statusCounts = ordersBeforeStatus.reduce<Record<string, number>>((acc, os) => {
@@ -357,7 +373,7 @@ const HistoricoImoveis = () => {
   // Reset pagination when filters/search/property change
   useEffect(() => {
     setPage(1);
-  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery]);
+  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery, osNumberQuery]);
 
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
 
@@ -588,6 +604,14 @@ const HistoricoImoveis = () => {
                               </div>
                             ))}
                           </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-3"
+                            onClick={resetColumnsToDefault}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5 mr-1" /> Restaurar colunas padrão
+                          </Button>
                           <p className="text-[10px] text-muted-foreground mt-2">Sua preferência é salva automaticamente.</p>
                         </PopoverContent>
                       </Popover>
@@ -664,7 +688,7 @@ const HistoricoImoveis = () => {
 
                   {propertyOrders.length > 0 ? (
                     <>
-                    <div className="grid gap-2 md:grid-cols-2 mb-4">
+                    <div className="grid gap-2 md:grid-cols-3 mb-4">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -680,6 +704,16 @@ const HistoricoImoveis = () => {
                           placeholder="Filtrar por nome do solicitante..."
                           value={requesterQuery}
                           onChange={(e) => setRequesterQuery(e.target.value)}
+                          className="pl-10 h-9"
+                        />
+                      </div>
+                      <div className="relative">
+                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Filtrar por nº da OS (ex: 1023)"
+                          value={osNumberQuery}
+                          onChange={(e) => setOsNumberQuery(e.target.value)}
+                          inputMode="numeric"
                           className="pl-10 h-9"
                         />
                       </div>
