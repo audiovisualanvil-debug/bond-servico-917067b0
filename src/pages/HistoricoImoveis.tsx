@@ -754,6 +754,15 @@ const HistoricoImoveis = () => {
                           <p className="text-[10px] text-muted-foreground mt-2">Sua preferência é salva automaticamente.</p>
                         </PopoverContent>
                       </Popover>
+                      <Select value={exportScope} onValueChange={(v) => setExportScope(v as 'page' | 'all')}>
+                        <SelectTrigger className="h-9 w-[200px]" title="Escopo do PDF exportado">
+                          <SelectValue placeholder="Escopo PDF" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">PDF: todos filtrados</SelectItem>
+                          <SelectItem value="page">PDF: somente página atual</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Button
                         variant="outline"
                         size="sm"
