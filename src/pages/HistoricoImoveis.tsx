@@ -117,6 +117,7 @@ const HistoricoImoveis = () => {
   const [orderQuery, setOrderQuery] = useState('');
   const [requesterQuery, setRequesterQuery] = useState('');
   const [osNumberQuery, setOsNumberQuery] = useState('');
+  const [addressQuery, setAddressQuery] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
   const [customStart, setCustomStart] = useState<Date | undefined>(undefined);
