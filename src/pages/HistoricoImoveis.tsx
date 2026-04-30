@@ -117,6 +117,7 @@ const HistoricoImoveis = () => {
   const [orderQuery, setOrderQuery] = useState('');
   const [requesterQuery, setRequesterQuery] = useState('');
   const [osNumberQuery, setOsNumberQuery] = useState('');
+  const [addressQuery, setAddressQuery] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
   const [customStart, setCustomStart] = useState<Date | undefined>(undefined);
@@ -266,6 +267,15 @@ const HistoricoImoveis = () => {
       const osDigits = (os.osNumber ?? '').replace(/\D/g, '');
       if (onlyDigits) return osDigits.includes(onlyDigits);
       return (os.osNumber ?? '').toLowerCase().includes(q.toLowerCase());
+    })
+    .filter(os => {
+      const q = addressQuery.trim().toLowerCase();
+      if (!q) return true;
+      const p = os.property;
+      if (!p) return false;
+      const haystack = [p.address, p.neighborhood, p.city, p.state, p.zipCode, p.code]
+        .filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(q);
     });
 
   const statusCounts = ordersBeforeStatus.reduce<Record<string, number>>((acc, os) => {
@@ -365,6 +375,7 @@ const HistoricoImoveis = () => {
         ? `${customStart ? format(customStart, 'dd/MM/yyyy', { locale: ptBR }) : '—'} a ${customEnd ? format(customEnd, 'dd/MM/yyyy', { locale: ptBR }) : '—'}`
         : PERIOD_LABELS[periodFilter];
       const statusLabel = statusFilter === 'all' ? 'Todos' : STATUS_LABELS[statusFilter];
+      const sortLabel = SORT_LABELS[sortKey];
       const esc = (s: string) => s.replace(/</g, '&lt;');
       const td = (content: string, extra = '') =>
         `<td style="padding:6px;border:1px solid #ddd;${extra}">${content}</td>`;
@@ -396,9 +407,11 @@ const HistoricoImoveis = () => {
           <p style="margin:0 0 12px 0; font-size:12px;">
             <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
             <strong>Status:</strong> ${statusLabel} ·
+            <strong>Ordenação:</strong> ${sortLabel} ·
             <strong>Total:</strong> ${propertyOrders.length} OS
             ${orderQuery ? ` · <strong>Busca:</strong> "${orderQuery}"` : ''}
             ${requesterQuery ? ` · <strong>Solicitante:</strong> "${requesterQuery}"` : ''}
+            ${addressQuery ? ` · <strong>Endereço:</strong> "${addressQuery}"` : ''}
           </p>
           <table style="width:100%; border-collapse:collapse; font-size:11px;">
             <thead>
@@ -434,7 +447,7 @@ const HistoricoImoveis = () => {
   // Reset pagination when filters/search/property change
   useEffect(() => {
     setPage(1);
-  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery, osNumberQuery]);
+  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery, osNumberQuery, addressQuery]);
 
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
 
@@ -760,7 +773,7 @@ const HistoricoImoveis = () => {
 
                   {propertyOrders.length > 0 ? (
                     <>
-                    <div className="grid gap-2 md:grid-cols-3 mb-4">
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4 mb-4">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -786,6 +799,15 @@ const HistoricoImoveis = () => {
                           value={osNumberQuery}
                           onChange={(e) => setOsNumberQuery(e.target.value)}
                           inputMode="numeric"
+                          className="pl-10 h-9"
+                        />
+                      </div>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Filtrar por endereço/imóvel..."
+                          value={addressQuery}
+                          onChange={(e) => setAddressQuery(e.target.value)}
                           className="pl-10 h-9"
                         />
                       </div>
