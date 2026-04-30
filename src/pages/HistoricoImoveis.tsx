@@ -773,7 +773,7 @@ const HistoricoImoveis = () => {
 
                   {propertyOrders.length > 0 ? (
                     <>
-                    <div className="grid gap-2 md:grid-cols-3 mb-4">
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4 mb-4">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -799,6 +799,15 @@ const HistoricoImoveis = () => {
                           value={osNumberQuery}
                           onChange={(e) => setOsNumberQuery(e.target.value)}
                           inputMode="numeric"
+                          className="pl-10 h-9"
+                        />
+                      </div>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Filtrar por endereço/imóvel..."
+                          value={addressQuery}
+                          onChange={(e) => setAddressQuery(e.target.value)}
                           className="pl-10 h-9"
                         />
                       </div>
