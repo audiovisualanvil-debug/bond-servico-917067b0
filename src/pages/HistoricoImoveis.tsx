@@ -288,17 +288,28 @@ const HistoricoImoveis = () => {
         ? `${customStart ? format(customStart, 'dd/MM/yyyy', { locale: ptBR }) : '—'} a ${customEnd ? format(customEnd, 'dd/MM/yyyy', { locale: ptBR }) : '—'}`
         : PERIOD_LABELS[periodFilter];
       const statusLabel = statusFilter === 'all' ? 'Todos' : STATUS_LABELS[statusFilter];
-      const rows = propertyOrders.map(o => `
-        <tr>
-          <td style="padding:6px;border:1px solid #ddd;font-weight:600;color:#1a56db;">${o.osNumber ?? '-'}</td>
-          <td style="padding:6px;border:1px solid #ddd;">${(o.problem ?? '').replace(/</g, '&lt;')}</td>
-          <td style="padding:6px;border:1px solid #ddd;">${(o.requesterName ?? '-').replace(/</g, '&lt;')}</td>
-          <td style="padding:6px;border:1px solid #ddd;">${STATUS_LABELS[o.status]}</td>
-          <td style="padding:6px;border:1px solid #ddd;">${formatDateShort(o.createdAt)}</td>
-          <td style="padding:6px;border:1px solid #ddd;">${o.completedAt ? formatDateShort(o.completedAt) : '-'}</td>
-          <td style="padding:6px;border:1px solid #ddd;">${o.finalPrice ? 'R$ ' + o.finalPrice.toFixed(2) : '-'}</td>
-        </tr>
-      `).join('');
+      const esc = (s: string) => s.replace(/</g, '&lt;');
+      const td = (content: string, extra = '') =>
+        `<td style="padding:6px;border:1px solid #ddd;${extra}">${content}</td>`;
+      const th = (label: string) =>
+        `<th style="padding:6px;border:1px solid #ddd;text-align:left;">${label}</th>`;
+      // Build header + row cells in the same order, respecting selected columns
+      const colDefs: { key: ColumnKey; header: string; cell: (o: ServiceOrder) => string }[] = [
+        { key: 'osNumber', header: 'Nº OS', cell: o => td(esc(o.osNumber ?? '-'), 'font-weight:600;color:#1a56db;') },
+        { key: 'problem',  header: 'Problema', cell: o => td(esc(o.problem ?? '-')) },
+        { key: 'requester', header: 'Solicitante', cell: o => td(esc(o.requesterName ?? '-')) },
+        { key: 'status', header: 'Status', cell: o => td(STATUS_LABELS[o.status]) },
+        { key: 'dates', header: `Datas (${DATE_FIELD_LABELS[dateField]})`, cell: o => {
+          const opened = formatDateShort(o.createdAt);
+          const done = o.completedAt ? formatDateShort(o.completedAt) : '-';
+          return td(`Aberto: ${opened}<br/>Concluído: ${done}`);
+        }},
+        { key: 'price', header: 'Valor', cell: o => td(o.finalPrice ? 'R$ ' + o.finalPrice.toFixed(2) : '-') },
+      ];
+      const activeCols = colDefs.filter(c => columns[c.key]);
+      const colCount = Math.max(1, activeCols.length);
+      const headerHtml = activeCols.map(c => th(c.header)).join('');
+      const rows = propertyOrders.map(o => `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`).join('');
       const html = `
         <div style="font-family: Arial, sans-serif; padding:24px; color:#111;">
           <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${selectedProperty.address}</h1>
@@ -314,17 +325,9 @@ const HistoricoImoveis = () => {
           </p>
           <table style="width:100%; border-collapse:collapse; font-size:11px;">
             <thead>
-              <tr style="background:#f3f4f6;">
-                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Nº OS</th>
-                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Problema</th>
-                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Solicitante</th>
-                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Status</th>
-                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Aberto em</th>
-                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Concluído em</th>
-                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Valor</th>
-              </tr>
+              <tr style="background:#f3f4f6;">${headerHtml || th('—')}</tr>
             </thead>
-            <tbody>${rows || '<tr><td colspan="7" style="padding:12px;text-align:center;color:#888;">Nenhuma OS no filtro</td></tr>'}</tbody>
+            <tbody>${rows || `<tr><td colspan="${colCount}" style="padding:12px;text-align:center;color:#888;">Nenhuma OS no filtro</td></tr>`}</tbody>
           </table>
           <p style="margin-top:16px; font-size:10px; color:#888;">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
         </div>
