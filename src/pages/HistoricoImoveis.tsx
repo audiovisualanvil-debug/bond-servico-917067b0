@@ -267,6 +267,15 @@ const HistoricoImoveis = () => {
       const osDigits = (os.osNumber ?? '').replace(/\D/g, '');
       if (onlyDigits) return osDigits.includes(onlyDigits);
       return (os.osNumber ?? '').toLowerCase().includes(q.toLowerCase());
+    })
+    .filter(os => {
+      const q = addressQuery.trim().toLowerCase();
+      if (!q) return true;
+      const p = os.property;
+      if (!p) return false;
+      const haystack = [p.address, p.neighborhood, p.city, p.state, p.zipCode, p.code]
+        .filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(q);
     });
 
   const statusCounts = ordersBeforeStatus.reduce<Record<string, number>>((acc, os) => {
@@ -435,7 +444,7 @@ const HistoricoImoveis = () => {
   // Reset pagination when filters/search/property change
   useEffect(() => {
     setPage(1);
-  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery, osNumberQuery]);
+  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery, osNumberQuery, addressQuery]);
 
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
 
