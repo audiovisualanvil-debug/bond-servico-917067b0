@@ -442,7 +442,12 @@ const HistoricoImoveis = () => {
       const activeCols = colDefs.filter(c => columns[c.key]);
       const colCount = Math.max(1, activeCols.length);
       const headerHtml = activeCols.map(c => th(c.header)).join('');
-      const rows = propertyOrders.map(o => `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`).join('');
+      // Honor current screen scope: only the visible page or the entire filtered list (in current sort order)
+      const exportRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
+      const scopeLabel = exportScope === 'page'
+        ? `Página atual (${currentPage} de ${totalPages})`
+        : 'Todos os filtrados';
+      const rows = exportRows.map(o => `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`).join('');
       const html = `
         <div style="font-family: Arial, sans-serif; padding:24px; color:#111;">
           <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${selectedProperty.address}</h1>
@@ -453,10 +458,14 @@ const HistoricoImoveis = () => {
             <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
             <strong>Status:</strong> ${statusLabel} ·
             <strong>Ordenação:</strong> ${sortLabel} ·
-            <strong>Total:</strong> ${propertyOrders.length} OS
+            <strong>Escopo:</strong> ${scopeLabel} ·
+            <strong>Total exportado:</strong> ${exportRows.length} de ${propertyOrders.length} OS
             ${orderQuery ? ` · <strong>Busca:</strong> "${orderQuery}"` : ''}
             ${requesterQuery ? ` · <strong>Solicitante:</strong> "${requesterQuery}"` : ''}
+            ${osNumberQuery ? ` · <strong>Nº OS:</strong> "${osNumberQuery}"` : ''}
             ${addressQuery ? ` · <strong>Endereço:</strong> "${addressQuery}"` : ''}
+            ${neighborhoodQuery ? ` · <strong>Bairro:</strong> "${neighborhoodQuery}"` : ''}
+            ${cityQuery ? ` · <strong>Cidade:</strong> "${cityQuery}"` : ''}
           </p>
           <table style="width:100%; border-collapse:collapse; font-size:11px;">
             <thead>
