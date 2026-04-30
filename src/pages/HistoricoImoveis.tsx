@@ -836,7 +836,7 @@ const HistoricoImoveis = () => {
 
                   {propertyOrders.length > 0 ? (
                     <>
-                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4 mb-4">
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3 mb-2">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -865,15 +865,49 @@ const HistoricoImoveis = () => {
                           className="pl-10 h-9"
                         />
                       </div>
+                    </div>
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3 mb-2">
                       <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          placeholder="Filtrar por endereço/imóvel..."
+                          placeholder="Endereço/imóvel (texto livre)..."
                           value={addressQuery}
                           onChange={(e) => setAddressQuery(e.target.value)}
                           className="pl-10 h-9"
                         />
                       </div>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Bairro..."
+                          value={neighborhoodQuery}
+                          onChange={(e) => setNeighborhoodQuery(e.target.value)}
+                          className="pl-10 h-9"
+                        />
+                      </div>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Cidade..."
+                          value={cityQuery}
+                          onChange={(e) => setCityQuery(e.target.value)}
+                          className="pl-10 h-9"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                      <Button variant="outline" size="sm" onClick={saveAddressFilter} title="Salvar este filtro de endereço como padrão">
+                        {hasSavedAddress ? <BookmarkCheck className="h-4 w-4 mr-1" /> : <Bookmark className="h-4 w-4 mr-1" />}
+                        {hasSavedAddress ? 'Atualizar filtro de endereço' : 'Salvar filtro de endereço'}
+                      </Button>
+                      {(addressQuery || neighborhoodQuery || cityQuery || hasSavedAddress) && (
+                        <Button variant="ghost" size="sm" onClick={clearAddressFilter} title="Limpar filtro de endereço (e remover padrão)">
+                          Limpar endereço
+                        </Button>
+                      )}
+                      {hasSavedAddress && (
+                        <span className="text-[11px] text-muted-foreground">Restaurado automaticamente do seu padrão.</span>
+                      )}
                     </div>
                     <div className="space-y-4">
                       {paginatedOrders.map((order) => {
