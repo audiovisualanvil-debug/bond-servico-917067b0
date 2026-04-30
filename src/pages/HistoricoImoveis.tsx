@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { 
   Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
   FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck,
-  ChevronLeft, User, ExternalLink, Link2, Download, CalendarRange, Columns3, Hash, RotateCcw
+  ChevronLeft, User, ExternalLink, Link2, Download, CalendarRange, Columns3, Hash, RotateCcw,
+  ArrowUpDown, Home
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -68,6 +69,19 @@ const DEFAULT_COLUMNS: Record<ColumnKey, boolean> = {
   osNumber: true, problem: true, requester: true, status: true, dates: true, price: true,
 };
 
+type SortKey =
+  | 'createdAt_desc' | 'createdAt_asc'
+  | 'completedAt_desc' | 'completedAt_asc'
+  | 'price_desc' | 'price_asc';
+const SORT_LABELS: Record<SortKey, string> = {
+  createdAt_desc: 'Abertura (mais recente)',
+  createdAt_asc: 'Abertura (mais antiga)',
+  completedAt_desc: 'Conclusão (mais recente)',
+  completedAt_asc: 'Conclusão (mais antiga)',
+  price_desc: 'Valor (maior → menor)',
+  price_asc: 'Valor (menor → maior)',
+};
+
 const formatDateTime = (d?: Date) =>
   d ? d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
@@ -108,11 +122,13 @@ const HistoricoImoveis = () => {
   const [customStart, setCustomStart] = useState<Date | undefined>(undefined);
   const [customEnd, setCustomEnd] = useState<Date | undefined>(undefined);
   const [columns, setColumns] = useState<Record<ColumnKey, boolean>>(DEFAULT_COLUMNS);
+  const [sortKey, setSortKey] = useState<SortKey>('createdAt_desc');
   const [exporting, setExporting] = useState(false);
   const navigate = useNavigate();
 
   const prefsKey = user ? `historicoImoveis:filters:${user.id}` : null;
   const colsKey = user ? `historicoImoveis:columns:${user.id}` : null;
+  const sortKeyStorage = user ? `historicoImoveis:sort:${user.id}` : null;
 
   // Load saved defaults on mount / user change
   useEffect(() => {
@@ -142,6 +158,20 @@ const HistoricoImoveis = () => {
       setColumns({ ...DEFAULT_COLUMNS, ...parsed });
     } catch { /* ignore */ }
   }, [colsKey]);
+
+  // Load saved sort
+  useEffect(() => {
+    if (!sortKeyStorage) return;
+    try {
+      const raw = localStorage.getItem(sortKeyStorage);
+      if (raw && raw in SORT_LABELS) setSortKey(raw as SortKey);
+    } catch { /* ignore */ }
+  }, [sortKeyStorage]);
+
+  const updateSort = (k: SortKey) => {
+    setSortKey(k);
+    if (sortKeyStorage) localStorage.setItem(sortKeyStorage, k);
+  };
 
   const toggleColumn = (k: ColumnKey, value: boolean) => {
     setColumns(prev => {
@@ -278,9 +308,25 @@ const HistoricoImoveis = () => {
   const propertyOrders = ordersBeforeStatus
     .filter(os => statusFilter === 'all' || os.status === statusFilter)
     .sort((a, b) => {
-      const da = (a[dateField] as Date | null | undefined)?.getTime() ?? a.createdAt.getTime();
-      const db = (b[dateField] as Date | null | undefined)?.getTime() ?? b.createdAt.getTime();
-      return db - da;
+      const FAR_PAST = -Infinity;
+      const FAR_FUTURE = Infinity;
+      switch (sortKey) {
+        case 'createdAt_asc':  return a.createdAt.getTime() - b.createdAt.getTime();
+        case 'createdAt_desc': return b.createdAt.getTime() - a.createdAt.getTime();
+        case 'completedAt_desc': {
+          const ta = a.completedAt?.getTime() ?? FAR_PAST;
+          const tb = b.completedAt?.getTime() ?? FAR_PAST;
+          return tb - ta;
+        }
+        case 'completedAt_asc': {
+          const ta = a.completedAt?.getTime() ?? FAR_FUTURE;
+          const tb = b.completedAt?.getTime() ?? FAR_FUTURE;
+          return ta - tb;
+        }
+        case 'price_desc': return (b.finalPrice ?? -Infinity) - (a.finalPrice ?? -Infinity);
+        case 'price_asc':  return (a.finalPrice ?? Infinity) - (b.finalPrice ?? Infinity);
+        default: return 0;
+      }
     });
   const filtersActive = statusFilter !== 'all' || periodFilter !== 'all' || dateField !== 'createdAt' || !!customStart || !!customEnd;
 
@@ -292,6 +338,21 @@ const HistoricoImoveis = () => {
       toast.success('Link da OS copiado');
     } catch {
       toast.error('Não foi possível copiar o link');
+    }
+  };
+
+  const copyPropertyLink = async (order: ServiceOrder) => {
+    const prop = order.property;
+    const fullAddress = prop
+      ? `${prop.address}, ${prop.neighborhood}, ${prop.city} - ${prop.state}${prop.zipCode ? ` (CEP ${prop.zipCode})` : ''}`
+      : '';
+    const url = `${window.location.origin}/historico-imoveis?propertyId=${order.propertyId}`;
+    const text = fullAddress ? `${fullAddress} — ${url}` : url;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Link do imóvel copiado');
+    } catch {
+      toast.error('Não foi possível copiar o link do imóvel');
     }
   };
 
@@ -547,6 +608,17 @@ const HistoricoImoveis = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      <Select value={sortKey} onValueChange={(v) => updateSort(v as SortKey)}>
+                        <SelectTrigger className="h-9 w-[240px]" title="Ordenação da lista (também aplicada ao PDF)">
+                          <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                          <SelectValue placeholder="Ordenar por" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+                            <SelectItem key={k} value={k}>{SORT_LABELS[k]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       {periodFilter === 'custom' && (
                         <div className="flex items-center gap-1">
                           <Popover>
@@ -765,6 +837,14 @@ const HistoricoImoveis = () => {
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>Copiar link / ID</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyPropertyLink(order)}>
+                                      <Home className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Copiar link do imóvel</TooltipContent>
                                 </Tooltip>
                               </div>
                             </div>
