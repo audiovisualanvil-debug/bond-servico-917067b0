@@ -608,6 +608,17 @@ const HistoricoImoveis = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                      <Select value={sortKey} onValueChange={(v) => updateSort(v as SortKey)}>
+                        <SelectTrigger className="h-9 w-[240px]" title="Ordenação da lista (também aplicada ao PDF)">
+                          <ArrowUpDown className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                          <SelectValue placeholder="Ordenar por" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
+                            <SelectItem key={k} value={k}>{SORT_LABELS[k]}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       {periodFilter === 'custom' && (
                         <div className="flex items-center gap-1">
                           <Popover>
@@ -826,6 +837,14 @@ const HistoricoImoveis = () => {
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>Copiar link / ID</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyPropertyLink(order)}>
+                                      <Home className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Copiar link do imóvel</TooltipContent>
                                 </Tooltip>
                               </div>
                             </div>
