@@ -6,7 +6,7 @@ import {
   Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
   FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck,
   ChevronLeft, User, ExternalLink, Link2, Download, CalendarRange, Columns3, Hash, RotateCcw,
-  ArrowUpDown, Home
+  ArrowUpDown, Home, Bookmark
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -118,6 +118,10 @@ const HistoricoImoveis = () => {
   const [requesterQuery, setRequesterQuery] = useState('');
   const [osNumberQuery, setOsNumberQuery] = useState('');
   const [addressQuery, setAddressQuery] = useState('');
+  const [neighborhoodQuery, setNeighborhoodQuery] = useState('');
+  const [cityQuery, setCityQuery] = useState('');
+  const [hasSavedAddress, setHasSavedAddress] = useState(false);
+  const [exportScope, setExportScope] = useState<'page' | 'all'>('all');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
   const [customStart, setCustomStart] = useState<Date | undefined>(undefined);
@@ -130,6 +134,37 @@ const HistoricoImoveis = () => {
   const prefsKey = user ? `historicoImoveis:filters:${user.id}` : null;
   const colsKey = user ? `historicoImoveis:columns:${user.id}` : null;
   const sortKeyStorage = user ? `historicoImoveis:sort:${user.id}` : null;
+  const addressKey = user ? `historicoImoveis:address:${user.id}` : null;
+
+  // Load saved address filters (text + neighborhood + city)
+  useEffect(() => {
+    if (!addressKey) return;
+    try {
+      const raw = localStorage.getItem(addressKey);
+      if (!raw) { setHasSavedAddress(false); return; }
+      const parsed = JSON.parse(raw) as { addressQuery?: string; neighborhoodQuery?: string; cityQuery?: string };
+      if (parsed.addressQuery) setAddressQuery(parsed.addressQuery);
+      if (parsed.neighborhoodQuery) setNeighborhoodQuery(parsed.neighborhoodQuery);
+      if (parsed.cityQuery) setCityQuery(parsed.cityQuery);
+      setHasSavedAddress(true);
+    } catch {
+      setHasSavedAddress(false);
+    }
+  }, [addressKey]);
+
+  const saveAddressFilter = () => {
+    if (!addressKey) return;
+    localStorage.setItem(addressKey, JSON.stringify({ addressQuery, neighborhoodQuery, cityQuery }));
+    setHasSavedAddress(true);
+    toast.success('Filtro de endereço salvo — será restaurado nos próximos acessos');
+  };
+
+  const clearAddressFilter = () => {
+    setAddressQuery(''); setNeighborhoodQuery(''); setCityQuery('');
+    if (addressKey) localStorage.removeItem(addressKey);
+    setHasSavedAddress(false);
+    toast.success('Filtro de endereço limpo');
+  };
 
   // Load saved defaults on mount / user change
   useEffect(() => {
@@ -276,6 +311,16 @@ const HistoricoImoveis = () => {
       const haystack = [p.address, p.neighborhood, p.city, p.state, p.zipCode, p.code]
         .filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(q);
+    })
+    .filter(os => {
+      const q = neighborhoodQuery.trim().toLowerCase();
+      if (!q) return true;
+      return (os.property?.neighborhood ?? '').toLowerCase().includes(q);
+    })
+    .filter(os => {
+      const q = cityQuery.trim().toLowerCase();
+      if (!q) return true;
+      return (os.property?.city ?? '').toLowerCase().includes(q);
     });
 
   const statusCounts = ordersBeforeStatus.reduce<Record<string, number>>((acc, os) => {
@@ -397,7 +442,12 @@ const HistoricoImoveis = () => {
       const activeCols = colDefs.filter(c => columns[c.key]);
       const colCount = Math.max(1, activeCols.length);
       const headerHtml = activeCols.map(c => th(c.header)).join('');
-      const rows = propertyOrders.map(o => `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`).join('');
+      // Honor current screen scope: only the visible page or the entire filtered list (in current sort order)
+      const exportRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
+      const scopeLabel = exportScope === 'page'
+        ? `Página atual (${currentPage} de ${totalPages})`
+        : 'Todos os filtrados';
+      const rows = exportRows.map(o => `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`).join('');
       const html = `
         <div style="font-family: Arial, sans-serif; padding:24px; color:#111;">
           <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${selectedProperty.address}</h1>
@@ -408,10 +458,14 @@ const HistoricoImoveis = () => {
             <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
             <strong>Status:</strong> ${statusLabel} ·
             <strong>Ordenação:</strong> ${sortLabel} ·
-            <strong>Total:</strong> ${propertyOrders.length} OS
+            <strong>Escopo:</strong> ${scopeLabel} ·
+            <strong>Total exportado:</strong> ${exportRows.length} de ${propertyOrders.length} OS
             ${orderQuery ? ` · <strong>Busca:</strong> "${orderQuery}"` : ''}
             ${requesterQuery ? ` · <strong>Solicitante:</strong> "${requesterQuery}"` : ''}
+            ${osNumberQuery ? ` · <strong>Nº OS:</strong> "${osNumberQuery}"` : ''}
             ${addressQuery ? ` · <strong>Endereço:</strong> "${addressQuery}"` : ''}
+            ${neighborhoodQuery ? ` · <strong>Bairro:</strong> "${neighborhoodQuery}"` : ''}
+            ${cityQuery ? ` · <strong>Cidade:</strong> "${cityQuery}"` : ''}
           </p>
           <table style="width:100%; border-collapse:collapse; font-size:11px;">
             <thead>
@@ -447,7 +501,7 @@ const HistoricoImoveis = () => {
   // Reset pagination when filters/search/property change
   useEffect(() => {
     setPage(1);
-  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery, osNumberQuery, addressQuery]);
+  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery, osNumberQuery, addressQuery, neighborhoodQuery, cityQuery, sortKey]);
 
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
 
@@ -700,6 +754,15 @@ const HistoricoImoveis = () => {
                           <p className="text-[10px] text-muted-foreground mt-2">Sua preferência é salva automaticamente.</p>
                         </PopoverContent>
                       </Popover>
+                      <Select value={exportScope} onValueChange={(v) => setExportScope(v as 'page' | 'all')}>
+                        <SelectTrigger className="h-9 w-[200px]" title="Escopo do PDF exportado">
+                          <SelectValue placeholder="Escopo PDF" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">PDF: todos filtrados</SelectItem>
+                          <SelectItem value="page">PDF: somente página atual</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <Button
                         variant="outline"
                         size="sm"
@@ -773,7 +836,7 @@ const HistoricoImoveis = () => {
 
                   {propertyOrders.length > 0 ? (
                     <>
-                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4 mb-4">
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3 mb-2">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -802,15 +865,49 @@ const HistoricoImoveis = () => {
                           className="pl-10 h-9"
                         />
                       </div>
+                    </div>
+                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3 mb-2">
                       <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          placeholder="Filtrar por endereço/imóvel..."
+                          placeholder="Endereço/imóvel (texto livre)..."
                           value={addressQuery}
                           onChange={(e) => setAddressQuery(e.target.value)}
                           className="pl-10 h-9"
                         />
                       </div>
+                      <div className="relative">
+                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Bairro..."
+                          value={neighborhoodQuery}
+                          onChange={(e) => setNeighborhoodQuery(e.target.value)}
+                          className="pl-10 h-9"
+                        />
+                      </div>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Cidade..."
+                          value={cityQuery}
+                          onChange={(e) => setCityQuery(e.target.value)}
+                          className="pl-10 h-9"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                      <Button variant="outline" size="sm" onClick={saveAddressFilter} title="Salvar este filtro de endereço como padrão">
+                        {hasSavedAddress ? <BookmarkCheck className="h-4 w-4 mr-1" /> : <Bookmark className="h-4 w-4 mr-1" />}
+                        {hasSavedAddress ? 'Atualizar filtro de endereço' : 'Salvar filtro de endereço'}
+                      </Button>
+                      {(addressQuery || neighborhoodQuery || cityQuery || hasSavedAddress) && (
+                        <Button variant="ghost" size="sm" onClick={clearAddressFilter} title="Limpar filtro de endereço (e remover padrão)">
+                          Limpar endereço
+                        </Button>
+                      )}
+                      {hasSavedAddress && (
+                        <span className="text-[11px] text-muted-foreground">Restaurado automaticamente do seu padrão.</span>
+                      )}
                     </div>
                     <div className="space-y-4">
                       {paginatedOrders.map((order) => {
