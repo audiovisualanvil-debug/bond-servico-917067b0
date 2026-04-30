@@ -604,6 +604,14 @@ const HistoricoImoveis = () => {
                               </div>
                             ))}
                           </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-3"
+                            onClick={resetColumnsToDefault}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5 mr-1" /> Restaurar colunas padrão
+                          </Button>
                           <p className="text-[10px] text-muted-foreground mt-2">Sua preferência é salva automaticamente.</p>
                         </PopoverContent>
                       </Popover>
@@ -680,7 +688,7 @@ const HistoricoImoveis = () => {
 
                   {propertyOrders.length > 0 ? (
                     <>
-                    <div className="grid gap-2 md:grid-cols-2 mb-4">
+                    <div className="grid gap-2 md:grid-cols-3 mb-4">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -696,6 +704,16 @@ const HistoricoImoveis = () => {
                           placeholder="Filtrar por nome do solicitante..."
                           value={requesterQuery}
                           onChange={(e) => setRequesterQuery(e.target.value)}
+                          className="pl-10 h-9"
+                        />
+                      </div>
+                      <div className="relative">
+                        <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Filtrar por nº da OS (ex: 1023)"
+                          value={osNumberQuery}
+                          onChange={(e) => setOsNumberQuery(e.target.value)}
+                          inputMode="numeric"
                           className="pl-10 h-9"
                         />
                       </div>
