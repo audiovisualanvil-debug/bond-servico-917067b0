@@ -6,7 +6,7 @@ import {
   Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
   FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck,
   ChevronLeft, User, ExternalLink, Link2, Download, CalendarRange, Columns3, Hash, RotateCcw,
-  ArrowUpDown, Home
+  ArrowUpDown, Home, Bookmark
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -118,6 +118,10 @@ const HistoricoImoveis = () => {
   const [requesterQuery, setRequesterQuery] = useState('');
   const [osNumberQuery, setOsNumberQuery] = useState('');
   const [addressQuery, setAddressQuery] = useState('');
+  const [neighborhoodQuery, setNeighborhoodQuery] = useState('');
+  const [cityQuery, setCityQuery] = useState('');
+  const [hasSavedAddress, setHasSavedAddress] = useState(false);
+  const [exportScope, setExportScope] = useState<'page' | 'all'>('all');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
   const [customStart, setCustomStart] = useState<Date | undefined>(undefined);
@@ -130,6 +134,37 @@ const HistoricoImoveis = () => {
   const prefsKey = user ? `historicoImoveis:filters:${user.id}` : null;
   const colsKey = user ? `historicoImoveis:columns:${user.id}` : null;
   const sortKeyStorage = user ? `historicoImoveis:sort:${user.id}` : null;
+  const addressKey = user ? `historicoImoveis:address:${user.id}` : null;
+
+  // Load saved address filters (text + neighborhood + city)
+  useEffect(() => {
+    if (!addressKey) return;
+    try {
+      const raw = localStorage.getItem(addressKey);
+      if (!raw) { setHasSavedAddress(false); return; }
+      const parsed = JSON.parse(raw) as { addressQuery?: string; neighborhoodQuery?: string; cityQuery?: string };
+      if (parsed.addressQuery) setAddressQuery(parsed.addressQuery);
+      if (parsed.neighborhoodQuery) setNeighborhoodQuery(parsed.neighborhoodQuery);
+      if (parsed.cityQuery) setCityQuery(parsed.cityQuery);
+      setHasSavedAddress(true);
+    } catch {
+      setHasSavedAddress(false);
+    }
+  }, [addressKey]);
+
+  const saveAddressFilter = () => {
+    if (!addressKey) return;
+    localStorage.setItem(addressKey, JSON.stringify({ addressQuery, neighborhoodQuery, cityQuery }));
+    setHasSavedAddress(true);
+    toast.success('Filtro de endereço salvo — será restaurado nos próximos acessos');
+  };
+
+  const clearAddressFilter = () => {
+    setAddressQuery(''); setNeighborhoodQuery(''); setCityQuery('');
+    if (addressKey) localStorage.removeItem(addressKey);
+    setHasSavedAddress(false);
+    toast.success('Filtro de endereço limpo');
+  };
 
   // Load saved defaults on mount / user change
   useEffect(() => {
@@ -276,6 +311,16 @@ const HistoricoImoveis = () => {
       const haystack = [p.address, p.neighborhood, p.city, p.state, p.zipCode, p.code]
         .filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(q);
+    })
+    .filter(os => {
+      const q = neighborhoodQuery.trim().toLowerCase();
+      if (!q) return true;
+      return (os.property?.neighborhood ?? '').toLowerCase().includes(q);
+    })
+    .filter(os => {
+      const q = cityQuery.trim().toLowerCase();
+      if (!q) return true;
+      return (os.property?.city ?? '').toLowerCase().includes(q);
     });
 
   const statusCounts = ordersBeforeStatus.reduce<Record<string, number>>((acc, os) => {
@@ -447,7 +492,7 @@ const HistoricoImoveis = () => {
   // Reset pagination when filters/search/property change
   useEffect(() => {
     setPage(1);
-  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery, osNumberQuery, addressQuery]);
+  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery, osNumberQuery, addressQuery, neighborhoodQuery, cityQuery, sortKey]);
 
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
 
