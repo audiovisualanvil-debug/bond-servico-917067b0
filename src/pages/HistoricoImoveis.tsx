@@ -375,6 +375,7 @@ const HistoricoImoveis = () => {
         ? `${customStart ? format(customStart, 'dd/MM/yyyy', { locale: ptBR }) : '—'} a ${customEnd ? format(customEnd, 'dd/MM/yyyy', { locale: ptBR }) : '—'}`
         : PERIOD_LABELS[periodFilter];
       const statusLabel = statusFilter === 'all' ? 'Todos' : STATUS_LABELS[statusFilter];
+      const sortLabel = SORT_LABELS[sortKey];
       const esc = (s: string) => s.replace(/</g, '&lt;');
       const td = (content: string, extra = '') =>
         `<td style="padding:6px;border:1px solid #ddd;${extra}">${content}</td>`;
@@ -406,9 +407,11 @@ const HistoricoImoveis = () => {
           <p style="margin:0 0 12px 0; font-size:12px;">
             <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
             <strong>Status:</strong> ${statusLabel} ·
+            <strong>Ordenação:</strong> ${sortLabel} ·
             <strong>Total:</strong> ${propertyOrders.length} OS
             ${orderQuery ? ` · <strong>Busca:</strong> "${orderQuery}"` : ''}
             ${requesterQuery ? ` · <strong>Solicitante:</strong> "${requesterQuery}"` : ''}
+            ${addressQuery ? ` · <strong>Endereço:</strong> "${addressQuery}"` : ''}
           </p>
           <table style="width:100%; border-collapse:collapse; font-size:11px;">
             <thead>
