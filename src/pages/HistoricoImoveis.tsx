@@ -131,6 +131,7 @@ const HistoricoImoveis = () => {
   const [columns, setColumns] = useState<Record<ColumnKey, boolean>>(DEFAULT_COLUMNS);
   const [sortKey, setSortKey] = useState<SortKey>('createdAt_desc');
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewProperty, setPreviewProperty] = useState<any>(null);
@@ -511,6 +512,7 @@ const HistoricoImoveis = () => {
    };
 
    const handlePreview = (propertyId?: string) => {
+     setExportError(null);
      const targetPropertyId = propertyId || selectedPropertyId;
      const targetProperty = properties.find(p => p.id === targetPropertyId);
      if (!targetProperty) return;
@@ -521,7 +523,18 @@ const HistoricoImoveis = () => {
    };
 
    const exportHistoryPdf = async () => {
-     if (!previewProperty || !previewHtml) return;
+     if (!previewProperty || !previewHtml) {
+       setExportError("Dados do preview não encontrados.");
+       return;
+     }
+
+     // Check if there are rows in the preview HTML (simple check for <tr> tags in tbody)
+     if (!previewHtml.includes('<tr>')) {
+       setExportError("Não há dados para exportar com os filtros atuais.");
+       return;
+     }
+
+     setExportError(null);
      setExporting(true);
      try {
        const html2pdf = (await import('html2pdf.js')).default;
@@ -536,8 +549,10 @@ const HistoricoImoveis = () => {
        }).from(container).save();
        toast.success('PDF gerado com sucesso');
        setShowPreview(false);
-     } catch (e) {
-       console.error(e);
+     } catch (e: any) {
+       console.error("Erro na exportação do PDF:", e);
+       const detail = e?.message || "Ocorreu um erro inesperado ao gerar o arquivo.";
+       setExportError(`Falha ao gerar PDF: ${detail}`);
        toast.error('Falha ao gerar PDF');
      } finally {
        setExporting(false);
