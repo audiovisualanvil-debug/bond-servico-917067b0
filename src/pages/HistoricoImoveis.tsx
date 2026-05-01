@@ -702,8 +702,24 @@ const HistoricoImoveis = () => {
         const detail = e?.message || "Ocorreu um erro inesperado ao gerar o arquivo.";
         const stack = e?.stack || "Não há detalhes de stack disponíveis.";
         const errorType = e?.name || "Exception";
+        
+        const context = [
+          `Contexto da Exportação:`,
+          `- Propriedade: ${previewProperty?.address || 'N/A'} (ID: ${previewProperty?.id || 'N/A'})`,
+          `- Filtro Status (Tela): ${statusFilter}`,
+          `- Filtro Status (PDF): ${exportStatus}`,
+          `- Filtro Responsável: ${exportResponsible}`,
+          `- Escopo: ${exportScope}`,
+          `- Fonte: ${exportFontSize}px`,
+          `- Margem: ${exportMargin}mm`,
+          `- Busca (Texto/CEP): "${orderQuery}" / "${zipCodeQuery}"`,
+          `- Tentativa: ${isRetry ? 'Segunda (Retentativa)' : 'Primeira'}`,
+          `- Navegador: ${navigator.userAgent}`,
+          `- Horário: ${new Date().toISOString()}`
+        ].join('\n');
+
         setExportError(`Falha ao gerar PDF (${errorType})`);
-        setExportErrorDetails(`Tipo: ${errorType}\nErro: ${detail}\n\nStack Trace:\n${stack}`);
+        setExportErrorDetails(`Tipo: ${errorType}\nErro: ${detail}\n\n${context}\n\nStack Trace:\n${stack}`);
         toast.error('Ocorreu um erro na renderização avançada do PDF.');
         setShowErrorModal(true);
       } finally {
