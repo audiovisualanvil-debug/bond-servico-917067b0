@@ -154,9 +154,44 @@ const HistoricoImoveis = () => {
   const colsKey = user ? `historicoImoveis:columns:${user.id}` : null;
    const sortKeyStorage = user ? `historicoImoveis:sort:${user.id}` : null;
    const addressKey = user ? `historicoImoveis:address:${user.id}` : null;
+   const exportPrefsKey = user ? `historicoImoveis:exportPrefs:${user.id}` : null;
    const exportScopeKey = user ? `historicoImoveis:exportScope:${user.id}` : null;
 
-  // Load saved address filters (text + neighborhood + city)
+   // Load saved export preferences
+   useEffect(() => {
+     if (!exportPrefsKey) return;
+     try {
+       const raw = localStorage.getItem(exportPrefsKey);
+       if (!raw) return;
+       const parsed = JSON.parse(raw);
+       if (parsed.scope) setExportScope(parsed.scope);
+       if (parsed.status) setExportStatus(parsed.status);
+       if (parsed.responsible) setExportResponsible(parsed.responsible);
+       if (parsed.fontSize) setExportFontSize(parsed.fontSize);
+       if (parsed.margin) setExportMargin(parsed.margin);
+     } catch { /* ignore */ }
+   }, [exportPrefsKey]);
+
+   const updateExportPrefs = (prefs: { scope?: string, status?: string, responsible?: string, fontSize?: string, margin?: string }) => {
+     if (prefs.scope) setExportScope(prefs.scope as 'page' | 'all');
+     if (prefs.status) setExportStatus(prefs.status as OSStatus | 'all');
+     if (prefs.responsible) setExportResponsible(prefs.responsible);
+     if (prefs.fontSize) setExportFontSize(prefs.fontSize);
+     if (prefs.margin) setExportMargin(prefs.margin);
+
+     if (exportPrefsKey) {
+       const currentRaw = localStorage.getItem(exportPrefsKey);
+       const current = currentRaw ? JSON.parse(currentRaw) : {};
+       localStorage.setItem(exportPrefsKey, JSON.stringify({ ...current, ...prefs }));
+     }
+     
+     // Backward compatibility for the specific scope key
+     if (prefs.scope && exportScopeKey) {
+       localStorage.setItem(exportScopeKey, prefs.scope);
+     }
+   };
+
+   // Load saved address filters (text + neighborhood + city)
   useEffect(() => {
     if (!addressKey) return;
     try {
