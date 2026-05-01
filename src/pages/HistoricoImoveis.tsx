@@ -598,6 +598,51 @@ const HistoricoImoveis = () => {
       setShowPreview(true);
     };
 
+    const exportSimplifiedPdf = async (targetProperty: any, rows: any[]) => {
+      try {
+        const { jsPDF } = await import('jspdf');
+        const doc = new jsPDF({ orientation: 'landscape' });
+        
+        doc.setFontSize(16);
+        doc.text(`Histórico Simplificado: ${targetProperty.address}`, 10, 15);
+        doc.setFontSize(10);
+        doc.text(`${targetProperty.neighborhood}, ${targetProperty.city} - ${targetProperty.state}`, 10, 22);
+        doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 10, 28);
+        
+        let y = 40;
+        doc.setFontSize(9);
+        // Table Header
+        doc.setFillColor(240, 240, 240);
+        doc.rect(10, y - 5, 277, 7, 'F');
+        doc.text('Nº OS', 12, y);
+        doc.text('Problema', 40, y);
+        doc.text('Status', 140, y);
+        doc.text('Data Abertura', 190, y);
+        doc.text('Valor', 240, y);
+        
+        y += 10;
+        rows.forEach((o, i) => {
+          if (y > 185) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(o.osNumber || '-', 12, y);
+          doc.text((o.problem || '-').substring(0, 60), 40, y);
+          doc.text(STATUS_LABELS[o.status] || '-', 140, y);
+          doc.text(formatDateShort(o.createdAt), 190, y);
+          doc.text(o.finalPrice ? `R$ ${o.finalPrice.toFixed(2)}` : '-', 240, y);
+          y += 7;
+        });
+        
+        doc.save(`historico-simplificado-${(targetProperty.address || 'imovel').replace(/[^\w]+/g, '_')}.pdf`);
+        toast.success('PDF Simplificado gerado com sucesso (Fallback)');
+        setShowPreview(false);
+      } catch (err) {
+        console.error("Erro no PDF simplificado:", err);
+        toast.error('Falha crítica: nem o modo simplificado funcionou.');
+      }
+    };
+
     const exportHistoryPdf = async (shouldPrint: boolean = false, isRetry: boolean = false) => {
       if (!previewProperty || !previewHtml) {
         setExportError("Dados do preview não encontrados.");
