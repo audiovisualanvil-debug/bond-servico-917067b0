@@ -752,7 +752,11 @@ const HistoricoImoveis = () => {
           y += 9;
         });
         
-        doc.save(`historico-simplificado-${(targetProperty.address || 'imovel').replace(/[^\w]+/g, '_')}.pdf`);
+        const dateStr = format(new Date(), 'yyyy-MM-dd-HHmm');
+        const propSlug = (targetProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 30);
+        const finalFilename = `historico_simplificado_${propSlug}_${dateStr}.pdf`.toLowerCase();
+        
+        doc.save(finalFilename);
         toast.success('PDF Simplificado gerado com sucesso (Fallback)');
         setShowPreview(false);
       } catch (err) {
@@ -782,9 +786,20 @@ const HistoricoImoveis = () => {
         const container = document.createElement('div');
         container.innerHTML = previewHtml;
         
+        const dateStr = format(new Date(), 'yyyy-MM-dd-HHmm');
+        const propSlug = (previewProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 30);
+        
+        let periodSlug = exportPeriod === 'all' ? 'todo_periodo' : exportPeriod;
+        if (exportPeriod === 'custom' && exportStartDate) {
+          periodSlug = `${format(exportStartDate, 'yyyyMMdd')}_${exportEndDate ? format(exportEndDate, 'yyyyMMdd') : 'hoje'}`;
+        }
+        
+        const modeSlug = exportScope === 'page' ? 'pag_atual' : 'completo';
+        const finalFilename = `historico_${propSlug}_${periodSlug}_${modeSlug}_${dateStr}.pdf`.toLowerCase();
+
         const pdfWorker = html2pdf().set({
           margin: parseInt(exportMargin),
-          filename: `historico-${(previewProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
+          filename: finalFilename,
           image: { type: 'jpeg', quality: 0.95 },
           html2canvas: { scale: 2, useCORS: true },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
