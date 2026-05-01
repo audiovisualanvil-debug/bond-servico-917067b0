@@ -131,6 +131,9 @@ const HistoricoImoveis = () => {
   const [columns, setColumns] = useState<Record<ColumnKey, boolean>>(DEFAULT_COLUMNS);
   const [sortKey, setSortKey] = useState<SortKey>('createdAt_desc');
   const [exporting, setExporting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [previewProperty, setPreviewProperty] = useState<any>(null);
   const navigate = useNavigate();
 
   const prefsKey = user ? `historicoImoveis:filters:${user.id}` : null;
