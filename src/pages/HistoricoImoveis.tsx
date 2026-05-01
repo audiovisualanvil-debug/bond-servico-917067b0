@@ -1430,7 +1430,7 @@ const HistoricoImoveis = () => {
                   )}
                 {exportError ? 'Tentar Renderização Avançada' : 'Baixar PDF'}
                 </Button>
-              {exportError && !shouldPrint && (
+              {exportError && (
                 <Button 
                   onClick={() => {
                     // Get the base rows based on current export settings
