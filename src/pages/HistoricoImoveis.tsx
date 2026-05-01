@@ -133,8 +133,9 @@ const HistoricoImoveis = () => {
 
   const prefsKey = user ? `historicoImoveis:filters:${user.id}` : null;
   const colsKey = user ? `historicoImoveis:columns:${user.id}` : null;
-  const sortKeyStorage = user ? `historicoImoveis:sort:${user.id}` : null;
-  const addressKey = user ? `historicoImoveis:address:${user.id}` : null;
+   const sortKeyStorage = user ? `historicoImoveis:sort:${user.id}` : null;
+   const addressKey = user ? `historicoImoveis:address:${user.id}` : null;
+   const exportScopeKey = user ? `historicoImoveis:exportScope:${user.id}` : null;
 
   // Load saved address filters (text + neighborhood + city)
   useEffect(() => {
@@ -202,12 +203,26 @@ const HistoricoImoveis = () => {
       const raw = localStorage.getItem(sortKeyStorage);
       if (raw && raw in SORT_LABELS) setSortKey(raw as SortKey);
     } catch { /* ignore */ }
-  }, [sortKeyStorage]);
+   }, [sortKeyStorage]);
+
+   // Load saved export scope
+   useEffect(() => {
+     if (!exportScopeKey) return;
+     try {
+       const raw = localStorage.getItem(exportScopeKey);
+       if (raw === 'page' || raw === 'all') setExportScope(raw);
+     } catch { /* ignore */ }
+   }, [exportScopeKey]);
 
   const updateSort = (k: SortKey) => {
     setSortKey(k);
     if (sortKeyStorage) localStorage.setItem(sortKeyStorage, k);
-  };
+   };
+
+   const updateExportScope = (v: 'page' | 'all') => {
+     setExportScope(v);
+     if (exportScopeKey) localStorage.setItem(exportScopeKey, v);
+   };
 
   const toggleColumn = (k: ColumnKey, value: boolean) => {
     setColumns(prev => {
@@ -754,7 +769,7 @@ const HistoricoImoveis = () => {
                           <p className="text-[10px] text-muted-foreground mt-2">Sua preferência é salva automaticamente.</p>
                         </PopoverContent>
                       </Popover>
-                      <Select value={exportScope} onValueChange={(v) => setExportScope(v as 'page' | 'all')}>
+                       <Select value={exportScope} onValueChange={(v) => updateExportScope(v as 'page' | 'all')}>
                         <SelectTrigger className="h-9 w-[200px]" title="Escopo do PDF exportado">
                           <SelectValue placeholder="Escopo PDF" />
                         </SelectTrigger>
