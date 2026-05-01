@@ -1,4 +1,4 @@
-// Vita FAZ TUDO - Gestão de Manutenção | publish refresh 2026-04-16 02:05
+// Vita FAZ TUDO - Gestão de Manutenção | publish refresh 2026-05-01 (lockfile cleanup)
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
