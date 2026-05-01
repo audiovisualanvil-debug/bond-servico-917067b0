@@ -1535,6 +1535,50 @@ const HistoricoImoveis = () => {
             </div>
           </ScrollArea>
           <DialogFooter className="mt-4 flex flex-col sm:flex-row items-center justify-end gap-4 border-t pt-4">
+            <div className="flex-1 w-full sm:w-auto">
+              {previewProperty && (() => {
+                // Re-calculate row count and pages for the footer display
+                let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
+                let exportRows = exportStatus === 'all' ? baseRows : baseRows.filter(o => o.status === exportStatus);
+                if (exportResponsible !== 'all') exportRows = exportRows.filter(o => o.tecnico?.name === exportResponsible);
+                
+                // Period filter for export footer (re-using the logic from generation)
+                if (exportPeriod !== 'all' && exportScope !== 'page') {
+                  const cutoff = periodCutoff(exportPeriod as PeriodKey);
+                  exportRows = exportRows.filter(os => {
+                    const d = os[dateField] as Date | null | undefined;
+                    if (exportPeriod === 'custom') {
+                      if (!exportStartDate && !exportEndDate) return true;
+                      if (!d) return false;
+                      if (exportStartDate && d.getTime() < exportStartDate.getTime()) return false;
+                      if (exportEndDate) {
+                        const end = new Date(exportEndDate);
+                        end.setHours(23, 59, 59, 999);
+                        if (d.getTime() > end.getTime()) return false;
+                      }
+                      return true;
+                    }
+                    if (!cutoff || !d) return true;
+                    return d.getTime() >= cutoff.getTime();
+                  });
+                }
+
+                const count = exportRows.length;
+                const fontSizeNum = parseInt(exportFontSize);
+                const estPages = Math.ceil(count / (fontSizeNum === 12 ? 18 : fontSizeNum === 9 ? 26 : 22)) || (count > 0 ? 1 : 0);
+                
+                return (
+                  <div className="text-xs text-muted-foreground flex items-center gap-3">
+                    <span className="flex items-center gap-1 font-medium text-foreground">
+                      <FileText className="h-3.5 w-3.5" /> {count} registros
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Columns3 className="h-3.5 w-3.5" /> Est. {estPages} {estPages === 1 ? 'página' : 'páginas'}
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
               <Button variant="outline" onClick={() => setShowPreview(false)} disabled={exporting}>
                 Cancelar
