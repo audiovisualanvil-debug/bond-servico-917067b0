@@ -497,13 +497,23 @@ const HistoricoImoveis = () => {
       const scopeLabel = exportScope === 'page'
         ? `Página atual (${currentPage} de ${totalPages})`
         : 'Todos os filtrados';
-       const rows = exportRows.map((o, index) => {
-         // Add a marker for potential page breaks if it's a large export
-         const rowHtml = `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`;
-         return rowHtml;
-       }).join('');
+       const rows = exportRows.map((o, index) => `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`).join('');
 
-       return `
+       let emptyReason = null;
+       if (exportRows.length === 0) {
+         const ordersForProp = allOrders.filter(os => os.propertyId === targetProperty.id);
+         if (ordersForProp.length === 0) {
+           emptyReason = "Este imóvel não possui nenhuma ordem de serviço registrada no sistema.";
+         } else if (ordersBeforeStatus.length === 0) {
+           emptyReason = "Os filtros globais (período ou termos de busca) ocultaram todos os registros existentes.";
+         } else if (propertyOrders.length === 0) {
+           emptyReason = `O filtro de status da tela ("${statusFilter === 'all' ? 'Todos' : STATUS_LABELS[statusFilter]}") ocultou os resultados restantes.`;
+         } else {
+           emptyReason = "Os filtros específicos da exportação (Status ou Responsável) removeram todos os registros selecionados.";
+         }
+       }
+
+       const html = `
         <div class="pdf-container" style="font-family: Arial, sans-serif; padding:${margin}px; color:#111; background: white; font-size: ${fontSize}px; width: 297mm; min-height: 210mm; margin: 0 auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative;">
             <style>
               @media screen {
@@ -553,29 +563,38 @@ const HistoricoImoveis = () => {
              ${neighborhoodQuery ? ` · <strong>Bairro:</strong> "${neighborhoodQuery}"` : ''}
              ${cityQuery ? ` · <strong>Cidade:</strong> "${cityQuery}"` : ''}
            </p>
-          <table style="width:100%; border-collapse:collapse; font-size: inherit;">
+           <table style="width:100%; border-collapse:collapse; font-size: inherit;">
              <thead>
                <tr style="background:#f3f4f6;">${headerHtml || '<th style="padding:6px;border:1px solid #ddd;text-align:left;">—</th>'}</tr>
              </thead>
-             <tbody>${rows || `<tr><td colspan="${colCount}" style="padding:12px;text-align:center;color:#888;">Nenhuma OS no filtro</td></tr>`}</tbody>
+             <tbody>${rows || `<tr><td colspan="${colCount}" style="padding:24px;text-align:center;color:#ef4444;font-weight:600;">⚠️ ${emptyReason || 'Nenhuma OS encontrada para exportar'}</td></tr>`}</tbody>
            </table>
            <p style="margin-top:16px; font-size:10px; color:#888;">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
          </div>
        `;
+
+       return { html, rowCount: exportRows.length, emptyReason };
    };
 
-   const handlePreview = (propertyId?: string, fontSize?: string, margin?: string) => {
-     setExportError(null);
-     const targetPropertyId = propertyId || selectedPropertyId;
-     const targetProperty = properties.find(p => p.id === targetPropertyId);
-     if (!targetProperty) return;
-     const currentFontSize = fontSize || exportFontSize;
-     const currentMargin = margin || exportMargin;
-     const htmlContent = generatePdfHtml(targetProperty, currentFontSize, currentMargin === '10' ? '24' : currentMargin === '5' ? '12' : '48');
-     setPreviewHtml(htmlContent);
-     setPreviewProperty(targetProperty);
-     setShowPreview(true);
-   };
+    const handlePreview = (propertyId?: string, fontSize?: string, margin?: string) => {
+      setExportError(null);
+      const targetPropertyId = propertyId || selectedPropertyId;
+      const targetProperty = properties.find(p => p.id === targetPropertyId);
+      if (!targetProperty) return;
+      
+      const currentFontSize = fontSize || exportFontSize;
+      const currentMargin = margin || exportMargin;
+      const { html, rowCount, emptyReason } = generatePdfHtml(targetProperty, currentFontSize, currentMargin === '10' ? '24' : currentMargin === '5' ? '12' : '48');
+      
+      setPreviewHtml(html);
+      setPreviewProperty(targetProperty);
+      
+      if (rowCount === 0) {
+        setExportError(emptyReason || "Não há dados para exportar com os filtros atuais.");
+      }
+      
+      setShowPreview(true);
+    };
 
     const exportHistoryPdf = async (shouldPrint: boolean = false, isRetry: boolean = false) => {
       if (!previewProperty || !previewHtml) {
@@ -583,8 +602,11 @@ const HistoricoImoveis = () => {
         return;
       }
 
-      if (!previewHtml.includes('<tr>')) {
-        setExportError("Não há dados para exportar com os filtros atuais.");
+      // Count rows by looking for <tr> in <tbody> (simple check but now the error message is set in handlePreview)
+      const hasData = previewHtml.split('<tbody>')[1]?.split('</tbody>')[0]?.includes('font-weight:600') === false;
+      if (!hasData) {
+        // The error is already set by handlePreview or previous attempt
+        if (!exportError) setExportError("Não há dados válidos para exportar.");
         return;
       }
 
