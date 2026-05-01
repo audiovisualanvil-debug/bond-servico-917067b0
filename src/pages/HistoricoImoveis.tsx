@@ -154,9 +154,44 @@ const HistoricoImoveis = () => {
   const colsKey = user ? `historicoImoveis:columns:${user.id}` : null;
    const sortKeyStorage = user ? `historicoImoveis:sort:${user.id}` : null;
    const addressKey = user ? `historicoImoveis:address:${user.id}` : null;
+   const exportPrefsKey = user ? `historicoImoveis:exportPrefs:${user.id}` : null;
    const exportScopeKey = user ? `historicoImoveis:exportScope:${user.id}` : null;
 
-  // Load saved address filters (text + neighborhood + city)
+   // Load saved export preferences
+   useEffect(() => {
+     if (!exportPrefsKey) return;
+     try {
+       const raw = localStorage.getItem(exportPrefsKey);
+       if (!raw) return;
+       const parsed = JSON.parse(raw);
+       if (parsed.scope) setExportScope(parsed.scope);
+       if (parsed.status) setExportStatus(parsed.status);
+       if (parsed.responsible) setExportResponsible(parsed.responsible);
+       if (parsed.fontSize) setExportFontSize(parsed.fontSize);
+       if (parsed.margin) setExportMargin(parsed.margin);
+     } catch { /* ignore */ }
+   }, [exportPrefsKey]);
+
+   const updateExportPrefs = (prefs: { scope?: string, status?: string, responsible?: string, fontSize?: string, margin?: string }) => {
+     if (prefs.scope) setExportScope(prefs.scope as 'page' | 'all');
+     if (prefs.status) setExportStatus(prefs.status as OSStatus | 'all');
+     if (prefs.responsible) setExportResponsible(prefs.responsible);
+     if (prefs.fontSize) setExportFontSize(prefs.fontSize);
+     if (prefs.margin) setExportMargin(prefs.margin);
+
+     if (exportPrefsKey) {
+       const currentRaw = localStorage.getItem(exportPrefsKey);
+       const current = currentRaw ? JSON.parse(currentRaw) : {};
+       localStorage.setItem(exportPrefsKey, JSON.stringify({ ...current, ...prefs }));
+     }
+     
+     // Backward compatibility for the specific scope key
+     if (prefs.scope && exportScopeKey) {
+       localStorage.setItem(exportScopeKey, prefs.scope);
+     }
+   };
+
+   // Load saved address filters (text + neighborhood + city)
   useEffect(() => {
     if (!addressKey) return;
     try {
@@ -225,23 +260,10 @@ const HistoricoImoveis = () => {
     } catch { /* ignore */ }
    }, [sortKeyStorage]);
 
-   // Load saved export scope
-   useEffect(() => {
-     if (!exportScopeKey) return;
-     try {
-       const raw = localStorage.getItem(exportScopeKey);
-       if (raw === 'page' || raw === 'all') setExportScope(raw);
-     } catch { /* ignore */ }
-   }, [exportScopeKey]);
 
-  const updateSort = (k: SortKey) => {
-    setSortKey(k);
-    if (sortKeyStorage) localStorage.setItem(sortKeyStorage, k);
-   };
-
-   const updateExportScope = (v: 'page' | 'all') => {
-     setExportScope(v);
-     if (exportScopeKey) localStorage.setItem(exportScopeKey, v);
+   const updateSort = (k: SortKey) => {
+     setSortKey(k);
+     if (sortKeyStorage) localStorage.setItem(sortKeyStorage, k);
    };
 
   const toggleColumn = (k: ColumnKey, value: boolean) => {
@@ -994,7 +1016,7 @@ const HistoricoImoveis = () => {
                           <p className="text-[10px] text-muted-foreground mt-2">Sua preferência é salva automaticamente.</p>
                         </PopoverContent>
                       </Popover>
-                       <Select value={exportStatus} onValueChange={(v) => setExportStatus(v as OSStatus | 'all')}>
+                        <Select value={exportStatus} onValueChange={(v) => updateExportPrefs({ status: v })}>
                          <SelectTrigger className="h-9 w-[160px]" title="Filtrar status no PDF">
                            <SelectValue placeholder="Status no PDF" />
                          </SelectTrigger>
@@ -1005,7 +1027,7 @@ const HistoricoImoveis = () => {
                            ))}
                          </SelectContent>
                        </Select>
-                        <Select value={exportResponsible} onValueChange={setExportResponsible}>
+                         <Select value={exportResponsible} onValueChange={(v) => updateExportPrefs({ responsible: v })}>
                           <SelectTrigger className="h-9 w-[180px]" title="Filtrar responsável no PDF">
                             <SelectValue placeholder="Responsável no PDF" />
                           </SelectTrigger>
@@ -1016,7 +1038,7 @@ const HistoricoImoveis = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Select value={exportScope} onValueChange={(v) => updateExportScope(v as 'page' | 'all')}>
+                         <Select value={exportScope} onValueChange={(v) => updateExportPrefs({ scope: v })}>
                         <SelectTrigger className="h-9 w-[200px]" title="Escopo do PDF exportado">
                           <SelectValue placeholder="Escopo PDF" />
                         </SelectTrigger>
@@ -1349,7 +1371,7 @@ const HistoricoImoveis = () => {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Fonte:</span>
-                <Select value={exportFontSize} onValueChange={(v) => { setExportFontSize(v); handlePreview(previewProperty?.id, v, exportMargin); }}>
+                 <Select value={exportFontSize} onValueChange={(v) => { updateExportPrefs({ fontSize: v }); handlePreview(previewProperty?.id, v, exportMargin); }}>
                   <SelectTrigger className="h-8 w-20 text-xs">
                     <SelectValue />
                   </SelectTrigger>
@@ -1363,7 +1385,7 @@ const HistoricoImoveis = () => {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Margem:</span>
-                <Select value={exportMargin} onValueChange={(v) => { setExportMargin(v); handlePreview(previewProperty?.id, exportFontSize, v); }}>
+                 <Select value={exportMargin} onValueChange={(v) => { updateExportPrefs({ margin: v }); handlePreview(previewProperty?.id, exportFontSize, v); }}>
                   <SelectTrigger className="h-8 w-28 text-xs">
                     <SelectValue />
                   </SelectTrigger>
