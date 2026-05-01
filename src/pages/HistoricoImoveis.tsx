@@ -813,7 +813,7 @@ const HistoricoImoveis = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={exportHistoryPdf}
+                         onClick={() => exportHistoryPdf()}
                         disabled={exporting || propertyOrders.length === 0}
                         title="Exportar histórico filtrado em PDF"
                       >
@@ -1005,14 +1005,28 @@ const HistoricoImoveis = () => {
                                     <TooltipContent>Baixar relatório PDF</TooltipContent>
                                   </Tooltip>
                                 )}
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyOrderLink(order)}>
-                                      <Link2 className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Copiar link / ID</TooltipContent>
-                                </Tooltip>
+                                 <Tooltip>
+                                   <TooltipTrigger asChild>
+                                     <Button
+                                       variant="ghost"
+                                       size="icon"
+                                       className="h-8 w-8"
+                                       onClick={() => exportHistoryPdf(order.propertyId)}
+                                       disabled={exporting}
+                                     >
+                                       <Download className="h-4 w-4 text-primary" />
+                                     </Button>
+                                   </TooltipTrigger>
+                                   <TooltipContent>Exportar PDF deste imóvel</TooltipContent>
+                                 </Tooltip>
+                                 <Tooltip>
+                                   <TooltipTrigger asChild>
+                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyOrderLink(order)}>
+                                       <Link2 className="h-4 w-4" />
+                                     </Button>
+                                   </TooltipTrigger>
+                                   <TooltipContent>Copiar link / ID</TooltipContent>
+                                 </Tooltip>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyPropertyLink(order)}>
