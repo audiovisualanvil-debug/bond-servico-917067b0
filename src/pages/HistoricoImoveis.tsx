@@ -635,31 +635,73 @@ const HistoricoImoveis = () => {
         let y = 40;
         doc.setFontSize(9);
         // Table Header
-        doc.setFillColor(240, 240, 240);
-        doc.rect(10, y - 5, 277, 7, 'F');
+        doc.setFillColor(50, 50, 50);
+        doc.setTextColor(255, 255, 255);
+        doc.rect(10, y - 5, 277, 8, 'F');
+        doc.setFont("helvetica", "bold");
         doc.text('Nº OS', 12, y);
-        doc.text('Problema', 40, y);
-        doc.text('Status', 140, y);
-        doc.text('Data Abertura', 190, y);
-        doc.text('Valor', 240, y);
+        doc.text('Problema / Descrição', 45, y);
+        doc.text('Status Atual', 155, y);
+        doc.text('Abertura', 215, y);
+        doc.text('Valor', 245, y);
+        doc.text('Responsável', 265, y);
         
         y += 10;
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "normal");
+
         rows.forEach((o, i) => {
           if (y > 185) {
             doc.addPage();
             y = 20;
           }
+          
+          // Color code by status
+          let statusColor = [100, 100, 100]; // Default gray
+          let statusIcon = "○";
+          
+          if (o.status === 'concluido') {
+            statusColor = [22, 163, 74]; // Green
+            statusIcon = "✓";
+          } else if (o.status === 'em_execucao') {
+            statusColor = [217, 119, 6]; // Orange
+            statusIcon = "▶";
+          } else if (o.status.includes('aguardando')) {
+            statusColor = [37, 99, 235]; // Blue
+            statusIcon = "⏳";
+          }
+
+          doc.setFont("helvetica", "bold");
           doc.text(o.osNumber || '-', 12, y);
-          doc.text((o.problem || '-').substring(0, 60), 40, y);
-          doc.text(STATUS_LABELS[o.status] || '-', 140, y);
-          doc.text(formatDateShort(o.createdAt), 185, y);
-          doc.text(o.finalPrice ? `R$ ${o.finalPrice.toFixed(2)}` : '-', 220, y);
+          doc.setFont("helvetica", "normal");
+          
+          const problemText = (o.problem || '-').length > 75 
+            ? (o.problem || '-').substring(0, 72) + '...' 
+            : (o.problem || '-');
+          doc.text(problemText, 45, y);
+          
+          doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+          doc.text(`${statusIcon} ${STATUS_LABELS[o.status] || '-'}`, 155, y);
+          doc.setTextColor(0, 0, 0);
+          
+          doc.text(formatDateShort(o.createdAt), 215, y);
+          
+          doc.setFont("helvetica", "bold");
+          doc.text(o.finalPrice ? `R$ ${o.finalPrice.toFixed(2)}` : '-', 245, y);
+          doc.setFont("helvetica", "normal");
+
           doc.setFontSize(7);
           doc.setTextColor(100, 100, 100);
-          doc.text(`Resp: ${o.tecnico?.name || 'Não atribuído'}`, 245, y);
+          const respName = o.tecnico?.name ? o.tecnico.name.split(' ')[0] : 'N/A';
+          doc.text(respName, 265, y);
           doc.setFontSize(9);
           doc.setTextColor(0, 0, 0);
-          y += 8;
+          
+          // Row separator line
+          doc.setDrawColor(230, 230, 230);
+          doc.line(10, y + 2, 287, y + 2);
+          
+          y += 9;
         });
         
         doc.save(`historico-simplificado-${(targetProperty.address || 'imovel').replace(/[^\w]+/g, '_')}.pdf`);
