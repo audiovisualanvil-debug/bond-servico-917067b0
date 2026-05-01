@@ -1529,37 +1529,58 @@ const HistoricoImoveis = () => {
                   <RefreshCcw className="h-3 w-3 mr-1" /> Re-tentar Avançado
                 </Button>
               </div>
-              <div className="space-y-1">
-                <h4 className="text-[10px] font-bold uppercase text-muted-foreground">Alternativa 2</h4>
-                <p className="text-[11px] leading-snug">
-                  Usar o modo de segurança (gera um PDF básico).
-                  {previewProperty && (() => {
-                    let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
-                    let exportRows = exportStatus === 'all' ? baseRows : baseRows.filter(o => o.status === exportStatus);
-                    if (exportResponsible !== 'all') exportRows = exportRows.filter(o => o.tecnico?.name === exportResponsible);
-                    const count = exportRows.length;
-                    const estPages = Math.ceil(count / 22) || 1;
-                    return (
-                      <span className="block mt-1 font-semibold text-amber-700">
-                        {count} registros · Est. {estPages} {estPages === 1 ? 'página' : 'páginas'}
-                      </span>
-                    );
-                  })()}
-                </p>
-                <Button 
-                  variant="default" 
-                  size="sm" 
-                  className="w-full mt-1 bg-amber-600 hover:bg-amber-700 text-white border-none"
-                  onClick={() => {
-                    setShowErrorModal(false);
-                    let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
-                    let exportRows = exportStatus === 'all' ? baseRows : baseRows.filter(o => o.status === exportStatus);
-                    if (exportResponsible !== 'all') exportRows = exportRows.filter(o => o.tecnico?.name === exportResponsible);
-                    exportSimplifiedPdf(previewProperty, exportRows);
-                  }}
-                >
-                  <Download className="h-3 w-3 mr-1" /> Baixar Simplificado
-                </Button>
+              <div className="space-y-1 col-span-2">
+                <h4 className="text-[10px] font-bold uppercase text-muted-foreground">Alternativa 2: Modo de Segurança</h4>
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 space-y-2">
+                    <p className="text-[11px] leading-snug">
+                      Gera um PDF básico utilizando dados estruturados.
+                      {previewProperty && (() => {
+                        let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
+                        let exportRows = exportStatus === 'all' ? baseRows : baseRows.filter(o => o.status === exportStatus);
+                        if (exportResponsible !== 'all') exportRows = exportRows.filter(o => o.tecnico?.name === exportResponsible);
+                        const count = exportRows.length;
+                        const estPages = Math.ceil(count / 22) || 1;
+                        return (
+                          <span className="block mt-1 font-semibold text-amber-700">
+                            {count} registros · Est. {estPages} {estPages === 1 ? 'página' : 'páginas'}
+                          </span>
+                        );
+                      })()}
+                    </p>
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className="w-full bg-amber-600 hover:bg-amber-700 text-white border-none"
+                      onClick={() => {
+                        setShowErrorModal(false);
+                        let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
+                        let exportRows = exportStatus === 'all' ? baseRows : baseRows.filter(o => o.status === exportStatus);
+                        if (exportResponsible !== 'all') exportRows = exportRows.filter(o => o.tecnico?.name === exportResponsible);
+                        exportSimplifiedPdf(previewProperty, exportRows);
+                      }}
+                    >
+                      <Download className="h-3 w-3 mr-1" /> Confirmar e Baixar Simplificado
+                    </Button>
+                  </div>
+                  <div className="w-full md:w-80 space-y-1">
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground">Prévia do Simplificado</span>
+                    <div className="border rounded bg-white p-2 text-[8px] font-mono text-muted-foreground leading-tight max-h-[120px] overflow-hidden opacity-70 cursor-not-allowed select-none">
+                      <div className="font-bold border-b pb-1 mb-1 text-foreground">Histórico Simplificado: {previewProperty?.address?.substring(0, 30)}...</div>
+                      {previewProperty && (() => {
+                        let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
+                        let exportRows = exportStatus === 'all' ? baseRows : baseRows.filter(o => o.status === exportStatus);
+                        if (exportResponsible !== 'all') exportRows = exportRows.filter(o => o.tecnico?.name === exportResponsible);
+                        return exportRows.slice(0, 5).map((o, idx) => (
+                          <div key={idx} className="border-b border-dashed py-0.5">
+                            {o.osNumber} · {o.status.substring(0, 10)}... · {formatDateShort(o.createdAt)}
+                          </div>
+                        ));
+                      })()}
+                      <div className="pt-1 italic">... e mais {Math.max(0, (exportScope === 'page' ? paginatedOrders.length : propertyOrders.length) - 5)} registros</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
