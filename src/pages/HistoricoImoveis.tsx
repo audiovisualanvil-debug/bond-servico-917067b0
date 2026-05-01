@@ -572,6 +572,8 @@ const HistoricoImoveis = () => {
            <p style="margin-top:16px; font-size:10px; color:#888;">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
          </div>
        `;
+
+       return { html, rowCount: exportRows.length, emptyReason };
    };
 
     const handlePreview = (propertyId?: string, fontSize?: string, margin?: string) => {
