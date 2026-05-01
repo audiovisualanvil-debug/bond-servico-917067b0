@@ -6,7 +6,7 @@ import {
   Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
   FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck,
   ChevronLeft, User, ExternalLink, Link2, Download, CalendarRange, Columns3, Hash, RotateCcw,
-   ArrowUpDown, Home, Bookmark, AlertCircle, RefreshCcw
+   ArrowUpDown, Home, Bookmark, AlertCircle, RefreshCcw, Printer
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -540,42 +540,55 @@ const HistoricoImoveis = () => {
      setShowPreview(true);
    };
 
-   const exportHistoryPdf = async () => {
-     if (!previewProperty || !previewHtml) {
-       setExportError("Dados do preview não encontrados.");
-       return;
-     }
+    const exportHistoryPdf = async (shouldPrint: boolean = false) => {
+      if (!previewProperty || !previewHtml) {
+        setExportError("Dados do preview não encontrados.");
+        return;
+      }
 
-     // Check if there are rows in the preview HTML (simple check for <tr> tags in tbody)
-     if (!previewHtml.includes('<tr>')) {
-       setExportError("Não há dados para exportar com os filtros atuais.");
-       return;
-     }
+      if (!previewHtml.includes('<tr>')) {
+        setExportError("Não há dados para exportar com os filtros atuais.");
+        return;
+      }
 
-     setExportError(null);
-     setExporting(true);
-     try {
-       const html2pdf = (await import('html2pdf.js')).default;
-       const container = document.createElement('div');
-       container.innerHTML = previewHtml;
-       await html2pdf().set({
-         margin: 10,
-         filename: `historico-${(previewProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
-         image: { type: 'jpeg', quality: 0.95 },
-         html2canvas: { scale: 2, useCORS: true },
-         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-       }).from(container).save();
-       toast.success('PDF gerado com sucesso');
-       setShowPreview(false);
-     } catch (e: any) {
-       console.error("Erro na exportação do PDF:", e);
-       const detail = e?.message || "Ocorreu um erro inesperado ao gerar o arquivo.";
-       setExportError(`Falha ao gerar PDF: ${detail}`);
-       toast.error('Falha ao gerar PDF');
-     } finally {
-       setExporting(false);
-     }
-   };
+      setExportError(null);
+      setExporting(true);
+      try {
+        const html2pdf = (await import('html2pdf.js')).default;
+        const container = document.createElement('div');
+        container.innerHTML = previewHtml;
+        
+        const pdfWorker = html2pdf().set({
+          margin: 10,
+          filename: `historico-${(previewProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        }).from(container);
+
+        if (shouldPrint) {
+          const pdf = await pdfWorker.outputPdf('blob');
+          const url = URL.createObjectURL(pdf);
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = url;
+          document.body.appendChild(iframe);
+          iframe.contentWindow?.print();
+          toast.success('Preparando impressão...');
+        } else {
+          await pdfWorker.save();
+          toast.success('PDF gerado com sucesso');
+          setShowPreview(false);
+        }
+      } catch (e: any) {
+        console.error("Erro na exportação do PDF:", e);
+        const detail = e?.message || "Ocorreu um erro inesperado ao gerar o arquivo.";
+        setExportError(`Falha ao gerar PDF: ${detail}`);
+        toast.error('Falha ao gerar PDF');
+      } finally {
+        setExporting(false);
+      }
+    };
 
   const totalPages = Math.max(1, Math.ceil(propertyOrders.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -1206,20 +1219,30 @@ const HistoricoImoveis = () => {
               <Button variant="outline" onClick={() => setShowPreview(false)} disabled={exporting}>
                 Cancelar
               </Button>
-              <Button 
-                onClick={exportHistoryPdf} 
-                disabled={exporting}
-                variant={exportError ? "secondary" : "default"}
-              >
-                {exporting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : exportError ? (
-                  <RefreshCcw className="h-4 w-4 mr-2" />
-                ) : (
-                  <Download className="h-4 w-4 mr-2" />
-                )}
-                {exportError ? 'Tentar novamente' : 'Confirmar e Baixar PDF'}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => exportHistoryPdf(true)} 
+                  disabled={exporting}
+                >
+                  {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+                  Imprimir
+                </Button>
+                <Button 
+                  onClick={() => exportHistoryPdf(false)} 
+                  disabled={exporting}
+                  variant={exportError ? "secondary" : "default"}
+                >
+                  {exporting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : exportError ? (
+                    <RefreshCcw className="h-4 w-4 mr-2" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  {exportError ? 'Tentar novamente' : 'Baixar PDF'}
+                </Button>
+              </div>
             </div>
           </DialogFooter>
         </DialogContent>
