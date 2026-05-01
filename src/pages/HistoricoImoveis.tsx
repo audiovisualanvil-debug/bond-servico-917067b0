@@ -261,6 +261,11 @@ const HistoricoImoveis = () => {
    }, [sortKeyStorage]);
 
 
+   const updateSort = (k: SortKey) => {
+     setSortKey(k);
+     if (sortKeyStorage) localStorage.setItem(sortKeyStorage, k);
+   };
+
   const toggleColumn = (k: ColumnKey, value: boolean) => {
     setColumns(prev => {
       const next = { ...prev, [k]: value };
