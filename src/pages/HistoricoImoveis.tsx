@@ -902,7 +902,7 @@ const HistoricoImoveis = () => {
                         />
                       </div>
                     </div>
-                    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3 mb-2">
+                       <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4 mb-2">
                       <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -912,6 +912,15 @@ const HistoricoImoveis = () => {
                           className="pl-10 h-9"
                         />
                       </div>
+                        <div className="relative">
+                          <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="CEP..."
+                            value={zipCodeQuery}
+                            onChange={(e) => setZipCodeQuery(e.target.value)}
+                            className="pl-10 h-9"
+                          />
+                        </div>
                       <div className="relative">
                         <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
