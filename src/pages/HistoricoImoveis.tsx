@@ -132,6 +132,7 @@ const HistoricoImoveis = () => {
   const [hasSavedAddress, setHasSavedAddress] = useState(false);
   const [exportScope, setExportScope] = useState<'page' | 'all'>('all');
   const [exportStatus, setExportStatus] = useState<OSStatus | 'all'>('all');
+  const [exportResponsible, setExportResponsible] = useState<string>('all');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
   const [customStart, setCustomStart] = useState<Date | undefined>(undefined);
@@ -447,12 +448,15 @@ const HistoricoImoveis = () => {
   };
 
    const generatePdfHtml = (targetProperty: any) => {
+      const uniqueResponsibles = Array.from(new Set(propertyOrders.map(o => o.responsibleName).filter(Boolean))) as string[];
+      const responsibleLabel = exportResponsible === 'all' ? 'Todos' : exportResponsible;
+
      const periodLabel = periodFilter === 'custom'
         ? `${customStart ? format(customStart, 'dd/MM/yyyy', { locale: ptBR }) : '—'} a ${customEnd ? format(customEnd, 'dd/MM/yyyy', { locale: ptBR }) : '—'}`
         : PERIOD_LABELS[periodFilter];
       const statusLabel = statusFilter === 'all' ? 'Todos' : STATUS_LABELS[statusFilter];
        const sortLabel = SORT_LABELS[sortKey];
-       const exportStatusLabel = exportStatus === 'all' ? 'Todos' : STATUS_LABELS[exportStatus];
+        const exportStatusLabel = exportStatus === 'all' ? 'Todos' : STATUS_LABELS[exportStatus];
       const esc = (s: string) => s.replace(/</g, '&lt;');
       const td = (content: string, extra = '') =>
         `<td style="padding:6px;border:1px solid #ddd;${extra}">${content}</td>`;
@@ -477,11 +481,16 @@ const HistoricoImoveis = () => {
        // Base rows to export: either the paginated ones or all that match current filters
        let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
 
-       // If exportStatus is NOT 'all', we filter the base rows by that status
-       // (Note: if exportScope is 'page', we filter only within that page)
-       const exportRows = exportStatus === 'all' 
-         ? baseRows 
-         : baseRows.filter(o => o.status === exportStatus);
+        // Apply multiple export-specific filters
+        let exportRows = baseRows;
+        
+        if (exportStatus !== 'all') {
+          exportRows = exportRows.filter(o => o.status === exportStatus);
+        }
+        
+        if (exportResponsible !== 'all') {
+          exportRows = exportRows.filter(o => o.responsibleName === exportResponsible);
+        }
 
       const scopeLabel = exportScope === 'page'
         ? `Página atual (${currentPage} de ${totalPages})`
@@ -497,6 +506,7 @@ const HistoricoImoveis = () => {
              <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
               <strong>Filtro Tela (Status):</strong> ${statusLabel} ·
               <strong>Filtro Exportação (Status):</strong> ${exportStatusLabel} ·
+              <strong>Filtro Exportação (Responsável):</strong> ${responsibleLabel} ·
              <strong>Ordenação:</strong> ${sortKey ? SORT_LABELS[sortKey] : '-'} ·
              <strong>Escopo:</strong> ${scopeLabel} ·
              <strong>Total exportado:</strong> ${exportRows.length} de ${propertyOrders.length} OS
@@ -838,7 +848,18 @@ const HistoricoImoveis = () => {
                            ))}
                          </SelectContent>
                        </Select>
-                       <Select value={exportScope} onValueChange={(v) => updateExportScope(v as 'page' | 'all')}>
+                        <Select value={exportResponsible} onValueChange={setExportResponsible}>
+                          <SelectTrigger className="h-9 w-[180px]" title="Filtrar responsável no PDF">
+                            <SelectValue placeholder="Responsável no PDF" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">PDF: todos responsáveis</SelectItem>
+                            {Array.from(new Set(propertyOrders.map(o => o.responsibleName).filter(Boolean))).map(name => (
+                              <SelectItem key={name as string} value={name as string}>PDF: {name as string}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select value={exportScope} onValueChange={(v) => updateExportScope(v as 'page' | 'all')}>
                         <SelectTrigger className="h-9 w-[200px]" title="Escopo do PDF exportado">
                           <SelectValue placeholder="Escopo PDF" />
                         </SelectTrigger>
