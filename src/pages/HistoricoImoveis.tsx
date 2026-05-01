@@ -448,7 +448,7 @@ const HistoricoImoveis = () => {
   };
 
    const generatePdfHtml = (targetProperty: any) => {
-      const uniqueResponsibles = Array.from(new Set(propertyOrders.map(o => o.responsibleName).filter(Boolean))) as string[];
+      const uniqueResponsibles = Array.from(new Set(propertyOrders.map(o => o.tecnico?.name).filter(Boolean))) as string[];
       const responsibleLabel = exportResponsible === 'all' ? 'Todos' : exportResponsible;
 
      const periodLabel = periodFilter === 'custom'
@@ -489,7 +489,7 @@ const HistoricoImoveis = () => {
         }
         
         if (exportResponsible !== 'all') {
-          exportRows = exportRows.filter(o => o.responsibleName === exportResponsible);
+          exportRows = exportRows.filter(o => o.tecnico?.name === exportResponsible);
         }
 
       const scopeLabel = exportScope === 'page'
@@ -854,7 +854,7 @@ const HistoricoImoveis = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">PDF: todos responsáveis</SelectItem>
-                            {Array.from(new Set(propertyOrders.map(o => o.responsibleName).filter(Boolean))).map(name => (
+                            {Array.from(new Set(propertyOrders.map(o => o.tecnico?.name).filter(Boolean))).map(name => (
                               <SelectItem key={name as string} value={name as string}>PDF: {name as string}</SelectItem>
                             ))}
                           </SelectContent>
