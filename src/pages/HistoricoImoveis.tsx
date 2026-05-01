@@ -700,9 +700,9 @@ const HistoricoImoveis = () => {
 
         const detail = e?.message || "Ocorreu um erro inesperado ao gerar o arquivo.";
         const stack = e?.stack || "Não há detalhes de stack disponíveis.";
-        setExportError(`Falha ao gerar PDF após tentativa automática: ${detail}`);
+        setExportError(`Falha ao gerar PDF. O modo avançado de renderização falhou.`);
         setExportErrorDetails(`${detail}\n\nStack Trace:\n${stack}`);
-        toast.error('Falha ao gerar PDF após tentativa automática');
+        toast.error('Ocorreu um erro na renderização avançada do PDF.');
       } finally {
         if (isRetry || !exporting) {
           setExporting(false);
@@ -1428,8 +1428,27 @@ const HistoricoImoveis = () => {
                   ) : (
                     <Download className="h-4 w-4 mr-2" />
                   )}
-                  {exportError ? 'Tentar novamente' : 'Baixar PDF'}
+                {exportError ? 'Tentar Renderização Avançada' : 'Baixar PDF'}
                 </Button>
+              {exportError && !shouldPrint && (
+                <Button 
+                  onClick={() => {
+                    // Get the base rows based on current export settings
+                    let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
+                    let exportRows = exportStatus === 'all' 
+                      ? baseRows 
+                      : baseRows.filter(o => o.status === exportStatus);
+                    if (exportResponsible !== 'all') {
+                      exportRows = exportRows.filter(o => o.tecnico?.name === exportResponsible);
+                    }
+                    exportSimplifiedPdf(previewProperty, exportRows);
+                  }}
+                  variant="default"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  Baixar PDF Simplificado (Modo de Segurança)
+                </Button>
+              )}
               </div>
             </div>
           </DialogFooter>
