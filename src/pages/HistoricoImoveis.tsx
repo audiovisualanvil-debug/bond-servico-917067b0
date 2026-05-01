@@ -26,6 +26,14 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type PeriodKey = 'all' | '7d' | '4w' | '3m' | '12m' | 'custom';
 const PERIOD_LABELS: Record<PeriodKey, string> = {
