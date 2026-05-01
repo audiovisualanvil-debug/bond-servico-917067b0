@@ -6,7 +6,7 @@ import {
   Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
   FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck,
   ChevronLeft, User, ExternalLink, Link2, Download, CalendarRange, Columns3, Hash, RotateCcw,
-   ArrowUpDown, Home, Bookmark, AlertCircle, RefreshCcw, Printer
+    ArrowUpDown, Home, Bookmark, AlertCircle, RefreshCcw, Printer, Copy, Terminal
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -143,6 +143,7 @@ const HistoricoImoveis = () => {
   const [sortKey, setSortKey] = useState<SortKey>('createdAt_desc');
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [exportErrorDetails, setExportErrorDetails] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewProperty, setPreviewProperty] = useState<any>(null);
@@ -578,6 +579,7 @@ const HistoricoImoveis = () => {
 
     const handlePreview = (propertyId?: string, fontSize?: string, margin?: string) => {
       setExportError(null);
+      setExportErrorDetails(null);
       const targetPropertyId = propertyId || selectedPropertyId;
       const targetProperty = properties.find(p => p.id === targetPropertyId);
       if (!targetProperty) return;
@@ -652,7 +654,9 @@ const HistoricoImoveis = () => {
         }
 
         const detail = e?.message || "Ocorreu um erro inesperado ao gerar o arquivo.";
+        const stack = e?.stack || "Não há detalhes de stack disponíveis.";
         setExportError(`Falha ao gerar PDF após tentativa automática: ${detail}`);
+        setExportErrorDetails(`${detail}\n\nStack Trace:\n${stack}`);
         toast.error('Falha ao gerar PDF após tentativa automática');
       } finally {
         if (isRetry || !exporting) {
@@ -1312,12 +1316,45 @@ const HistoricoImoveis = () => {
               />
             </div>
           </ScrollArea>
-          <DialogFooter className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex-1 w-full sm:w-auto">
+          <DialogFooter className="mt-4 flex flex-col sm:flex-row items-start justify-between gap-4 border-t pt-4">
+            <div className="flex-1 w-full sm:w-auto space-y-2">
               {exportError && (
-                <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-2 rounded-md border border-destructive/20 animate-in fade-in slide-in-from-top-1">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <span className="font-medium">{exportError}</span>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-2 rounded-md border border-destructive/20 animate-in fade-in slide-in-from-top-1">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <span className="font-medium">{exportError}</span>
+                  </div>
+                  
+                  {exportErrorDetails && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 text-[10px] text-muted-foreground hover:text-foreground">
+                          <Terminal className="h-3 w-3 mr-1" /> Ver detalhes técnicos
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-0 overflow-hidden" align="start">
+                        <div className="bg-muted p-2 flex items-center justify-between border-b">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-bold">Log de Erro</span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-5 w-5" 
+                            onClick={() => {
+                              navigator.clipboard.writeText(exportErrorDetails);
+                              toast.success('Detalhes copiados');
+                            }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <ScrollArea className="h-40 p-2">
+                          <pre className="text-[10px] font-mono leading-tight whitespace-pre-wrap break-all opacity-80">
+                            {exportErrorDetails}
+                          </pre>
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
+                  )}
                 </div>
               )}
             </div>
