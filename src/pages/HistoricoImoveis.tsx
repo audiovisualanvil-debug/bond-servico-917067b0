@@ -577,7 +577,7 @@ const HistoricoImoveis = () => {
      setShowPreview(true);
    };
 
-    const exportHistoryPdf = async (shouldPrint: boolean = false) => {
+    const exportHistoryPdf = async (shouldPrint: boolean = false, isRetry: boolean = false) => {
       if (!previewProperty || !previewHtml) {
         setExportError("Dados do preview não encontrados.");
         return;
@@ -619,11 +619,23 @@ const HistoricoImoveis = () => {
         }
       } catch (e: any) {
         console.error("Erro na exportação do PDF:", e);
+        
+        if (!isRetry) {
+          toast.info('Houve um problema na renderização. Tentando novamente...');
+          // Pequeno delay antes da retentativa
+          setTimeout(() => {
+            exportHistoryPdf(shouldPrint, true);
+          }, 1000);
+          return;
+        }
+
         const detail = e?.message || "Ocorreu um erro inesperado ao gerar o arquivo.";
-        setExportError(`Falha ao gerar PDF: ${detail}`);
-        toast.error('Falha ao gerar PDF');
+        setExportError(`Falha ao gerar PDF após tentativa automática: ${detail}`);
+        toast.error('Falha ao gerar PDF após tentativa automática');
       } finally {
-        setExporting(false);
+        if (isRetry || !exporting) {
+          setExporting(false);
+        }
       }
     };
 
