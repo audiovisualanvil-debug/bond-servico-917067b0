@@ -175,12 +175,24 @@ const HistoricoImoveis = () => {
      } catch { /* ignore */ }
    }, [exportPrefsKey]);
 
-   const updateExportPrefs = (prefs: { scope?: string, status?: string, responsible?: string, fontSize?: string, margin?: string }) => {
+   const updateExportPrefs = (prefs: { 
+     scope?: string, 
+     status?: string, 
+     responsible?: string, 
+     fontSize?: string, 
+     margin?: string,
+     period?: string,
+     startDate?: string,
+     endDate?: string
+   }) => {
      if (prefs.scope) setExportScope(prefs.scope as 'page' | 'all');
      if (prefs.status) setExportStatus(prefs.status as OSStatus | 'all');
      if (prefs.responsible) setExportResponsible(prefs.responsible);
      if (prefs.fontSize) setExportFontSize(prefs.fontSize);
      if (prefs.margin) setExportMargin(prefs.margin);
+     if (prefs.period) setExportPeriod(prefs.period as PeriodKey | 'all');
+     if (prefs.startDate !== undefined) setExportStartDate(prefs.startDate ? new Date(prefs.startDate) : undefined);
+     if (prefs.endDate !== undefined) setExportEndDate(prefs.endDate ? new Date(prefs.endDate) : undefined);
 
      if (exportPrefsKey) {
        const currentRaw = localStorage.getItem(exportPrefsKey);
