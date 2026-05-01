@@ -640,7 +640,12 @@ const HistoricoImoveis = () => {
          </div>
        `;
 
-       return { html, rowCount: exportRows.length, emptyReason };
+        return { 
+          html, 
+          rowCount: exportRows.length, 
+          emptyReason,
+          estPages: Math.ceil(exportRows.length / (fontSize === '12' ? 18 : fontSize === '9' ? 26 : 22)) || 1
+        };
    };
 
     const handlePreview = (propertyId?: string, fontSize?: string, margin?: string) => {
