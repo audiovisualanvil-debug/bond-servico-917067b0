@@ -6,7 +6,7 @@ import {
   Search, MapPin, History, CheckCircle2, Clock, ChevronRight, Building2, Loader2, FileText,
   FilePlus2, DollarSign, ShieldCheck, Send, ThumbsUp, Wrench, Save, BookmarkCheck,
   ChevronLeft, User, ExternalLink, Link2, Download, CalendarRange, Columns3, Hash, RotateCcw,
-  ArrowUpDown, Home, Bookmark
+   ArrowUpDown, Home, Bookmark, AlertCircle, RefreshCcw
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +26,14 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type PeriodKey = 'all' | '7d' | '4w' | '3m' | '12m' | 'custom';
 const PERIOD_LABELS: Record<PeriodKey, string> = {
@@ -131,6 +139,7 @@ const HistoricoImoveis = () => {
   const [columns, setColumns] = useState<Record<ColumnKey, boolean>>(DEFAULT_COLUMNS);
   const [sortKey, setSortKey] = useState<SortKey>('createdAt_desc');
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewProperty, setPreviewProperty] = useState<any>(null);
@@ -511,6 +520,7 @@ const HistoricoImoveis = () => {
    };
 
    const handlePreview = (propertyId?: string) => {
+     setExportError(null);
      const targetPropertyId = propertyId || selectedPropertyId;
      const targetProperty = properties.find(p => p.id === targetPropertyId);
      if (!targetProperty) return;
@@ -521,7 +531,18 @@ const HistoricoImoveis = () => {
    };
 
    const exportHistoryPdf = async () => {
-     if (!previewProperty || !previewHtml) return;
+     if (!previewProperty || !previewHtml) {
+       setExportError("Dados do preview não encontrados.");
+       return;
+     }
+
+     // Check if there are rows in the preview HTML (simple check for <tr> tags in tbody)
+     if (!previewHtml.includes('<tr>')) {
+       setExportError("Não há dados para exportar com os filtros atuais.");
+       return;
+     }
+
+     setExportError(null);
      setExporting(true);
      try {
        const html2pdf = (await import('html2pdf.js')).default;
@@ -536,8 +557,10 @@ const HistoricoImoveis = () => {
        }).from(container).save();
        toast.success('PDF gerado com sucesso');
        setShowPreview(false);
-     } catch (e) {
-       console.error(e);
+     } catch (e: any) {
+       console.error("Erro na exportação do PDF:", e);
+       const detail = e?.message || "Ocorreu um erro inesperado ao gerar o arquivo.";
+       setExportError(`Falha ao gerar PDF: ${detail}`);
        toast.error('Falha ao gerar PDF');
      } finally {
        setExporting(false);
@@ -1141,6 +1164,45 @@ const HistoricoImoveis = () => {
           </div>
         </div>
       )}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Preview do PDF</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 border rounded-md bg-secondary/20 p-4">
+            <div className="bg-white shadow-sm mx-auto min-h-full" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+          </ScrollArea>
+          <DialogFooter className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex-1 w-full sm:w-auto">
+              {exportError && (
+                <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-2 rounded-md border border-destructive/20 animate-in fade-in slide-in-from-top-1">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span className="font-medium">{exportError}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <Button variant="outline" onClick={() => setShowPreview(false)} disabled={exporting}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={exportHistoryPdf} 
+                disabled={exporting}
+                variant={exportError ? "secondary" : "default"}
+              >
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : exportError ? (
+                  <RefreshCcw className="h-4 w-4 mr-2" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                {exportError ? 'Tentar novamente' : 'Confirmar e Baixar PDF'}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
     </DashboardLayout>
   );
