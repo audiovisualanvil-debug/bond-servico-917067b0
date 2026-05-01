@@ -630,9 +630,14 @@ const HistoricoImoveis = () => {
           doc.text(o.osNumber || '-', 12, y);
           doc.text((o.problem || '-').substring(0, 60), 40, y);
           doc.text(STATUS_LABELS[o.status] || '-', 140, y);
-          doc.text(formatDateShort(o.createdAt), 190, y);
-          doc.text(o.finalPrice ? `R$ ${o.finalPrice.toFixed(2)}` : '-', 240, y);
-          y += 7;
+          doc.text(formatDateShort(o.createdAt), 185, y);
+          doc.text(o.finalPrice ? `R$ ${o.finalPrice.toFixed(2)}` : '-', 220, y);
+          doc.setFontSize(7);
+          doc.setTextColor(100, 100, 100);
+          doc.text(`Resp: ${o.tecnico?.name || 'Não atribuído'}`, 245, y);
+          doc.setFontSize(9);
+          doc.setTextColor(0, 0, 0);
+          y += 8;
         });
         
         doc.save(`historico-simplificado-${(targetProperty.address || 'imovel').replace(/[^\w]+/g, '_')}.pdf`);
