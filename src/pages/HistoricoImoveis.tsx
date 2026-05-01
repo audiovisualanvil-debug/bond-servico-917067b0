@@ -1156,6 +1156,45 @@ const HistoricoImoveis = () => {
           </div>
         </div>
       )}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Preview do PDF</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 border rounded-md bg-secondary/20 p-4">
+            <div className="bg-white shadow-sm mx-auto min-h-full" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+          </ScrollArea>
+          <DialogFooter className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex-1 w-full sm:w-auto">
+              {exportError && (
+                <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-2 rounded-md border border-destructive/20 animate-in fade-in slide-in-from-top-1">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span className="font-medium">{exportError}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <Button variant="outline" onClick={() => setShowPreview(false)} disabled={exporting}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={exportHistoryPdf} 
+                disabled={exporting}
+                variant={exportError ? "secondary" : "default"}
+              >
+                {exporting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : exportError ? (
+                  <RefreshCcw className="h-4 w-4 mr-2" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                {exportError ? 'Tentar novamente' : 'Confirmar e Baixar PDF'}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
     </DashboardLayout>
   );
