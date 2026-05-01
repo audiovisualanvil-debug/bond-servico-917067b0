@@ -144,6 +144,7 @@ const HistoricoImoveis = () => {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportErrorDetails, setExportErrorDetails] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewProperty, setPreviewProperty] = useState<any>(null);
@@ -700,9 +701,11 @@ const HistoricoImoveis = () => {
 
         const detail = e?.message || "Ocorreu um erro inesperado ao gerar o arquivo.";
         const stack = e?.stack || "Não há detalhes de stack disponíveis.";
-        setExportError(`Falha ao gerar PDF. O modo avançado de renderização falhou.`);
-        setExportErrorDetails(`${detail}\n\nStack Trace:\n${stack}`);
+        const errorType = e?.name || "Exception";
+        setExportError(`Falha ao gerar PDF (${errorType})`);
+        setExportErrorDetails(`Tipo: ${errorType}\nErro: ${detail}\n\nStack Trace:\n${stack}`);
         toast.error('Ocorreu um erro na renderização avançada do PDF.');
+        setShowErrorModal(true);
       } finally {
         if (isRetry || !exporting) {
           setExporting(false);
