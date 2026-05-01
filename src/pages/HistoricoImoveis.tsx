@@ -559,7 +559,7 @@ const HistoricoImoveis = () => {
         container.innerHTML = previewHtml;
         
         const pdfWorker = html2pdf().set({
-          margin: 10,
+          margin: parseInt(exportMargin),
           filename: `historico-${(previewProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
           image: { type: 'jpeg', quality: 0.95 },
           html2canvas: { scale: 2, useCORS: true },
