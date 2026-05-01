@@ -131,6 +131,9 @@ const HistoricoImoveis = () => {
   const [columns, setColumns] = useState<Record<ColumnKey, boolean>>(DEFAULT_COLUMNS);
   const [sortKey, setSortKey] = useState<SortKey>('createdAt_desc');
   const [exporting, setExporting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const [previewProperty, setPreviewProperty] = useState<any>(null);
   const navigate = useNavigate();
 
   const prefsKey = user ? `historicoImoveis:filters:${user.id}` : null;
@@ -434,15 +437,8 @@ const HistoricoImoveis = () => {
     }
   };
 
-   const exportHistoryPdf = async (propertyId?: string) => {
-     const targetPropertyId = propertyId || selectedPropertyId;
-     const targetProperty = properties.find(p => p.id === targetPropertyId);
-     if (!targetProperty) return;
-
-    setExporting(true);
-    try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const periodLabel = periodFilter === 'custom'
+   const generatePdfHtml = (targetProperty: any) => {
+     const periodLabel = periodFilter === 'custom'
         ? `${customStart ? format(customStart, 'dd/MM/yyyy', { locale: ptBR }) : '—'} a ${customEnd ? format(customEnd, 'dd/MM/yyyy', { locale: ptBR }) : '—'}`
         : PERIOD_LABELS[periodFilter];
       const statusLabel = statusFilter === 'all' ? 'Todos' : STATUS_LABELS[statusFilter];
@@ -482,53 +478,71 @@ const HistoricoImoveis = () => {
         ? `Página atual (${currentPage} de ${totalPages})`
         : 'Todos os filtrados';
       const rows = exportRows.map(o => `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`).join('');
-      const html = `
-       <div style="font-family: Arial, sans-serif; padding:24px; color:#111;">
-           <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${targetProperty.address}</h1>
-           <p style="margin:0 0 12px 0; color:#555; font-size:12px;">
-             ${targetProperty.neighborhood}, ${targetProperty.city} - ${targetProperty.state}
+       return `
+        <div style="font-family: Arial, sans-serif; padding:24px; color:#111; background: white;">
+            <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${targetProperty.address}</h1>
+            <p style="margin:0 0 12px 0; color:#555; font-size:12px;">
+              ${targetProperty.neighborhood}, ${targetProperty.city} - ${targetProperty.state}
+            </p>
+           <p style="margin:0 0 12px 0; font-size:12px;">
+             <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
+              <strong>Filtro Tela (Status):</strong> ${statusLabel} ·
+              <strong>Filtro Exportação (Status):</strong> ${exportStatusLabel} ·
+             <strong>Ordenação:</strong> ${sortKey ? SORT_LABELS[sortKey] : '-'} ·
+             <strong>Escopo:</strong> ${scopeLabel} ·
+             <strong>Total exportado:</strong> ${exportRows.length} de ${propertyOrders.length} OS
+             ${orderQuery ? ` · <strong>Busca:</strong> "${orderQuery}"` : ''}
+             ${requesterQuery ? ` · <strong>Solicitante:</strong> "${requesterQuery}"` : ''}
+             ${osNumberQuery ? ` · <strong>Nº OS:</strong> "${osNumberQuery}"` : ''}
+             ${addressQuery ? ` · <strong>Endereço:</strong> "${addressQuery}"` : ''}
+             ${zipCodeQuery ? ` · <strong>CEP:</strong> "${zipCodeQuery}"` : ''}
+             ${neighborhoodQuery ? ` · <strong>Bairro:</strong> "${neighborhoodQuery}"` : ''}
+             ${cityQuery ? ` · <strong>Cidade:</strong> "${cityQuery}"` : ''}
            </p>
-          <p style="margin:0 0 12px 0; font-size:12px;">
-            <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
-             <strong>Filtro Tela (Status):</strong> ${statusLabel} ·
-             <strong>Filtro Exportação (Status):</strong> ${exportStatusLabel} ·
-            <strong>Ordenação:</strong> ${sortLabel} ·
-            <strong>Escopo:</strong> ${scopeLabel} ·
-            <strong>Total exportado:</strong> ${exportRows.length} de ${propertyOrders.length} OS
-            ${orderQuery ? ` · <strong>Busca:</strong> "${orderQuery}"` : ''}
-            ${requesterQuery ? ` · <strong>Solicitante:</strong> "${requesterQuery}"` : ''}
-            ${osNumberQuery ? ` · <strong>Nº OS:</strong> "${osNumberQuery}"` : ''}
-            ${addressQuery ? ` · <strong>Endereço:</strong> "${addressQuery}"` : ''}
-            ${zipCodeQuery ? ` · <strong>CEP:</strong> "${zipCodeQuery}"` : ''}
-            ${neighborhoodQuery ? ` · <strong>Bairro:</strong> "${neighborhoodQuery}"` : ''}
-            ${cityQuery ? ` · <strong>Cidade:</strong> "${cityQuery}"` : ''}
-          </p>
-          <table style="width:100%; border-collapse:collapse; font-size:11px;">
-            <thead>
-              <tr style="background:#f3f4f6;">${headerHtml || th('—')}</tr>
-            </thead>
-            <tbody>${rows || `<tr><td colspan="${colCount}" style="padding:12px;text-align:center;color:#888;">Nenhuma OS no filtro</td></tr>`}</tbody>
-          </table>
-          <p style="margin-top:16px; font-size:10px; color:#888;">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
-        </div>
-      `;
-      const container = document.createElement('div');
-      container.innerHTML = html;
-      await html2pdf().set({
-        margin: 10,
-         filename: `historico-${(targetProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-      }).from(container).save();
-      toast.success('PDF gerado com sucesso');
-    } catch (e) {
-      console.error(e);
-      toast.error('Falha ao gerar PDF');
-    } finally {
-      setExporting(false);
-    }
-  };
+           <table style="width:100%; border-collapse:collapse; font-size:11px;">
+             <thead>
+               <tr style="background:#f3f4f6;">${headerHtml || '<th style="padding:6px;border:1px solid #ddd;text-align:left;">—</th>'}</tr>
+             </thead>
+             <tbody>${rows || `<tr><td colspan="${colCount}" style="padding:12px;text-align:center;color:#888;">Nenhuma OS no filtro</td></tr>`}</tbody>
+           </table>
+           <p style="margin-top:16px; font-size:10px; color:#888;">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
+         </div>
+       `;
+   };
+
+   const handlePreview = (propertyId?: string) => {
+     const targetPropertyId = propertyId || selectedPropertyId;
+     const targetProperty = properties.find(p => p.id === targetPropertyId);
+     if (!targetProperty) return;
+     const htmlContent = generatePdfHtml(targetProperty);
+     setPreviewHtml(htmlContent);
+     setPreviewProperty(targetProperty);
+     setShowPreview(true);
+   };
+
+   const exportHistoryPdf = async () => {
+     if (!previewProperty || !previewHtml) return;
+     setExporting(true);
+     try {
+       const html2pdf = (await import('html2pdf.js')).default;
+       const container = document.createElement('div');
+       container.innerHTML = previewHtml;
+       await html2pdf().set({
+         margin: 10,
+         filename: `historico-${(previewProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
+         image: { type: 'jpeg', quality: 0.95 },
+         html2canvas: { scale: 2, useCORS: true },
+         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+       }).from(container).save();
+       toast.success('PDF gerado com sucesso');
+       setShowPreview(false);
+     } catch (e) {
+       console.error(e);
+       toast.error('Falha ao gerar PDF');
+     } finally {
+       setExporting(false);
+     }
+   };
 
   const totalPages = Math.max(1, Math.ceil(propertyOrders.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -1011,7 +1025,7 @@ const HistoricoImoveis = () => {
                                        variant="ghost"
                                        size="icon"
                                        className="h-8 w-8"
-                                       onClick={() => exportHistoryPdf(order.propertyId)}
+                                       onClick={() => handlePreview(order.propertyId)}
                                        disabled={exporting}
                                      >
                                        <Download className="h-4 w-4 text-primary" />
