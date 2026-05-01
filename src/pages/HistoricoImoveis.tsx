@@ -480,9 +480,14 @@ const HistoricoImoveis = () => {
       const uniqueResponsibles = Array.from(new Set(propertyOrders.map(o => o.tecnico?.name).filter(Boolean))) as string[];
       const responsibleLabel = exportResponsible === 'all' ? 'Todos' : exportResponsible;
 
-     const periodLabel = periodFilter === 'custom'
-        ? `${customStart ? format(customStart, 'dd/MM/yyyy', { locale: ptBR }) : '—'} a ${customEnd ? format(customEnd, 'dd/MM/yyyy', { locale: ptBR }) : '—'}`
-        : PERIOD_LABELS[periodFilter];
+      const activePeriod = exportPeriod || periodFilter;
+      const activeStart = exportStartDate || customStart;
+      const activeEnd = exportEndDate || customEnd;
+
+      const periodLabel = activePeriod === 'custom'
+         ? `${activeStart ? format(activeStart, 'dd/MM/yyyy', { locale: ptBR }) : '—'} a ${activeEnd ? format(activeEnd, 'dd/MM/yyyy', { locale: ptBR }) : '—'}`
+         : PERIOD_LABELS[activePeriod as PeriodKey] || PERIOD_LABELS[periodFilter];
+
       const statusLabel = statusFilter === 'all' ? 'Todos' : STATUS_LABELS[statusFilter];
        const sortLabel = SORT_LABELS[sortKey];
         const exportStatusLabel = exportStatus === 'all' ? 'Todos' : STATUS_LABELS[exportStatus];
@@ -510,15 +515,38 @@ const HistoricoImoveis = () => {
        // Base rows to export: either the paginated ones or all that match current filters
        let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
 
-        // Apply multiple export-specific filters
+        // Filter base rows (allPropertyOrders or paginated) by multiple criteria
         let exportRows = baseRows;
-        
+
+        // Status filter for export
         if (exportStatus !== 'all') {
           exportRows = exportRows.filter(o => o.status === exportStatus);
         }
         
+        // Responsible filter for export
         if (exportResponsible !== 'all') {
           exportRows = exportRows.filter(o => o.tecnico?.name === exportResponsible);
+        }
+
+        // Period filter for export (if explicitly set in export settings)
+        if (exportPeriod !== 'all' && exportScope !== 'page') {
+          const cutoff = periodCutoff(exportPeriod as PeriodKey);
+          exportRows = exportRows.filter(os => {
+            const d = os[dateField] as Date | null | undefined;
+            if (exportPeriod === 'custom') {
+              if (!exportStartDate && !exportEndDate) return true;
+              if (!d) return false;
+              if (exportStartDate && d.getTime() < exportStartDate.getTime()) return false;
+              if (exportEndDate) {
+                const end = new Date(exportEndDate);
+                end.setHours(23, 59, 59, 999);
+                if (d.getTime() > end.getTime()) return false;
+              }
+              return true;
+            }
+            if (!cutoff || !d) return true;
+            return d.getTime() >= cutoff.getTime();
+          });
         }
 
       const scopeLabel = exportScope === 'page'
