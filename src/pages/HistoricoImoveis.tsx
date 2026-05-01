@@ -1531,7 +1531,21 @@ const HistoricoImoveis = () => {
               </div>
               <div className="space-y-1">
                 <h4 className="text-[10px] font-bold uppercase text-muted-foreground">Alternativa 2</h4>
-                <p className="text-[11px] leading-snug">Usar o modo de segurança (gera um PDF básico).</p>
+                <p className="text-[11px] leading-snug">
+                  Usar o modo de segurança (gera um PDF básico).
+                  {previewProperty && (() => {
+                    let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
+                    let exportRows = exportStatus === 'all' ? baseRows : baseRows.filter(o => o.status === exportStatus);
+                    if (exportResponsible !== 'all') exportRows = exportRows.filter(o => o.tecnico?.name === exportResponsible);
+                    const count = exportRows.length;
+                    const estPages = Math.ceil(count / 22) || 1;
+                    return (
+                      <span className="block mt-1 font-semibold text-amber-700">
+                        {count} registros · Est. {estPages} {estPages === 1 ? 'página' : 'páginas'}
+                      </span>
+                    );
+                  })()}
+                </p>
                 <Button 
                   variant="default" 
                   size="sm" 
