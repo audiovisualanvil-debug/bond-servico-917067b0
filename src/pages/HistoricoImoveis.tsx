@@ -434,8 +434,11 @@ const HistoricoImoveis = () => {
     }
   };
 
-  const exportHistoryPdf = async () => {
-    if (!selectedProperty) return;
+   const exportHistoryPdf = async (propertyId?: string) => {
+     const targetPropertyId = propertyId || selectedPropertyId;
+     const targetProperty = properties.find(p => p.id === targetPropertyId);
+     if (!targetProperty) return;
+
     setExporting(true);
     try {
       const html2pdf = (await import('html2pdf.js')).default;
@@ -480,11 +483,11 @@ const HistoricoImoveis = () => {
         : 'Todos os filtrados';
       const rows = exportRows.map(o => `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`).join('');
       const html = `
-        <div style="font-family: Arial, sans-serif; padding:24px; color:#111;">
-          <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${selectedProperty.address}</h1>
-          <p style="margin:0 0 12px 0; color:#555; font-size:12px;">
-            ${selectedProperty.neighborhood}, ${selectedProperty.city} - ${selectedProperty.state}
-          </p>
+       <div style="font-family: Arial, sans-serif; padding:24px; color:#111;">
+           <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${targetProperty.address}</h1>
+           <p style="margin:0 0 12px 0; color:#555; font-size:12px;">
+             ${targetProperty.neighborhood}, ${targetProperty.city} - ${targetProperty.state}
+           </p>
           <p style="margin:0 0 12px 0; font-size:12px;">
             <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
              <strong>Filtro Tela (Status):</strong> ${statusLabel} ·
@@ -513,7 +516,7 @@ const HistoricoImoveis = () => {
       container.innerHTML = html;
       await html2pdf().set({
         margin: 10,
-        filename: `historico-${(selectedProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
+         filename: `historico-${(targetProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
         image: { type: 'jpeg', quality: 0.95 },
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
