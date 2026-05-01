@@ -1111,7 +1111,44 @@ const HistoricoImoveis = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                         <Select value={exportScope} onValueChange={(v) => updateExportPrefs({ scope: v })}>
+                        <Select value={exportPeriod} onValueChange={(v) => updateExportPrefs({ period: v })}>
+                          <SelectTrigger className="h-9 w-[180px]" title="Filtrar período no PDF">
+                            <SelectValue placeholder="Período no PDF" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">PDF: todo o período</SelectItem>
+                            {(['7d', '4w', '3m', '12m', 'custom'] as PeriodKey[]).map(p => (
+                              <SelectItem key={p} value={p}>PDF: {PERIOD_LABELS[p]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        {exportPeriod === 'custom' && (
+                          <div className="flex items-center gap-1">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-9 text-xs">
+                                  {exportStartDate ? format(exportStartDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Início'}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar mode="single" selected={exportStartDate} onSelect={(v) => updateExportPrefs({ startDate: v?.toISOString() })} initialFocus locale={ptBR} />
+                              </PopoverContent>
+                            </Popover>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-9 text-xs">
+                                  {exportEndDate ? format(exportEndDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Fim'}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar mode="single" selected={exportEndDate} onSelect={(v) => updateExportPrefs({ endDate: v?.toISOString() })} initialFocus locale={ptBR} />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        )}
+
+                        <Select value={exportScope} onValueChange={(v) => updateExportPrefs({ scope: v })}>
                         <SelectTrigger className="h-9 w-[200px]" title="Escopo do PDF exportado">
                           <SelectValue placeholder="Escopo PDF" />
                         </SelectTrigger>
