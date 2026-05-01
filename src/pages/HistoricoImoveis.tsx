@@ -339,6 +339,11 @@ const HistoricoImoveis = () => {
       const q = cityQuery.trim().toLowerCase();
       if (!q) return true;
       return (os.property?.city ?? '').toLowerCase().includes(q);
+    })
+    .filter(os => {
+      const q = zipCodeQuery.trim().toLowerCase();
+      if (!q) return true;
+      return (os.property?.zipCode ?? '').toLowerCase().includes(q);
     });
 
   const statusCounts = ordersBeforeStatus.reduce<Record<string, number>>((acc, os) => {
