@@ -144,6 +144,7 @@ const HistoricoImoveis = () => {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportErrorDetails, setExportErrorDetails] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [previewProperty, setPreviewProperty] = useState<any>(null);
@@ -700,9 +701,11 @@ const HistoricoImoveis = () => {
 
         const detail = e?.message || "Ocorreu um erro inesperado ao gerar o arquivo.";
         const stack = e?.stack || "Não há detalhes de stack disponíveis.";
-        setExportError(`Falha ao gerar PDF. O modo avançado de renderização falhou.`);
-        setExportErrorDetails(`${detail}\n\nStack Trace:\n${stack}`);
+        const errorType = e?.name || "Exception";
+        setExportError(`Falha ao gerar PDF (${errorType})`);
+        setExportErrorDetails(`Tipo: ${errorType}\nErro: ${detail}\n\nStack Trace:\n${stack}`);
         toast.error('Ocorreu um erro na renderização avançada do PDF.');
+        setShowErrorModal(true);
       } finally {
         if (isRetry || !exporting) {
           setExporting(false);
@@ -1361,48 +1364,7 @@ const HistoricoImoveis = () => {
               />
             </div>
           </ScrollArea>
-          <DialogFooter className="mt-4 flex flex-col sm:flex-row items-start justify-between gap-4 border-t pt-4">
-            <div className="flex-1 w-full sm:w-auto space-y-2">
-              {exportError && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-2 rounded-md border border-destructive/20 animate-in fade-in slide-in-from-top-1">
-                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                    <span className="font-medium">{exportError}</span>
-                  </div>
-                  
-                  {exportErrorDetails && (
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 text-[10px] text-muted-foreground hover:text-foreground">
-                          <Terminal className="h-3 w-3 mr-1" /> Ver detalhes técnicos
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80 p-0 overflow-hidden" align="start">
-                        <div className="bg-muted p-2 flex items-center justify-between border-b">
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-bold">Log de Erro</span>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-5 w-5" 
-                            onClick={() => {
-                              navigator.clipboard.writeText(exportErrorDetails);
-                              toast.success('Detalhes copiados');
-                            }}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <ScrollArea className="h-40 p-2">
-                          <pre className="text-[10px] font-mono leading-tight whitespace-pre-wrap break-all opacity-80">
-                            {exportErrorDetails}
-                          </pre>
-                        </ScrollArea>
-                      </PopoverContent>
-                    </Popover>
-                  )}
-                </div>
-              )}
-            </div>
+          <DialogFooter className="mt-4 flex flex-col sm:flex-row items-center justify-end gap-4 border-t pt-4">
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
               <Button variant="outline" onClick={() => setShowPreview(false)} disabled={exporting}>
                 Cancelar
@@ -1416,41 +1378,95 @@ const HistoricoImoveis = () => {
                   {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
                   Imprimir
                 </Button>
-                <Button 
-                  onClick={() => exportHistoryPdf(false)} 
-                  disabled={exporting}
-                  variant={exportError ? "secondary" : "default"}
-                >
-                  {exporting ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : exportError ? (
-                    <RefreshCcw className="h-4 w-4 mr-2" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                {exportError ? 'Tentar Renderização Avançada' : 'Baixar PDF'}
+                <Button onClick={() => exportHistoryPdf(false)} disabled={exporting}>
+                  {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                  Baixar PDF
                 </Button>
-              {exportError && (
-                <Button 
-                  onClick={() => {
-                    // Get the base rows based on current export settings
-                    let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
-                    let exportRows = exportStatus === 'all' 
-                      ? baseRows 
-                      : baseRows.filter(o => o.status === exportStatus);
-                    if (exportResponsible !== 'all') {
-                      exportRows = exportRows.filter(o => o.tecnico?.name === exportResponsible);
-                    }
-                    exportSimplifiedPdf(previewProperty, exportRows);
-                  }}
-                  variant="default"
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
-                >
-                  Baixar PDF Simplificado (Modo de Segurança)
-                </Button>
-              )}
               </div>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={showErrorModal} onOpenChange={setShowErrorModal}>
+        <DialogContent className="max-w-2xl flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Erro na Exportação do PDF
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+              <p className="text-sm font-semibold text-destructive">{exportError}</p>
+              <p className="text-xs text-muted-foreground mt-1">O modo avançado de renderização encontrou uma exceção inesperada.</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold flex items-center gap-1">
+                  <Terminal className="h-3 w-3" /> Detalhes Técnicos (Log)
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    if (exportErrorDetails) {
+                      navigator.clipboard.writeText(exportErrorDetails);
+                      toast.success('Log copiado para a área de transferência');
+                    }
+                  }}
+                >
+                  <Copy className="h-3 w-3 mr-1" /> Copiar log completo
+                </Button>
+              </div>
+              <ScrollArea className="h-60 w-full border rounded-md bg-muted p-4">
+                <pre className="text-[10px] font-mono leading-tight whitespace-pre-wrap break-all opacity-80">
+                  {exportErrorDetails}
+                </pre>
+              </ScrollArea>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="space-y-1">
+                <h4 className="text-[10px] font-bold uppercase text-muted-foreground">Alternativa 1</h4>
+                <p className="text-[11px] leading-snug">Tentar novamente com a mesma configuração.</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full mt-1"
+                  onClick={() => {
+                    setShowErrorModal(false);
+                    exportHistoryPdf(false);
+                  }}
+                >
+                  <RefreshCcw className="h-3 w-3 mr-1" /> Re-tentar Avançado
+                </Button>
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-[10px] font-bold uppercase text-muted-foreground">Alternativa 2</h4>
+                <p className="text-[11px] leading-snug">Usar o modo de segurança (gera um PDF básico).</p>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className="w-full mt-1 bg-amber-600 hover:bg-amber-700 text-white border-none"
+                  onClick={() => {
+                    setShowErrorModal(false);
+                    let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
+                    let exportRows = exportStatus === 'all' ? baseRows : baseRows.filter(o => o.status === exportStatus);
+                    if (exportResponsible !== 'all') exportRows = exportRows.filter(o => o.tecnico?.name === exportResponsible);
+                    exportSimplifiedPdf(previewProperty, exportRows);
+                  }}
+                >
+                  <Download className="h-3 w-3 mr-1" /> Baixar Simplificado
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowErrorModal(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
