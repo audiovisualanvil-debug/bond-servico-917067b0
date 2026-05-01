@@ -133,6 +133,8 @@ const HistoricoImoveis = () => {
   const [exportScope, setExportScope] = useState<'page' | 'all'>('all');
   const [exportStatus, setExportStatus] = useState<OSStatus | 'all'>('all');
   const [exportResponsible, setExportResponsible] = useState<string>('all');
+  const [exportFontSize, setExportFontSize] = useState<string>('11');
+  const [exportMargin, setExportMargin] = useState<string>('10');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
   const [customStart, setCustomStart] = useState<Date | undefined>(undefined);
@@ -447,7 +449,7 @@ const HistoricoImoveis = () => {
     }
   };
 
-   const generatePdfHtml = (targetProperty: any) => {
+   const generatePdfHtml = (targetProperty: any, fontSize: string = '11', margin: string = '24') => {
       const uniqueResponsibles = Array.from(new Set(propertyOrders.map(o => o.tecnico?.name).filter(Boolean))) as string[];
       const responsibleLabel = exportResponsible === 'all' ? 'Todos' : exportResponsible;
 
@@ -459,9 +461,9 @@ const HistoricoImoveis = () => {
         const exportStatusLabel = exportStatus === 'all' ? 'Todos' : STATUS_LABELS[exportStatus];
       const esc = (s: string) => s.replace(/</g, '&lt;');
       const td = (content: string, extra = '') =>
-        `<td style="padding:6px;border:1px solid #ddd;${extra}">${content}</td>`;
+        `<td style="padding:4px 6px;border:1px solid #ddd;${extra}">${content}</td>`;
       const th = (label: string) =>
-        `<th style="padding:6px;border:1px solid #ddd;text-align:left;">${label}</th>`;
+        `<th style="padding:4px 6px;border:1px solid #ddd;text-align:left;">${label}</th>`;
       // Build header + row cells in the same order, respecting selected columns
       const colDefs: { key: ColumnKey; header: string; cell: (o: ServiceOrder) => string }[] = [
         { key: 'osNumber', header: 'Nº OS', cell: o => td(esc(o.osNumber ?? '-'), 'font-weight:600;color:#1a56db;') },
@@ -497,7 +499,7 @@ const HistoricoImoveis = () => {
         : 'Todos os filtrados';
       const rows = exportRows.map(o => `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`).join('');
        return `
-        <div style="font-family: Arial, sans-serif; padding:24px; color:#111; background: white;">
+        <div style="font-family: Arial, sans-serif; padding:${margin}px; color:#111; background: white; font-size: ${fontSize}px;">
             <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${targetProperty.address}</h1>
             <p style="margin:0 0 12px 0; color:#555; font-size:12px;">
               ${targetProperty.neighborhood}, ${targetProperty.city} - ${targetProperty.state}
@@ -518,7 +520,7 @@ const HistoricoImoveis = () => {
              ${neighborhoodQuery ? ` · <strong>Bairro:</strong> "${neighborhoodQuery}"` : ''}
              ${cityQuery ? ` · <strong>Cidade:</strong> "${cityQuery}"` : ''}
            </p>
-           <table style="width:100%; border-collapse:collapse; font-size:11px;">
+          <table style="width:100%; border-collapse:collapse; font-size: inherit;">
              <thead>
                <tr style="background:#f3f4f6;">${headerHtml || '<th style="padding:6px;border:1px solid #ddd;text-align:left;">—</th>'}</tr>
              </thead>
@@ -529,12 +531,14 @@ const HistoricoImoveis = () => {
        `;
    };
 
-   const handlePreview = (propertyId?: string) => {
+   const handlePreview = (propertyId?: string, fontSize?: string, margin?: string) => {
      setExportError(null);
      const targetPropertyId = propertyId || selectedPropertyId;
      const targetProperty = properties.find(p => p.id === targetPropertyId);
      if (!targetProperty) return;
-     const htmlContent = generatePdfHtml(targetProperty);
+     const currentFontSize = fontSize || exportFontSize;
+     const currentMargin = margin || exportMargin;
+     const htmlContent = generatePdfHtml(targetProperty, currentFontSize, currentMargin === '10' ? '24' : currentMargin === '5' ? '12' : '48');
      setPreviewHtml(htmlContent);
      setPreviewProperty(targetProperty);
      setShowPreview(true);
@@ -559,7 +563,7 @@ const HistoricoImoveis = () => {
         container.innerHTML = previewHtml;
         
         const pdfWorker = html2pdf().set({
-          margin: 10,
+          margin: parseInt(exportMargin),
           filename: `historico-${(previewProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
           image: { type: 'jpeg', quality: 0.95 },
           html2canvas: { scale: 2, useCORS: true },
@@ -1200,8 +1204,37 @@ const HistoricoImoveis = () => {
       )}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between pr-8">
             <DialogTitle>Preview do PDF</DialogTitle>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Fonte:</span>
+                <Select value={exportFontSize} onValueChange={(v) => { setExportFontSize(v); handlePreview(previewProperty?.id, v, exportMargin); }}>
+                  <SelectTrigger className="h-8 w-20 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="9">9px</SelectItem>
+                    <SelectItem value="10">10px</SelectItem>
+                    <SelectItem value="11">11px</SelectItem>
+                    <SelectItem value="12">12px</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Margem:</span>
+                <Select value={exportMargin} onValueChange={(v) => { setExportMargin(v); handlePreview(previewProperty?.id, exportFontSize, v); }}>
+                  <SelectTrigger className="h-8 w-28 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">Estreita (5mm)</SelectItem>
+                    <SelectItem value="10">Normal (10mm)</SelectItem>
+                    <SelectItem value="20">Larga (20mm)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </DialogHeader>
           <ScrollArea className="flex-1 border rounded-md bg-secondary/20 p-4">
             <div className="bg-white shadow-sm mx-auto min-h-full" dangerouslySetInnerHTML={{ __html: previewHtml }} />
