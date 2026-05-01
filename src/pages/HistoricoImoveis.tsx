@@ -434,15 +434,8 @@ const HistoricoImoveis = () => {
     }
   };
 
-   const exportHistoryPdf = async (propertyId?: string) => {
-     const targetPropertyId = propertyId || selectedPropertyId;
-     const targetProperty = properties.find(p => p.id === targetPropertyId);
-     if (!targetProperty) return;
-
-    setExporting(true);
-    try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const periodLabel = periodFilter === 'custom'
+   const generatePdfHtml = (targetProperty: any) => {
+     const periodLabel = periodFilter === 'custom'
         ? `${customStart ? format(customStart, 'dd/MM/yyyy', { locale: ptBR }) : '—'} a ${customEnd ? format(customEnd, 'dd/MM/yyyy', { locale: ptBR }) : '—'}`
         : PERIOD_LABELS[periodFilter];
       const statusLabel = statusFilter === 'all' ? 'Todos' : STATUS_LABELS[statusFilter];
@@ -512,23 +505,41 @@ const HistoricoImoveis = () => {
            <p style="margin-top:16px; font-size:10px; color:#888;">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
          </div>
        `;
-      const container = document.createElement('div');
-      container.innerHTML = html;
-      await html2pdf().set({
-        margin: 10,
-         filename: `historico-${(targetProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-      }).from(container).save();
-      toast.success('PDF gerado com sucesso');
-    } catch (e) {
-      console.error(e);
-      toast.error('Falha ao gerar PDF');
-    } finally {
-      setExporting(false);
-    }
-  };
+   };
+
+   const handlePreview = (propertyId?: string) => {
+     const targetPropertyId = propertyId || selectedPropertyId;
+     const targetProperty = properties.find(p => p.id === targetPropertyId);
+     if (!targetProperty) return;
+     const htmlContent = generatePdfHtml(targetProperty);
+     setPreviewHtml(htmlContent);
+     setPreviewProperty(targetProperty);
+     setShowPreview(true);
+   };
+
+   const exportHistoryPdf = async () => {
+     if (!previewProperty || !previewHtml) return;
+     setExporting(true);
+     try {
+       const html2pdf = (await import('html2pdf.js')).default;
+       const container = document.createElement('div');
+       container.innerHTML = previewHtml;
+       await html2pdf().set({
+         margin: 10,
+         filename: `historico-${(previewProperty.address || 'imovel').replace(/[^\w]+/g, '_').slice(0, 40)}.pdf`,
+         image: { type: 'jpeg', quality: 0.95 },
+         html2canvas: { scale: 2, useCORS: true },
+         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+       }).from(container).save();
+       toast.success('PDF gerado com sucesso');
+       setShowPreview(false);
+     } catch (e) {
+       console.error(e);
+       toast.error('Falha ao gerar PDF');
+     } finally {
+       setExporting(false);
+     }
+   };
 
   const totalPages = Math.max(1, Math.ceil(propertyOrders.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
