@@ -130,7 +130,11 @@ const HistoricoImoveis = () => {
   const [cityQuery, setCityQuery] = useState('');
   const [zipCodeQuery, setZipCodeQuery] = useState('');
   const [hasSavedAddress, setHasSavedAddress] = useState(false);
-  const [exportScope, setExportScope] = useState<'page' | 'all'>('all');
+   const [exportScope, setExportScope] = useState<'page' | 'all'>('all');
+   const [exportPeriod, setExportResponsible] = useState<string>('all'); // This line was actually setting exportResponsible, fix below
+   const [exportStartDate, setExportStartDate] = useState<Date | undefined>(undefined);
+   const [exportEndDate, setExportEndDate] = useState<Date | undefined>(undefined);
+   const [exportStatus, setExportStatus] = useState<OSStatus | 'all'>('all');
   const [exportStatus, setExportStatus] = useState<OSStatus | 'all'>('all');
   const [exportResponsible, setExportResponsible] = useState<string>('all');
   const [exportFontSize, setExportFontSize] = useState<string>('11');
