@@ -122,6 +122,7 @@ const HistoricoImoveis = () => {
   const [cityQuery, setCityQuery] = useState('');
   const [hasSavedAddress, setHasSavedAddress] = useState(false);
   const [exportScope, setExportScope] = useState<'page' | 'all'>('all');
+  const [exportStatus, setExportStatus] = useState<OSStatus | 'all'>('all');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
   const [customStart, setCustomStart] = useState<Date | undefined>(undefined);
@@ -133,8 +134,9 @@ const HistoricoImoveis = () => {
 
   const prefsKey = user ? `historicoImoveis:filters:${user.id}` : null;
   const colsKey = user ? `historicoImoveis:columns:${user.id}` : null;
-  const sortKeyStorage = user ? `historicoImoveis:sort:${user.id}` : null;
-  const addressKey = user ? `historicoImoveis:address:${user.id}` : null;
+   const sortKeyStorage = user ? `historicoImoveis:sort:${user.id}` : null;
+   const addressKey = user ? `historicoImoveis:address:${user.id}` : null;
+   const exportScopeKey = user ? `historicoImoveis:exportScope:${user.id}` : null;
 
   // Load saved address filters (text + neighborhood + city)
   useEffect(() => {
@@ -202,12 +204,26 @@ const HistoricoImoveis = () => {
       const raw = localStorage.getItem(sortKeyStorage);
       if (raw && raw in SORT_LABELS) setSortKey(raw as SortKey);
     } catch { /* ignore */ }
-  }, [sortKeyStorage]);
+   }, [sortKeyStorage]);
+
+   // Load saved export scope
+   useEffect(() => {
+     if (!exportScopeKey) return;
+     try {
+       const raw = localStorage.getItem(exportScopeKey);
+       if (raw === 'page' || raw === 'all') setExportScope(raw);
+     } catch { /* ignore */ }
+   }, [exportScopeKey]);
 
   const updateSort = (k: SortKey) => {
     setSortKey(k);
     if (sortKeyStorage) localStorage.setItem(sortKeyStorage, k);
-  };
+   };
+
+   const updateExportScope = (v: 'page' | 'all') => {
+     setExportScope(v);
+     if (exportScopeKey) localStorage.setItem(exportScopeKey, v);
+   };
 
   const toggleColumn = (k: ColumnKey, value: boolean) => {
     setColumns(prev => {
@@ -420,7 +436,8 @@ const HistoricoImoveis = () => {
         ? `${customStart ? format(customStart, 'dd/MM/yyyy', { locale: ptBR }) : '—'} a ${customEnd ? format(customEnd, 'dd/MM/yyyy', { locale: ptBR }) : '—'}`
         : PERIOD_LABELS[periodFilter];
       const statusLabel = statusFilter === 'all' ? 'Todos' : STATUS_LABELS[statusFilter];
-      const sortLabel = SORT_LABELS[sortKey];
+       const sortLabel = SORT_LABELS[sortKey];
+       const exportStatusLabel = exportStatus === 'all' ? 'Todos' : STATUS_LABELS[exportStatus];
       const esc = (s: string) => s.replace(/</g, '&lt;');
       const td = (content: string, extra = '') =>
         `<td style="padding:6px;border:1px solid #ddd;${extra}">${content}</td>`;
@@ -442,8 +459,15 @@ const HistoricoImoveis = () => {
       const activeCols = colDefs.filter(c => columns[c.key]);
       const colCount = Math.max(1, activeCols.length);
       const headerHtml = activeCols.map(c => th(c.header)).join('');
-      // Honor current screen scope: only the visible page or the entire filtered list (in current sort order)
-      const exportRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
+       // Base rows to export: either the paginated ones or all that match current filters
+       let baseRows = exportScope === 'page' ? paginatedOrders : propertyOrders;
+
+       // If exportStatus is NOT 'all', we filter the base rows by that status
+       // (Note: if exportScope is 'page', we filter only within that page)
+       const exportRows = exportStatus === 'all' 
+         ? baseRows 
+         : baseRows.filter(o => o.status === exportStatus);
+
       const scopeLabel = exportScope === 'page'
         ? `Página atual (${currentPage} de ${totalPages})`
         : 'Todos os filtrados';
@@ -456,7 +480,8 @@ const HistoricoImoveis = () => {
           </p>
           <p style="margin:0 0 12px 0; font-size:12px;">
             <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
-            <strong>Status:</strong> ${statusLabel} ·
+             <strong>Filtro Tela (Status):</strong> ${statusLabel} ·
+             <strong>Filtro Exportação (Status):</strong> ${exportStatusLabel} ·
             <strong>Ordenação:</strong> ${sortLabel} ·
             <strong>Escopo:</strong> ${scopeLabel} ·
             <strong>Total exportado:</strong> ${exportRows.length} de ${propertyOrders.length} OS
@@ -754,7 +779,18 @@ const HistoricoImoveis = () => {
                           <p className="text-[10px] text-muted-foreground mt-2">Sua preferência é salva automaticamente.</p>
                         </PopoverContent>
                       </Popover>
-                      <Select value={exportScope} onValueChange={(v) => setExportScope(v as 'page' | 'all')}>
+                       <Select value={exportStatus} onValueChange={(v) => setExportStatus(v as OSStatus | 'all')}>
+                         <SelectTrigger className="h-9 w-[160px]" title="Filtrar status no PDF">
+                           <SelectValue placeholder="Status no PDF" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           <SelectItem value="all">PDF: todos status</SelectItem>
+                           {(Object.keys(STATUS_LABELS) as OSStatus[]).map(s => (
+                             <SelectItem key={s} value={s}>PDF: {STATUS_LABELS[s]}</SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
+                       <Select value={exportScope} onValueChange={(v) => updateExportScope(v as 'page' | 'all')}>
                         <SelectTrigger className="h-9 w-[200px]" title="Escopo do PDF exportado">
                           <SelectValue placeholder="Escopo PDF" />
                         </SelectTrigger>
