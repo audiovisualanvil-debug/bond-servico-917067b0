@@ -120,6 +120,7 @@ const HistoricoImoveis = () => {
   const [addressQuery, setAddressQuery] = useState('');
   const [neighborhoodQuery, setNeighborhoodQuery] = useState('');
   const [cityQuery, setCityQuery] = useState('');
+  const [zipCodeQuery, setZipCodeQuery] = useState('');
   const [hasSavedAddress, setHasSavedAddress] = useState(false);
   const [exportScope, setExportScope] = useState<'page' | 'all'>('all');
   const [exportStatus, setExportStatus] = useState<OSStatus | 'all'>('all');
@@ -144,10 +145,11 @@ const HistoricoImoveis = () => {
     try {
       const raw = localStorage.getItem(addressKey);
       if (!raw) { setHasSavedAddress(false); return; }
-      const parsed = JSON.parse(raw) as { addressQuery?: string; neighborhoodQuery?: string; cityQuery?: string };
+      const parsed = JSON.parse(raw) as { addressQuery?: string; neighborhoodQuery?: string; cityQuery?: string; zipCodeQuery?: string };
       if (parsed.addressQuery) setAddressQuery(parsed.addressQuery);
       if (parsed.neighborhoodQuery) setNeighborhoodQuery(parsed.neighborhoodQuery);
       if (parsed.cityQuery) setCityQuery(parsed.cityQuery);
+      if (parsed.zipCodeQuery) setZipCodeQuery(parsed.zipCodeQuery);
       setHasSavedAddress(true);
     } catch {
       setHasSavedAddress(false);
@@ -156,13 +158,13 @@ const HistoricoImoveis = () => {
 
   const saveAddressFilter = () => {
     if (!addressKey) return;
-    localStorage.setItem(addressKey, JSON.stringify({ addressQuery, neighborhoodQuery, cityQuery }));
+    localStorage.setItem(addressKey, JSON.stringify({ addressQuery, neighborhoodQuery, cityQuery, zipCodeQuery }));
     setHasSavedAddress(true);
     toast.success('Filtro de endereço salvo — será restaurado nos próximos acessos');
   };
 
   const clearAddressFilter = () => {
-    setAddressQuery(''); setNeighborhoodQuery(''); setCityQuery('');
+    setAddressQuery(''); setNeighborhoodQuery(''); setCityQuery(''); setZipCodeQuery('');
     if (addressKey) localStorage.removeItem(addressKey);
     setHasSavedAddress(false);
     toast.success('Filtro de endereço limpo');
@@ -489,6 +491,7 @@ const HistoricoImoveis = () => {
             ${requesterQuery ? ` · <strong>Solicitante:</strong> "${requesterQuery}"` : ''}
             ${osNumberQuery ? ` · <strong>Nº OS:</strong> "${osNumberQuery}"` : ''}
             ${addressQuery ? ` · <strong>Endereço:</strong> "${addressQuery}"` : ''}
+            ${zipCodeQuery ? ` · <strong>CEP:</strong> "${zipCodeQuery}"` : ''}
             ${neighborhoodQuery ? ` · <strong>Bairro:</strong> "${neighborhoodQuery}"` : ''}
             ${cityQuery ? ` · <strong>Cidade:</strong> "${cityQuery}"` : ''}
           </p>
@@ -526,7 +529,7 @@ const HistoricoImoveis = () => {
   // Reset pagination when filters/search/property change
   useEffect(() => {
     setPage(1);
-  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery, osNumberQuery, addressQuery, neighborhoodQuery, cityQuery, sortKey]);
+  }, [selectedPropertyId, statusFilter, periodFilter, dateField, orderQuery, requesterQuery, osNumberQuery, addressQuery, neighborhoodQuery, cityQuery, zipCodeQuery, sortKey]);
 
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
 
