@@ -497,9 +497,42 @@ const HistoricoImoveis = () => {
       const scopeLabel = exportScope === 'page'
         ? `Página atual (${currentPage} de ${totalPages})`
         : 'Todos os filtrados';
-      const rows = exportRows.map(o => `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`).join('');
+       const rows = exportRows.map((o, index) => {
+         // Add a marker for potential page breaks if it's a large export
+         const rowHtml = `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`;
+         return rowHtml;
+       }).join('');
+
        return `
-        <div style="font-family: Arial, sans-serif; padding:${margin}px; color:#111; background: white; font-size: ${fontSize}px;">
+        <div class="pdf-container" style="font-family: Arial, sans-serif; padding:${margin}px; color:#111; background: white; font-size: ${fontSize}px; width: 297mm; min-height: 210mm; margin: 0 auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); position: relative;">
+            <style>
+              @media screen {
+                .pdf-container { margin-bottom: 20px !important; }
+                tr { page-break-inside: avoid; }
+                /* Visual guide for A4 landscape height (~210mm) */
+                .page-break-guide {
+                  border-top: 2px dashed #3b82f6;
+                  position: relative;
+                  margin: 40px 0;
+                  text-align: center;
+                  height: 0;
+                  z-index: 10;
+                }
+                .page-break-guide::after {
+                  content: "QUEBRA DE PÁGINA (A4)";
+                  position: absolute;
+                  top: -10px;
+                  left: 50%;
+                  transform: translateX(-50%);
+                  background: #3b82f6;
+                  color: white;
+                  font-size: 10px;
+                  padding: 2px 8px;
+                  border-radius: 4px;
+                  font-weight: bold;
+                }
+              }
+            </style>
             <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${targetProperty.address}</h1>
             <p style="margin:0 0 12px 0; color:#555; font-size:12px;">
               ${targetProperty.neighborhood}, ${targetProperty.city} - ${targetProperty.state}
@@ -1236,8 +1269,14 @@ const HistoricoImoveis = () => {
               </div>
             </div>
           </DialogHeader>
-          <ScrollArea className="flex-1 border rounded-md bg-secondary/20 p-4">
-            <div className="bg-white shadow-sm mx-auto min-h-full" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+          <ScrollArea className="flex-1 border rounded-md bg-secondary/20 p-8">
+            <div className="mx-auto flex justify-center">
+              <div 
+                className="bg-white" 
+                style={{ width: 'fit-content' }}
+                dangerouslySetInnerHTML={{ __html: previewHtml }} 
+              />
+            </div>
           </ScrollArea>
           <DialogFooter className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex-1 w-full sm:w-auto">
