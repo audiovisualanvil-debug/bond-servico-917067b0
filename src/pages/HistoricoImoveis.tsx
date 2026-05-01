@@ -482,36 +482,36 @@ const HistoricoImoveis = () => {
         ? `Página atual (${currentPage} de ${totalPages})`
         : 'Todos os filtrados';
       const rows = exportRows.map(o => `<tr>${activeCols.map(c => c.cell(o)).join('')}</tr>`).join('');
-      const html = `
-       <div style="font-family: Arial, sans-serif; padding:24px; color:#111;">
-           <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${targetProperty.address}</h1>
-           <p style="margin:0 0 12px 0; color:#555; font-size:12px;">
-             ${targetProperty.neighborhood}, ${targetProperty.city} - ${targetProperty.state}
+       return `
+        <div style="font-family: Arial, sans-serif; padding:24px; color:#111; background: white;">
+            <h1 style="margin:0 0 4px 0; font-size:20px;">Histórico de OS — ${targetProperty.address}</h1>
+            <p style="margin:0 0 12px 0; color:#555; font-size:12px;">
+              ${targetProperty.neighborhood}, ${targetProperty.city} - ${targetProperty.state}
+            </p>
+           <p style="margin:0 0 12px 0; font-size:12px;">
+             <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
+              <strong>Filtro Tela (Status):</strong> ${statusLabel} ·
+              <strong>Filtro Exportação (Status):</strong> ${exportStatusLabel} ·
+             <strong>Ordenação:</strong> ${sortKey ? SORT_LABELS[sortKey] : '-'} ·
+             <strong>Escopo:</strong> ${scopeLabel} ·
+             <strong>Total exportado:</strong> ${exportRows.length} de ${propertyOrders.length} OS
+             ${orderQuery ? ` · <strong>Busca:</strong> "${orderQuery}"` : ''}
+             ${requesterQuery ? ` · <strong>Solicitante:</strong> "${requesterQuery}"` : ''}
+             ${osNumberQuery ? ` · <strong>Nº OS:</strong> "${osNumberQuery}"` : ''}
+             ${addressQuery ? ` · <strong>Endereço:</strong> "${addressQuery}"` : ''}
+             ${zipCodeQuery ? ` · <strong>CEP:</strong> "${zipCodeQuery}"` : ''}
+             ${neighborhoodQuery ? ` · <strong>Bairro:</strong> "${neighborhoodQuery}"` : ''}
+             ${cityQuery ? ` · <strong>Cidade:</strong> "${cityQuery}"` : ''}
            </p>
-          <p style="margin:0 0 12px 0; font-size:12px;">
-            <strong>Período:</strong> ${periodLabel} (base: ${DATE_FIELD_LABELS[dateField]}) ·
-             <strong>Filtro Tela (Status):</strong> ${statusLabel} ·
-             <strong>Filtro Exportação (Status):</strong> ${exportStatusLabel} ·
-            <strong>Ordenação:</strong> ${sortLabel} ·
-            <strong>Escopo:</strong> ${scopeLabel} ·
-            <strong>Total exportado:</strong> ${exportRows.length} de ${propertyOrders.length} OS
-            ${orderQuery ? ` · <strong>Busca:</strong> "${orderQuery}"` : ''}
-            ${requesterQuery ? ` · <strong>Solicitante:</strong> "${requesterQuery}"` : ''}
-            ${osNumberQuery ? ` · <strong>Nº OS:</strong> "${osNumberQuery}"` : ''}
-            ${addressQuery ? ` · <strong>Endereço:</strong> "${addressQuery}"` : ''}
-            ${zipCodeQuery ? ` · <strong>CEP:</strong> "${zipCodeQuery}"` : ''}
-            ${neighborhoodQuery ? ` · <strong>Bairro:</strong> "${neighborhoodQuery}"` : ''}
-            ${cityQuery ? ` · <strong>Cidade:</strong> "${cityQuery}"` : ''}
-          </p>
-          <table style="width:100%; border-collapse:collapse; font-size:11px;">
-            <thead>
-              <tr style="background:#f3f4f6;">${headerHtml || th('—')}</tr>
-            </thead>
-            <tbody>${rows || `<tr><td colspan="${colCount}" style="padding:12px;text-align:center;color:#888;">Nenhuma OS no filtro</td></tr>`}</tbody>
-          </table>
-          <p style="margin-top:16px; font-size:10px; color:#888;">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
-        </div>
-      `;
+           <table style="width:100%; border-collapse:collapse; font-size:11px;">
+             <thead>
+               <tr style="background:#f3f4f6;">${headerHtml || '<th style="padding:6px;border:1px solid #ddd;text-align:left;">—</th>'}</tr>
+             </thead>
+             <tbody>${rows || `<tr><td colspan="${colCount}" style="padding:12px;text-align:center;color:#888;">Nenhuma OS no filtro</td></tr>`}</tbody>
+           </table>
+           <p style="margin-top:16px; font-size:10px; color:#888;">Gerado em ${new Date().toLocaleString('pt-BR')}</p>
+         </div>
+       `;
       const container = document.createElement('div');
       container.innerHTML = html;
       await html2pdf().set({
